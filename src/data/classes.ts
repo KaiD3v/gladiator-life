@@ -14,7 +14,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
   mage: {
     id: 'mage', name: 'Mago', tagline: 'Dano mágico, custo de energia e efeitos.',
     passive: 'Mente arcana: +4 de energia por rodada. Magia ignora metade da defesa.',
-    stats: base({ maxHp: 85, maxEnergy: 16, regen: 4, atk: 5, mag: 15, def: 3, speed: 5 }),
+    stats: base({ maxHp: 95, maxEnergy: 16, regen: 4, atk: 8, mag: 15, def: 3, speed: 5 }),
     perks: {},
     attrs: { str: 2, dex: 3, wis: 6 },
     skills: ['fireball', 'frostRay'],

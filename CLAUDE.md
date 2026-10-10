@@ -23,9 +23,27 @@ Camadas com dependência em um só sentido: **`ui → state → engine → data/
 | --- | --- | --- |
 | `src/data/` | Conteúdo puro, um arquivo por domínio (`classes`, `enemies`, `items`, `skills`, `arenas`, `npcs`, `statuses`, `attributes`, `balance`, `story`) e os tipos em `types.ts`. `index.ts` reexporta tudo. | Só dados. Sem funções com regra. |
 | `src/core/rng.ts` | `rand(s)` (mulberry32 com a semente guardada no próprio estado) e `pick`. | Toda aleatoriedade passa por aqui. |
-| `src/engine/` | Motores puros: `combat` (rodada inteira em `resolveRound`), `characters` (pipeline de modificadores, `buildPlayer`, `createPlayerFighter`, `createEnemyFighter`), `items` (`acquireItem`, `withMaxHpGrowth`, `buyBlock`, `rollShop`), `scenes` (`scenesFor`, `beatView`, `sceneAssets`, `sceneTrack`). | Funções puras, testadas. |
+| `src/engine/` | Motores puros: `combat` (rodada inteira em `resolveRound`; ver "Combate" abaixo), `characters` (pipeline de modificadores, `buildPlayer`, `createPlayerFighter`, `createEnemyFighter`), `items` (`acquireItem`, `withMaxHpGrowth`, `buyBlock`, `rollShop`), `scenes` (`scenesFor`, `beatView`, `sceneAssets`, `sceneTrack`, `sceneAmbience`). | Funções puras, testadas. |
 | `src/state/` | `types.ts` (`RunState`, `Screen`, `GameAction`), `save.ts` (save + nível), `run.ts` (regras da run usadas pela UI), `camp.ts`, `campaign.ts`, `scenes.ts` e `reducer.ts`. | `reduce(g, action)` é a **única** forma de mudar o estado do jogo. |
 | `src/ui/` | `store.ts` (estado da página, `dispatch`, render, animação do log), `events.ts` (tabela `data-a` → ação, teclado), `components.ts` (peças HTML), `views/<tela>.ts`, `audio.ts`. | Views são funções `(estado) => string HTML`; não guardam estado. |
+
+## Combate
+
+Tudo em `engine/combat.ts`, com os números em `data/balance.ts` (`CROWD`, `POSTURE`). Camadas, todas visíveis ao jogador:
+
+- **Intenção**: o inimigo segue um `pattern` cíclico (sem `rand`) e anuncia a próxima ação (`CombatState.intent`,
+  `intentView`). Habilidade com `windup` gasta uma rodada preparando (`prep`) e acerta na seguinte. Quem consome um
+  atordoamento fica `steady` (imune) na rodada seguinte.
+- **Multidão** (`crowd` 0..100, `crowdView`): sobe com jogo vistoso, cai com repetição e covardia. Ovação (+dano), Golpe de
+  Glória da classe (`ClassDef.glory`, só com 100), "A multidão exige mais" (salva da morte 1x) e veredito Executar/Poupar
+  em luta comum com o inimigo ≤15% (`verdictAvailable`). O favor multiplica o ouro em `afterCombat`.
+- **Postura** (`posture`/`weak` do inimigo, `postureView`): golpes e efeitos no ponto fraco abalam; em 0 fica `broken`
+  (perde a vez, +50% de dano) e recompõe ao acabar. Pontos fracos descobertos vão para `RunState.bestiary`.
+- **Chefes**: `phase2` (troca de padrão e fala ao cruzar a vida indicada) e `barks` (falas, `LogEntry.bark`).
+- **Perigo da arena** (`ArenaDef.hazard`, `hazardView`): avisado uma rodada antes, age no fim da rodada; Defender protege
+  dos efeitos de status.
+- `actionsFor(f, s)` tem ordem estável (atalhos 1..n): ataque, habilidades, glória, defender, fugir, veredito. Passe sempre
+  o estado `s`. `LogEntry` guarda `hp` e `crowd` por evento para a UI animar, e `sfx` para o som.
 
 ## Invariantes (não quebre)
 
@@ -46,12 +64,13 @@ Camadas com dependência em um só sentido: **`ui → state → engine → data/
 **Conteúdo novo (o caso mais frequente, só dados):**
 - Item / inimigo / classe / habilidade: uma entrada em `data/items.ts`, `data/enemies.ts`, `data/classes.ts` ou `data/skills.ts`.
   Efeitos de item são `mods` (stats) e `perks`; o motor de personagens aplica, e item que aumenta vida máxima cura o mesmo tanto.
-  Habilidade de treinador precisa de `attr`, `req` e `price`.
+  Habilidade de treinador precisa de `attr`, `req` e `price`. Inimigo precisa de `pattern`, `posture` e `weak` (chefe:
+  `phase2` e `barks`, falas em linguagem neutra sobre o herói). Classe precisa de `glory`.
 - Cena: uma entrada em `data/story.ts` com `trigger` (`campaign-start`, `run-start`, `boss-intro`, `boss-defeat`,
-  `arena-enter`, `campaign-won`) e `once: true` se só pode tocar uma vez por campanha. Falas aceitam `{nome}` e `{classe}`.
+  `arena-enter`, `campaign-won`) e `once: true` se só pode tocar uma vez por campanha; `music` e `ambience` opcionais. Falas aceitam `{nome}` e `{classe}`.
   Personagens que falam ficam em `SPEAKERS`. O herói pode ser de qualquer gênero: escreva falas sobre ele em linguagem neutra.
-- Arena nova: entrada em `data/arenas.ts` (ordem do array = ordem da campanha) + cenas `boss-intro`/`boss-defeat`/`arena-enter`
-  + fundo `bg-<id>`. `data/story.test.ts` falha se faltar cena ou asset.
+- Arena nova: entrada em `data/arenas.ts` (ordem do array = ordem da campanha, com `hazard`) + cenas
+  `boss-intro`/`boss-defeat`/`arena-enter` + fundo `bg-<id>`. `data/story.test.ts` falha se faltar cena ou asset.
 
 **Nova mecânica / regra:**
 1. Tipos em `data/types.ts` (conteúdo) ou `state/types.ts` (estado/ações).
@@ -76,16 +95,33 @@ Pixel art medieval gerada pelo Codex CLI (`codex exec`, recurso `image_generatio
 convertidos com `python scripts/process_assets.py <pasta-dos-png>` (recorte, redução, WebP). Registre tamanho/nome novo em
 `SIZES` (ou na lista de fundos `bg-*`) e em `FLIP` se o sprite olhar para o lado errado (jogador → direita, inimigos → esquerda).
 Música e efeitos ficam em `public/audio/` (`<faixa>.mp3`, `sfx/<efeito>.mp3`); efeitos de combate vêm do campo `sfx` do log.
+Ambientes em loop ficam em `public/audio/amb/` e tocam num segundo canal, por baixo da música: nas cenas pelo campo
+`ambience` (cena ou fala; `null` corta) e no combate a torcida, com volume que segue o favor. Sons novos foram gerados no
+ElevenLabs (efeitos sonoros) e mixados com ffmpeg; geração custa créditos: estime e peça aprovação antes.
 
 ## Balanceamento
 
 Mudanças em números devem ser validadas por simulação: um teste temporário que joga centenas de campanhas com sementes fixas
 via `reduce` (bot que usa o acampamento e escolhe ações) e mede a taxa de títulos por classe. Rode, compare com o estado
-anterior, apague o arquivo antes de commitar. Referência atual (bot aleatório): Fosso vencível por todas as classes, curva de
-dificuldade crescente entre as arenas, Guerreiro como classe mais difícil para o bot.
+anterior, apague o arquivo antes de commitar. Use ao menos três bots: aleatório (ações válidas ao acaso), guloso (sempre a
+habilidade de dano mais cara, ignora a intenção) e informado (lê `intentView`: ataca no preparo, defende o golpe pesado,
+usa Glória e Executar). Informação tem que render mais que jogar às cegas.
+
+Referência atual (600 campanhas por classe, % de títulos nas arenas 1 / 2 / 3):
+
+| Bot | Guerreiro | Mago | Assassino |
+| --- | --- | --- | --- |
+| aleatório | 33 / 9 / 1 | 13 / 0 / 0 | 18 / 2 / 0 |
+| guloso | 87 / 66 / 16 | 55 / 26 / 4 | 44 / 23 / 2 |
+| informado | 99 / 79 / 25 | 74 / 35 / 5 | 65 / 38 / 5 |
+
+Metas: Fosso vencível por todas as classes, dificuldade crescente entre as arenas, Mago e Assassino no mesmo patamar.
+O Guerreiro é a classe mais fácil para os bots.
 
 ## Git
 
 Branch `main`. Commits pequenos e descritivos em inglês. Trabalho paralelo com agentes: cada um num worktree
 (`.claude/worktrees/`, ignorado) com arquivos de responsabilidade definidos para evitar conflito; revise e rode testes,
-build e navegador antes de mesclar.
+build e navegador antes de mesclar. O Vitest também roda os testes dentro de `.claude/worktrees/`: enquanto houver worktree,
+use `npx vitest run src` e remova cada worktree (`git worktree remove`) assim que mesclar. Um bom corte é motor
+(`data`/`engine`/`state`) num agente e interface (`ui`/`style.css`) em outro, com a API combinada antes.
