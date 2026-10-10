@@ -1,7 +1,7 @@
 // Fluxo da campanha: criar o gladiador, entrar em luta, resolver o resultado, transferir de arena e encerrar.
 import { resolveRound } from '../engine/combat';
 import { scenesFor } from '../engine/scenes';
-import { ARENAS, CLASSES, ENEMIES, GOLD_PER_LEVEL, START_GOLD, WIN_BONUS_XP } from '../data';
+import { ARENAS, CLASSES, CROWD, ENEMIES, GOLD_PER_LEVEL, START_GOLD, WIN_BONUS_XP } from '../data';
 import { arenaById, enterArena, freeDays, isBossFight, maxHp, nextArena, rollShop, stageOf, startFight } from './run';
 import { levelOf, type SaveData } from './save';
 import { scene } from './scenes';
@@ -77,9 +77,11 @@ export function afterCombat(g: GameState): GameState {
   if (c.outcome === 'defeat' || c.outcome === 'draw') return finish(g, run, c.outcome);
   let news: string;
   if (c.outcome === 'victory') {
-    const gold = ENEMIES[enemyId].gold * tier;
+    // A torcida paga: ouro × (1 + favor/200); executar rende mais ouro, poupar rende menos ouro e mais XP.
+    const verdictGold = c.verdict === 'executed' ? CROWD.executeGold : c.verdict === 'spared' ? CROWD.spareGold : 1;
+    const gold = Math.round(ENEMIES[enemyId].gold * tier * (1 + c.crowd / CROWD.goldDivisor) * verdictGold);
     run.kills.push(enemyId);
-    run.xp += ENEMIES[enemyId].xp * tier;
+    run.xp += Math.round(ENEMIES[enemyId].xp * tier * (c.verdict === 'spared' ? CROWD.spareXp : 1));
     run.gold += gold;
     run.goldEarned += gold;
     if (isBoss) {
@@ -101,7 +103,10 @@ export function afterCombat(g: GameState): GameState {
       return { ...g, run, screen: scene([...scenesFor({ on: 'boss-defeat', boss: enemyId }), ...scenesFor({ on: 'arena-enter', arena: next.id })], camp) };
     }
     run.encounter++;
-    news = `Vitória sobre ${ENEMIES[enemyId].name}! +${gold} de ouro.`;
+    const crowdNote = c.verdict === 'executed' ? ' Você o executou: a multidão vibra e os patronos pagam mais.'
+      : c.verdict === 'spared' ? ' Você o poupou: menos ouro, mais experiência.'
+      : c.crowd >= 50 ? ' Os patronos jogam moedas na arena.' : '';
+    news = `Vitória sobre ${ENEMIES[enemyId].name}! +${gold} de ouro.${crowdNote}`;
   } else if (isBoss) {
     news = `Você fugiu de ${ENEMIES[enemyId].name}. O chefe continua esperando.`;
   } else {

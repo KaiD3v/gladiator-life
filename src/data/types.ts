@@ -39,13 +39,14 @@ export interface SkillDef {
   name: string;
   desc: string;
   cost: number;
-  type: 'physical' | 'magic' | 'defend' | 'self' | 'flee';
+  type: 'physical' | 'magic' | 'defend' | 'self' | 'flee' | 'verdict'; // verdict: Executar/Poupar (fim imediato da luta)
   power?: number; // multiplicador de atk/mag
   hits?: number; // golpes por uso (padrão 1)
   heal?: number; // cura base no próprio usuário (+ATTR_HEAL_BONUS por ponto do atributo)
   critBonus?: number;
   critIfPoisoned?: boolean;
   windup?: boolean; // golpe pesado: quando o inimigo o usa, gasta uma rodada preparando e só acerta na seguinte
+  glory?: boolean; // Golpe de Glória: só usável com a torcida em 100
   effects?: Effect[];
   // Habilidades de jogador: atributo que escala o efeito, requisito para aprender e preço no treinador
   attr?: Attr;
@@ -62,6 +63,7 @@ export interface ClassDef {
   perks: Partial<Perks>;
   attrs: Attrs;
   skills: [string, string];
+  glory: string; // Golpe de Glória da classe (id em SKILLS)
 }
 
 export interface EnemyDef {

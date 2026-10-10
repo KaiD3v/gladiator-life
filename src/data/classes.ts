@@ -9,6 +9,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     perks: { counter: 0.6 },
     attrs: { str: 6, dex: 3, wis: 2 },
     skills: ['shieldBash', 'ironStance'],
+    glory: 'pitFury',
   },
   mage: {
     id: 'mage', name: 'Mago', tagline: 'Dano mágico, custo de energia e efeitos.',
@@ -17,6 +18,7 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     perks: {},
     attrs: { str: 2, dex: 3, wis: 6 },
     skills: ['fireball', 'frostRay'],
+    glory: 'arenaInferno',
   },
   assassin: {
     id: 'assassin', name: 'Assassino', tagline: 'Velocidade, crítico e veneno.',
@@ -25,5 +27,6 @@ export const CLASSES: Record<ClassId, ClassDef> = {
     perks: {},
     attrs: { str: 3, dex: 6, wis: 2 },
     skills: ['venomBlade', 'shadowStrike'],
+    glory: 'thousandCuts',
   },
 };
