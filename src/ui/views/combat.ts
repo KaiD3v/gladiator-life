@@ -147,7 +147,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null): 
     return `<button class="${cls}" data-a="act" data-v="${id}" ${animating || !canUse(c, id) ? 'disabled' : ''}>
       <span>${id === 'flee' ? statusArt('flee') : ''}<b>${s.name}</b> ${attrTag(s.attr)}<kbd>${i + 1}</kbd></span>
       <span class="cost">${cost}${extra}</span>
-      <small>${s.desc}</small>${suggest ? '<em class="hint">${hintText}</em>' : ''}</button>`;
+      <small>${s.desc}</small>${suggest ? `<em class="hint">${hintText}</em>` : ''}</button>`;
   };
   const indexed = actionsFor(c.player, c).map((id, i) => [id, i] as const);
   const verdict = indexed.filter(([id]) => SKILLS[id].type === 'verdict');
