@@ -23,7 +23,7 @@ Camadas com dependência em um só sentido: **`ui → state → engine → data/
 | --- | --- | --- |
 | `src/data/` | Conteúdo puro, um arquivo por domínio (`classes`, `enemies`, `items`, `skills`, `arenas`, `npcs`, `statuses`, `attributes`, `balance`, `story`) e os tipos em `types.ts`. `index.ts` reexporta tudo. | Só dados. Sem funções com regra. |
 | `src/core/rng.ts` | `rand(s)` (mulberry32 com a semente guardada no próprio estado) e `pick`. | Toda aleatoriedade passa por aqui. |
-| `src/engine/` | Motores puros: `combat` (rodada inteira em `resolveRound`; ver "Combate" abaixo), `characters` (pipeline de modificadores, `buildPlayer`, `createPlayerFighter`, `createEnemyFighter`), `items` (`acquireItem`, `withMaxHpGrowth`, `buyBlock`, `rollShop`), `scenes` (`scenesFor`, `beatView`, `sceneAssets`, `sceneTrack`, `sceneAmbience`). | Funções puras, testadas. |
+| `src/engine/` | Motores puros: `combat` (rodada inteira em `resolveRound`; ver "Combate" abaixo), `characters` (pipeline de modificadores, `buildPlayer`, `createPlayerFighter`, `createEnemyFighter`), `items` (`acquireItem`, `withMaxHpGrowth`, `buyBlock`, `rollShop`, `rollLoot`, `addToBag`), `scenes` (`scenesFor`, `beatView`, `sceneAssets`, `sceneTrack`, `sceneAmbience`). | Funções puras, testadas. |
 | `src/state/` | `types.ts` (`RunState`, `Screen`, `GameAction`), `save.ts` (save + nível), `run.ts` (regras da run usadas pela UI), `camp.ts`, `campaign.ts`, `scenes.ts` e `reducer.ts`. | `reduce(g, action)` é a **única** forma de mudar o estado do jogo. |
 | `src/ui/` | `store.ts` (estado da página, `dispatch`, render, animação do log), `events.ts` (tabela `data-a` → ação, teclado), `components.ts` (peças HTML), `views/<tela>.ts`, `audio.ts`. | Views são funções `(estado) => string HTML`; não guardam estado. |
 
@@ -42,7 +42,14 @@ Tudo em `engine/combat.ts`, com os números em `data/balance.ts` (`CROWD`, `POST
 - **Chefes**: `phase2` (troca de padrão e fala ao cruzar a vida indicada) e `barks` (falas, `LogEntry.bark`).
 - **Perigo da arena** (`ArenaDef.hazard`, `hazardView`): avisado uma rodada antes, age no fim da rodada; Defender protege
   dos efeitos de status.
-- `actionsFor(f, s)` tem ordem estável (atalhos 1..n): ataque, habilidades, glória, defender, fugir, veredito. Passe sempre
+- **Bolsa** (`Fighter.bag`, `RunState.bag`, até `BAG_SIZE`): consumíveis viram ações de custo 0 (a habilidade de mesmo id,
+  gerada em `data/skills.ts` a partir de `ItemDef.use`). Item sem efeito no inimigo é de defesa e age primeiro (como Defender);
+  item de ataque segue a velocidade. O inimigo sorteia a bolsa do seu `loot` (`rollLoot`, com RNG derivado por `fork`: não
+  mexe nos sorteios da run nem do combate) e só usa item no lugar de ataque básico/defesa, por regra fixa anunciada na
+  intenção (`kind: 'item'`). O que ele não usou fica no chão: na vitória a janela "Itens caídos" deixa o jogador escolher o
+  que leva entre os caídos e a própria bolsa (`continue` com `keep`, índices em `bolsa + caídos`, validados por `chooseBag`;
+  sem `keep`, leva a bolsa e o que couber). Fora da luta só cura (`use`); a bolsa abre pelo botão do topo do acampamento.
+- `actionsFor(f, s)` tem ordem estável (atalhos 1..n): ataque, habilidades, glória, defender, fugir, itens da bolsa, veredito. Passe sempre
   o estado `s`. `LogEntry` guarda `hp` e `crowd` por evento para a UI animar, e `sfx` para o som.
 
 ## Invariantes (não quebre)
@@ -64,6 +71,7 @@ Tudo em `engine/combat.ts`, com os números em `data/balance.ts` (`CROWD`, `POST
 **Conteúdo novo (o caso mais frequente, só dados):**
 - Item / inimigo / classe / habilidade: uma entrada em `data/items.ts`, `data/enemies.ts`, `data/classes.ts` ou `data/skills.ts`.
   Efeitos de item são `mods` (stats) e `perks`; o motor de personagens aplica, e item que aumenta vida máxima cura o mesmo tanto.
+  Consumível: `use` no item (`heal`, `energy`, `cleanse`, `effects`); para um inimigo carregá-lo, ponha o id no `loot` dele.
   Habilidade de treinador precisa de `attr`, `req` e `price`. Inimigo precisa de `pattern`, `posture` e `weak` (chefe:
   `phase2` e `barks`, falas em linguagem neutra sobre o herói). Classe precisa de `glory`.
 - Cena: uma entrada em `data/story.ts` com `trigger` (`campaign-start`, `run-start`, `boss-intro`, `boss-defeat`,
@@ -92,7 +100,7 @@ Preserve classes/atributos usados por automação: valores de `data-a`, `#name`,
 acampamento, detalhes da classe, arte do título, relatório) e listas longas rolam por dentro (`.scroll`). Ações
 principais ficam embaixo, sempre visíveis. Desktop (≥900px) e celular deitado usam `grid-template-areas` (não dependa
 da contagem de filhos). No combate, abaixo de 900px as ações ficam numa bandeja com abas deslizáveis
-(Habilidades | Básico | Registro, página em `ui.tray` no `store.ts`); acima disso tudo aparece junto e o registro vai
+(Habilidades | Básico | Itens | Registro, página em `ui.tray` no `store.ts`); acima disso tudo aparece junto e o registro vai
 para a coluna lateral. Ao mexer em layout, confira as telas nessas resoluções no navegador.
 
 ## Arte e áudio
