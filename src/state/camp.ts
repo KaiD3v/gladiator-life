@@ -1,6 +1,7 @@
 // Acampamento (vida fora das batalhas): conversar, comprar, treinar, aprender e descansar.
 import { pick } from '../core/rng';
 import { ITEMS, NPCS, REST_FREE, REST_PAID, SKILLS, type NpcDef, type NpcId } from '../data';
+import { acquireItem, buyBlock, withMaxHpGrowth } from '../engine/items';
 import { freeDays, learnBlock, maxHp, restPrice, trainPrice } from './run';
 import type { ActionOf, GameState, RunState } from './types';
 
@@ -33,12 +34,11 @@ export function talk(g: GameState, a: ActionOf<'talk'>): GameState {
 
 export const buy = (g: GameState, a: ActionOf<'buy'>): GameState =>
   campAction(g, 'merchant', (run) => {
-    if (!run.shop.includes(a.itemId)) return 'skip';
-    const item = ITEMS[a.itemId];
-    if (run.gold < item.price) return 'poor';
-    run.gold -= item.price;
-    run.items.push(a.itemId);
-    run.hp += item.mods?.maxHp ?? 0;
+    const block = buyBlock(run, a.itemId);
+    if (block === 'unavailable' || block === 'owned') return 'skip';
+    if (block === 'gold') return 'poor';
+    run.gold -= ITEMS[a.itemId].price;
+    acquireItem(run, a.itemId);
     run.shop = run.shop.filter((id) => id !== a.itemId);
     return 'deal';
   });
@@ -48,11 +48,11 @@ export const train = (g: GameState, a: ActionOf<'train'>): GameState =>
     if (!(a.attr in run.attrs) || freeDays(run) <= 0) return 'skip';
     const price = trainPrice(run, a.attr);
     if (run.gold < price) return 'poor';
-    const before = maxHp(run);
     run.gold -= price;
-    run.attrs[a.attr]++;
-    run.trained[a.attr]++;
-    run.hp += maxHp(run) - before; // treinar Força também enche a vida nova
+    withMaxHpGrowth(run, () => { // treinar Força também enche a vida nova
+      run.attrs[a.attr]++;
+      run.trained[a.attr]++;
+    });
     spendDay(run);
     return 'deal';
   });
