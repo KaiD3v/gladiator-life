@@ -1,6 +1,6 @@
 // Formas do estado do jogo: run, telas e ações. Sem lógica.
 import type { CombatState } from '../engine/combat';
-import type { Attr, Attrs, ClassId, NpcId } from '../data';
+import type { Attr, Attrs, ClassId, NpcId, WeakTag } from '../data';
 import type { SaveData } from './save';
 
 export interface RunState {
@@ -25,6 +25,7 @@ export interface RunState {
   goldEarned: number;
   kills: string[];
   fled: string[];
+  bestiary: Record<string, WeakTag[]>; // pontos fracos descobertos por inimigo (só da run: não vai para o save)
   seen: string[]; // cenas `once` já tocadas (ex.: chegada do chefe: fugir e voltar não repete)
   rounds: number;
   dealt: number;

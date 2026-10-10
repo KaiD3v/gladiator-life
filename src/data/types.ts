@@ -1,7 +1,9 @@
 // Tipos do conteúdo do jogo. Só formas de dados: nenhum valor aqui.
 
 export type ClassId = 'warrior' | 'mage' | 'assassin';
-export type StatusId = 'poison' | 'burn' | 'stun' | 'guard' | 'weaken' | 'regen' | 'steady';
+export type StatusId = 'poison' | 'burn' | 'stun' | 'guard' | 'weaken' | 'regen' | 'steady' | 'broken';
+/** Ponto fraco de um inimigo: tipo de golpe (physical/magic) ou efeito aplicado (poison/burn/stun). */
+export type WeakTag = 'physical' | 'magic' | 'poison' | 'burn' | 'stun';
 export type Attr = 'str' | 'dex' | 'wis';
 export type Attrs = Record<Attr, number>;
 
@@ -77,6 +79,12 @@ export interface EnemyDef {
   attrs: Attrs;
   xp: number;
   gold: number;
+  posture: number; // pontos de postura: a cada golpe/efeito no ponto fraco perde 1; em 0 o inimigo fica Desequilibrado
+  weak: WeakTag[];
+  /** Chefe: ao cair a esta fração de vida (uma vez), fala `line`, aplica `effects` em si e troca o padrão. */
+  phase2?: { at: number; pattern: string[]; line: string; effects?: Effect[] };
+  /** Falas do inimigo (cada uma no máximo uma vez por luta). `hurt`: 1ª vez abaixo de 50% (só sem phase2); `low`: até 20%. */
+  barks?: { start?: string; hurt?: string; low?: string; playerCrit?: string };
 }
 
 export interface ItemDef {

@@ -1,6 +1,6 @@
 // Regras de combate. Funções puras sobre CombatState: nenhuma dependência de DOM.
 import {
-  ATTR_HEAL_BONUS, ATTR_SKILL_BONUS, CROWD, SKILLS, STATUS_INFO, type Attrs, type Perks, type SkillDef, type Stats, type StatusId,
+  ATTR_HEAL_BONUS, ATTR_SKILL_BONUS, CROWD, POSTURE, SKILLS, STATUS_INFO, WEAK_INFO, type Attrs, type EnemyDef, type Perks, type SkillDef, type Stats, type StatusId, type WeakTag,
 } from '../data';
 import { rand } from '../core/rng';
 
@@ -23,6 +23,12 @@ export interface Fighter {
   energy: number;
   statuses: Status[];
   defending: boolean;
+  // Postura (só inimigos; maxPosture 0 = sem postura) e falas/fase de chefe, copiadas da definição
+  posture: number;
+  maxPosture: number;
+  weak: WeakTag[];
+  phase2?: EnemyDef['phase2'];
+  barks?: EnemyDef['barks'];
 }
 
 export interface LogEntry {
@@ -33,6 +39,7 @@ export interface LogEntry {
   amount?: number; // dano (ou cura, se heal)
   heal?: boolean;
   crit?: boolean;
+  bark?: true; // fala do inimigo (kind 'enemy'): a UI pode mostrar como balão; o texto é só a fala
   sfx?: Sfx; // efeito sonoro do evento (public/audio/sfx/<sfx>.mp3)
   hp: [number, number]; // vida [jogador, inimigo] após o evento, para animar a UI
   crowd: number; // favor da multidão (0..100) após o evento
@@ -50,6 +57,8 @@ export interface IntentView {
   hits?: number;
   effects: string[];
   warning?: string;
+  /** Presente quando o inimigo está Desequilibrado e perderá a vez: nada do que `action` descreve vai acontecer (em 'prep', o golpe é cancelado). */
+  lost?: string;
 }
 
 export interface CombatState {
@@ -69,22 +78,35 @@ export interface CombatState {
   streak: number; // quantas rodadas seguidas o jogador repetiu lastAction
   lastStandUsed: boolean; // "A multidão exige mais!" já aconteceu nesta luta
   lastStandNote: boolean; // interno: a mensagem entra logo após o evento que causou a salvação
+  revealed: WeakTag[]; // pontos fracos do inimigo já descobertos (inclui os do bestiário da run)
+  phased: boolean; // a fase 2 do chefe já aconteceu
+  barked: string[]; // falas já ditas nesta luta (start, hurt, low, playerCrit)
   verdict?: 'executed' | 'spared';
 }
 
 export const NO_PERKS: Perks = { counter: 0, lifesteal: 0, thorns: 0, poisonOnHit: 0, hpRegen: 0 };
 
-export function makeFighter(name: string, side: Side, stats: Stats, perks: Perks, attrs: Attrs, skills: string[], hp = stats.maxHp, pattern: string[] = []): Fighter {
-  return { name, side, stats, perks, attrs, skills, pattern, hp: Math.min(hp, stats.maxHp), energy: stats.maxEnergy, statuses: [], defending: false };
+export function makeFighter(
+  name: string, side: Side, stats: Stats, perks: Perks, attrs: Attrs, skills: string[], hp = stats.maxHp, pattern: string[] = [],
+  extra: Partial<Pick<Fighter, 'maxPosture' | 'weak' | 'phase2' | 'barks'>> = {},
+): Fighter {
+  const maxPosture = extra.maxPosture ?? 0;
+  return {
+    name, side, stats, perks, attrs, skills, pattern, hp: Math.min(hp, stats.maxHp), energy: stats.maxEnergy, statuses: [], defending: false,
+    posture: maxPosture, maxPosture, weak: extra.weak ?? [], phase2: extra.phase2, barks: extra.barks,
+  };
 }
 
-export function createCombat(player: Fighter, enemy: Fighter, seed: number, opts: { boss?: boolean } = {}): CombatState {
+/** `known`: pontos fracos já descobertos em lutas anteriores da run (bestiário). */
+export function createCombat(player: Fighter, enemy: Fighter, seed: number, opts: { boss?: boolean; known?: WeakTag[] } = {}): CombatState {
   const s: CombatState = {
     round: 1, player, enemy, log: [], outcome: null, seed, dealt: 0, taken: 0, intent: { action: 'attack' }, step: 0,
     boss: !!opts.boss, crowd: CROWD.start, lastAction: null, streak: 0, lastStandUsed: false, lastStandNote: false,
+    revealed: enemy.weak.filter((t) => opts.known?.includes(t)), phased: false, barked: [],
   };
   s.intent = planIntent(s);
   log(s, `${player.name} enfrenta ${enemy.name}!`, 'system');
+  bark(s, 'start');
   return s;
 }
 
@@ -166,7 +188,7 @@ export function resolveRound(state: CombatState, playerAction: string): CombatSt
   const prevAction = s.lastAction;
   s.streak = playerAction === prevAction ? s.streak + 1 : 1;
   s.lastAction = playerAction;
-  const idleFoe = s.intent.prep || ['defend', 'self'].includes(SKILLS[s.intent.action].type); // inimigo não vai causar dano
+  const idleFoe = s.intent.prep || hasStatus(s.enemy, 'broken') || ['defend', 'self'].includes(SKILLS[s.intent.action].type); // inimigo não vai causar dano
 
   const prio = (id: string) => (id === 'defend' || id === 'flee' ? 1 : 0);
   const turns: [Fighter, string][] = [[s.player, playerAction], [s.enemy, s.intent.prep ? 'prep' : s.intent.action]];
@@ -175,10 +197,17 @@ export function resolveRound(state: CombatState, playerAction: string): CombatSt
   for (const [actor, id] of turns) {
     if (s.outcome) break;
     const stun = actor.statuses.find((x) => x.id === 'stun');
-    if (stun) {
-      actor.statuses = actor.statuses.filter((x) => x !== stun);
-      addStatus(actor, 'steady', 2, 0); // Firme: sem novo atordoamento até o fim da próxima rodada
-      log(s, `${actor.name} está atordoado e perde a vez.`, 'status');
+    const broken = actor.statuses.find((x) => x.id === 'broken' && !x.power); // power 1 = a vez perdida já foi consumida
+    if (stun || broken) {
+      if (stun) {
+        actor.statuses = actor.statuses.filter((x) => x !== stun);
+        addStatus(actor, 'steady', 2, 0); // Firme: sem novo atordoamento até o fim da próxima rodada
+        log(s, `${actor.name} está atordoado e perde a vez.`, 'status');
+      }
+      if (broken) {
+        broken.power = 1; // a condição segue (dano extra) até expirar, mas só tira uma vez a ação
+        if (!stun) log(s, `${actor.name} está desequilibrado e perde a vez.`, 'status');
+      }
       if (actor === s.enemy) {
         lostTurn = true;
         if (s.intent.prep) log(s, `${actor.name} perde a concentração.`, 'enemy');
@@ -201,6 +230,7 @@ export function resolveRound(state: CombatState, playerAction: string): CombatSt
         if (d) gain(s, d);
       }
     } else if (SKILLS[id].windup && s.player.defending && s.player.hp > 0) gain(s, CROWD.perfectBlock);
+    reactions(s);
     checkEnd(s);
   }
   if (!s.outcome) {
@@ -213,7 +243,7 @@ export function resolveRound(state: CombatState, playerAction: string): CombatSt
 /** Próxima ação do padrão (cíclico); sem energia, cai para o ataque básico. Golpes pesados começam por uma rodada de preparo. */
 function planIntent(s: CombatState): Intent {
   const e = s.enemy;
-  const wanted = e.pattern.length ? e.pattern[s.step % e.pattern.length] : 'attack';
+  const wanted = e.pattern.length ? e.pattern[Math.max(0, s.step) % e.pattern.length] : 'attack';
   const action = SKILLS[wanted].cost <= e.energy ? wanted : 'attack';
   return SKILLS[action].windup ? { action, prep: true } : { action };
 }
@@ -225,7 +255,7 @@ function advanceIntent(s: CombatState, lostTurn: boolean) {
     s.intent = { action: SKILLS[a].cost <= s.enemy.energy ? a : 'attack' };
     return;
   }
-  s.step++;
+  s.step++; // após a fase 2, step vale -1 e este incremento cai no passo 0 do padrão novo
   s.intent = planIntent(s);
 }
 
@@ -254,6 +284,10 @@ export function intentView(s: CombatState): IntentView {
     view.hits = sk.hits ?? 1;
   }
   if (prep) view.warning = 'Golpe pesado na próxima rodada: atordoe agora ou defenda então!';
+  if (e.statuses.some((x) => x.id === 'broken' && !x.power)) {
+    view.lost = 'Desequilibrado: perde a vez';
+    if (prep) view.warning = 'Desequilibrado: o golpe pesado será cancelado!';
+  }
   return view;
 }
 
@@ -270,6 +304,7 @@ function act(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef) {
     if (skill.heal) heal(s, actor, skill.heal + (skill.attr ? actor.attrs[skill.attr] * ATTR_HEAL_BONUS : 0), skill.name);
   } else {
     for (let i = 0; i < (skill.hits ?? 1) && foe.hp > 0 && actor.hp > 0; i++) hit(s, actor, foe, skill);
+    if (skill.glory && POSTURE.glory && actor === s.player && foe.hp > 0) strain(s, foe.maxPosture); // Golpe de Glória quebra a postura
   }
   for (const e of skill.effects ?? []) {
     const target = e.target === 'self' ? actor : foe;
@@ -284,6 +319,7 @@ function act(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef) {
     }
     addStatus(target, e.status, e.turns, e.power ?? 0);
     log(s, `${target.name}: ${statusName(e.status)} (${e.turns} rod.)`, 'status', { target: target.side, sfx: 'status' });
+    if (actor === s.player && target === s.enemy) strain(s, POSTURE.weakHit, e.status);
     if (e.status === 'stun' && actor === s.player) gain(s, CROWD.stun + (s.intent.prep ? CROWD.interrupt : 0));
   }
 }
@@ -318,15 +354,23 @@ function hit(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef, verb
   dmg *= armor(physical ? foe.stats.def : foe.stats.def / 2);
   const crit = (skill.critIfPoisoned && hasStatus(foe, 'poison')) || rand(s) < actor.stats.crit + (skill.critBonus ?? 0);
   if (crit) dmg *= actor.stats.critMult;
+  if (hasStatus(foe, 'broken')) dmg *= 1 + POSTURE.brokenBonus; // Desequilibrado
   if (actor === s.player && s.crowd >= CROWD.ovationAt) dmg *= 1 + CROWD.ovationBonus; // ovação
   const amount = Math.max(1, Math.round(mitigate(foe, dmg)));
   damage(s, foe, amount);
   const verb = verbOverride ?? (skill.id === 'attack' ? 'ataca' : `usa ${skill.name} em`);
   log(s, `${actor.name} ${verb} ${foe.name}: ${amount}${crit ? ' CRÍTICO!' : ''}${foe.defending ? ' (bloqueado)' : ''}`, actor.side, { target: foe.side, amount, crit, sfx: crit ? 'crit' : physical ? 'hit' : 'magic' });
   if (crit) gain(s, actor === s.player ? CROWD.crit : CROWD.critTaken);
+  if (actor === s.player && foe.hp > 0) {
+    if (physical ? foe.weak.includes('physical') : foe.weak.includes('magic')) strain(s, POSTURE.weakHit, physical ? 'physical' : 'magic');
+    if (crit) { strain(s, POSTURE.crit); bark(s, 'playerCrit'); }
+  }
 
   if (actor.perks.lifesteal) heal(s, actor, Math.round(amount * actor.perks.lifesteal), 'Roubo de vida');
-  if (physical && actor.perks.poisonOnHit && foe.hp > 0) addStatus(foe, 'poison', 3, actor.perks.poisonOnHit);
+  if (physical && actor.perks.poisonOnHit && foe.hp > 0) {
+    addStatus(foe, 'poison', 3, actor.perks.poisonOnHit);
+    if (actor === s.player) strain(s, POSTURE.weakHit, 'poison');
+  }
   if (foe.perks.thorns && actor.hp > 0) {
     const r = Math.max(1, Math.round(amount * foe.perks.thorns));
     damage(s, actor, r);
@@ -338,6 +382,63 @@ function hit(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef, verb
     log(s, `${foe.name} contra-ataca: ${c}`, foe.side, { target: actor.side, amount: c, sfx: 'hit' });
     if (foe === s.player) gain(s, CROWD.counter);
   }
+}
+
+/** Reduz a postura do inimigo (o jogador causou um golpe/efeito no ponto fraco, crítico...). `tag`: revela o ponto fraco. Em 0, quebra. */
+function strain(s: CombatState, n: number, id?: WeakTag | StatusId) {
+  const e = s.enemy;
+  if (!e.maxPosture || e.hp <= 0) return;
+  if (id) {
+    const tag = id as WeakTag; // status sem ponto fraco correspondente (guard, regen...) nunca está em `weak`
+    if (!e.weak.includes(tag)) return;
+    if (!s.revealed.includes(tag)) {
+      s.revealed.push(tag);
+      log(s, `Ponto fraco descoberto: ${WEAK_INFO[tag].name}!`, 'system');
+    }
+  }
+  if (hasStatus(e, 'broken')) return; // já desequilibrado: nada a abalar
+  e.posture = Math.max(0, e.posture - n);
+  if (e.posture > 0) return;
+  addStatus(e, 'broken', POSTURE.brokenTurns, 0);
+  log(s, `${e.name} perde o equilíbrio!`, 'status', { target: 'enemy', sfx: 'crit' });
+  gain(s, CROWD.broken);
+}
+
+/** Postura do inimigo para a UI. `weak`: um item por ponto fraco, `null` enquanto não descoberto. */
+export function postureView(s: CombatState) {
+  const e = s.enemy;
+  return {
+    value: e.posture, max: e.maxPosture, broken: hasStatus(e, 'broken'),
+    weak: e.weak.map((t): WeakTag | null => (s.revealed.includes(t) ? t : null)),
+  };
+}
+
+/** Fala do inimigo (no máximo uma vez por luta por chave). */
+function bark(s: CombatState, key: 'start' | 'hurt' | 'low' | 'playerCrit') {
+  const text = s.enemy.barks?.[key];
+  if (!text || s.barked.includes(key) || s.enemy.hp <= 0) return;
+  s.barked.push(key);
+  log(s, text, 'enemy', { bark: true });
+}
+
+/** Depois de cada ação: fase 2 do chefe (uma vez) e falas por vida. A troca de padrão só vale ao fim da rodada (step -1). */
+function reactions(s: CombatState) {
+  const e = s.enemy;
+  if (s.outcome || e.hp <= 0) return;
+  const ph = e.phase2;
+  if (ph && !s.phased && e.hp <= ph.at * e.stats.maxHp) {
+    s.phased = true;
+    log(s, ph.line, 'enemy', { bark: true });
+    for (const fx of ph.effects ?? []) {
+      addStatus(e, fx.status, fx.turns, fx.power ?? 0);
+      log(s, `${e.name}: ${statusName(fx.status)} (${fx.turns} rod.)`, 'status', { target: 'enemy', sfx: 'status' });
+    }
+    e.pattern = [...ph.pattern];
+    s.step = -1; // o golpe pesado já anunciado ainda acontece; o padrão novo começa na rodada seguinte a ele
+  }
+  const frac = e.hp / e.stats.maxHp;
+  if (frac <= 0.2 && e.barks?.low) { s.barked.push('hurt'); bark(s, 'low'); }
+  else if (frac <= 0.5 && !ph) bark(s, 'hurt');
 }
 
 const armor = (def: number) => 20 / (20 + def);
@@ -390,8 +491,14 @@ function endOfRound(s: CombatState) {
     if (regen) heal(s, f, regen.power, 'Regeneração');
     if (f.perks.hpRegen) heal(s, f, f.perks.hpRegen, 'Regeneração');
     // Atordoamento dura até ser consumido; os demais expiram por rodada.
+    const wasBroken = hasStatus(f, 'broken');
     f.statuses = f.statuses.filter((x) => x.id === 'stun' || --x.turns > 0);
+    if (wasBroken && !hasStatus(f, 'broken') && f.hp > 0) {
+      f.posture = f.maxPosture; // sem encadeamento: a postura volta cheia quando o desequilíbrio acaba
+      log(s, `${f.name} recupera o equilíbrio.`, 'status', { target: f.side });
+    }
   }
+  reactions(s);
   checkEnd(s);
   if (s.outcome) return;
   for (const f of [s.player, s.enemy]) f.energy = Math.min(f.stats.maxEnergy, f.energy + f.stats.regen);
