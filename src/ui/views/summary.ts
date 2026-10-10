@@ -1,6 +1,6 @@
-import { ARENAS, CLASSES, ENEMIES, ITEMS, SKILLS } from '../../data';
+import { ARENAS, CLASSES, ENEMIES, SKILLS } from '../../data';
 import { arenaById, stageOf, type Summary } from '../../state';
-import { art, attrLine, esc } from '../components';
+import { art, attrLine, esc, itemLabel } from '../components';
 
 export function summaryView(s: Summary): string {
   const r = s.run;
@@ -10,11 +10,11 @@ export function summaryView(s: Summary): string {
   return `<section class="stack center">
     ${art(s.result === 'victory' ? 'victory' : 'defeat', 'summary-art', '')}
     <h1 class="summary-title ${s.result === 'victory' ? 'win' : 'lose'}">${title}</h1>
-    <div class="row" style="justify-content:center">${art(r.classId, `portrait${s.result === 'victory' ? '' : ' fallen'}`, CLASSES[r.classId].name, r.classId)}<p style="font-size:1.3rem">${esc(r.name)}, ${CLASSES[r.classId].name}<br><span class="dim">${s.result === 'victory'
+    <div class="row centered">${art(r.classId, `portrait${s.result === 'victory' ? '' : ' fallen'}`, CLASSES[r.classId].name, r.classId)}<p class="hero-line">${esc(r.name)}, ${CLASSES[r.classId].name}<br><span class="dim">${s.result === 'victory'
       ? `conquistou todas as ${ARENAS.length} arenas!` : `caiu em ${arenaById(r.arenaId).name} (fase ${stageOf(r) + 1}/${ARENAS.length})`}</span></p></div>
     ${r.titles.length ? `<p class="sketch unlock">${r.titles.map((id) => `Campeão de <b>${arenaById(id).name}</b>`).join(' · ')}</p>` : ''}
     ${s.result !== 'victory' ? '<p class="dim">O próximo gladiador recomeça do Fosso de Areia. Só o XP (nível) é mantido.</p>' : ''}
-    <div class="sketch" style="max-width:560px;margin:0 auto;text-align:left">
+    <div class="sketch report">
       <dl class="kv">
         <dt>Lutas</dt><dd>${r.kills.length} vencidas de ${fought} disputadas (a campanha tem ${total})</dd>
         <dt>Derrotados</dt><dd>${r.kills.map((id) => ENEMIES[id].name).join(', ') || 'ninguém'}</dd>
@@ -26,11 +26,11 @@ export function summaryView(s: Summary): string {
         <dt>Habilidades</dt><dd>${r.skills.map((id) => SKILLS[id].name).join(', ')}</dd>
         <dt>Dano causado</dt><dd>${r.dealt}</dd>
         <dt>Dano recebido</dt><dd>${r.taken}</dd>
-        <dt>Itens</dt><dd>${r.items.map((id) => `${art(id, 'ico', '')}${ITEMS[id].name}`).join(', ') || 'nenhum'}</dd>
-        <dt>XP ganho</dt><dd style="color:var(--gold)">+${s.xpGained}</dd>
-        <dt>Nível</dt><dd>${s.levelBefore}${s.levelAfter > s.levelBefore ? ` → <b style="color:var(--gold)">${s.levelAfter}</b> (subiu de nível!)` : ''}</dd>
+        <dt>Itens</dt><dd>${r.items.map(itemLabel).join(', ') || 'nenhum'}</dd>
+        <dt>XP ganho</dt><dd class="gold-text">+${s.xpGained}</dd>
+        <dt>Nível</dt><dd>${s.levelBefore}${s.levelAfter > s.levelBefore ? ` → <b class="gold-text">${s.levelAfter}</b> (subiu de nível!)` : ''}</dd>
       </dl>
     </div>
-    <div class="row" style="justify-content:center"><button data-a="title">Início</button><button class="primary" data-a="again">Nova campanha</button></div>
+    <div class="row centered"><button data-a="title">Início</button><button class="primary" data-a="again">Nova campanha</button></div>
   </section>`;
 }

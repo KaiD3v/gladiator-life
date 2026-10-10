@@ -1,10 +1,10 @@
 // Peças de template reutilizadas pelas telas (strings HTML).
-import { ATTR_INFO, type Attr, type Attrs } from '../data';
+import { ATTR_INFO, ITEMS, SKILLS, type Attr, type Attrs } from '../data';
 
 export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const pct = (v: number, max: number) => Math.max(0, Math.min(100, (v / max) * 100));
 export const bar = (kind: string, v: number, max: number, label: string) =>
-  `<div class="bar ${kind}" role="meter" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${v}" aria-label="${label}"><i style="width:${pct(v, max)}%"></i><span>${label}</span></div>`;
+  `<div class="bar ${kind}" role="meter" aria-valuemin="0" aria-valuemax="${max}" aria-valuenow="${v}" aria-label="${esc(label)}"><i style="width:${pct(v, max)}%"></i><span>${esc(label)}</span></div>`;
 
 const ICONS: Record<string, string> = {
   warrior: '<path d="M10 54 L42 16 L50 12 L47 20 L16 58"/><path d="M12 46 l10 10 M8 58 l5-5"/><path d="M44 30c7 0 12 3 12 3c0 10-5 17-12 21c-7-4-12-11-12-21c0 0 5-3 12-3z"/>',
@@ -28,3 +28,20 @@ export const goldPill = (n: number) => `<span class="pill gold">${art('gold', 'i
 
 export const statLine = (s: { maxHp: number; maxEnergy: number; regen: number; atk: number; mag: number; def: number; speed: number; crit: number }) =>
   `Vida ${s.maxHp} · Energia ${s.maxEnergy} (+${s.regen}) · Atq ${s.atk} · Mag ${s.mag} · Def ${s.def} · Vel ${s.speed} · Crít ${Math.round(s.crit * 100)}%`;
+
+// ---------- peças compostas (antes repetidas nas telas) ----------
+
+/** Etiqueta vermelha de chefe; `text` permite variar o rótulo, ex.: "(CHEFE)". */
+export const bossTag = (text = 'CHEFE') => `<span class="boss-tag">${text}</span>`;
+
+/** Habilidade em lista: tag do atributo, nome, custo e descrição. */
+export const skillLine = (id: string) => {
+  const s = SKILLS[id];
+  return `<li>${attrTag(s.attr)} <b>${s.name}</b> (${s.cost} en.): ${s.desc}</li>`;
+};
+export const skillList = (ids: string[]) => `<ul class="skill-list">${ids.map(skillLine).join('')}</ul>`;
+
+/** Ícone + nome do item, sem moldura. */
+export const itemLabel = (id: string) => `${art(id, 'ico', '')}${ITEMS[id].name}`;
+/** Item como chip, com a descrição no tooltip. */
+export const itemChip = (id: string) => `<span class="chip item" title="${esc(ITEMS[id].desc)}">${itemLabel(id)}</span>`;

@@ -1,7 +1,7 @@
-import { ARENAS, ITEMS, SKILLS, STATUS_INFO } from '../../data';
+import { ARENAS, SKILLS, STATUS_INFO } from '../../data';
 import { actionsFor, canUse, fleeChance, hasStatus, playerActsFirst, type CombatState, type Fighter, type LogEntry } from '../../engine/combat';
 import { arenaById, isBossFight, nextArena, stageOf, type GameState } from '../../state';
-import { art, assetUrl, attrTag, bar, esc, statusArt } from '../components';
+import { art, assetUrl, attrTag, bar, bossTag, esc, itemChip, statusArt } from '../components';
 
 function fighterCard(f: Fighter, hp: number, animating: boolean): string {
   const chips = [
@@ -14,7 +14,7 @@ function fighterCard(f: Fighter, hp: number, animating: boolean): string {
   ].join('');
   return `<div class="sketch fighter ${f.side}">
     <div class="info">
-      <div class="row" style="justify-content:space-between"><span class="name">${esc(f.name)}</span><span class="statline">Vel ${f.stats.speed} · Def ${f.stats.def}</span></div>
+      <div class="row between"><span class="name">${esc(f.name)}</span><span class="statline">Vel ${f.stats.speed} · Def ${f.stats.def}</span></div>
       ${bar('hp', hp, f.stats.maxHp, `Vida ${hp}/${f.stats.maxHp}`)}
       ${bar('en', f.energy, f.stats.maxEnergy, `Energia ${f.energy}/${f.stats.maxEnergy}`)}
       <div class="chips">${chips}</div>
@@ -62,7 +62,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null): 
     : `${esc(c.enemy.name)} age primeiro (Vel ${c.enemy.stats.speed} × ${c.player.stats.speed}).`;
 
   const controls = c.outcome && !animating
-    ? `<button class="primary" data-a="continue" style="width:100%">${continueLabel(c, isBoss, nextArena(run)?.name)}</button>`
+    ? `<button class="primary wide" data-a="continue">${continueLabel(c, isBoss, nextArena(run)?.name)}</button>`
     : `<div class="actions">${actionsFor(c.player).map((id, i) => {
         const s = SKILLS[id];
         const extra = id === 'flee' ? ` · chance ${Math.round(fleeChance(c.player, c.enemy) * 100)}%` : '';
@@ -72,10 +72,10 @@ export function combatView(g: GameState, c: CombatState, shown: number | null): 
           <small>${s.desc}</small></button>`;
       }).join('')}</div>`;
 
-  const items = run.items.length ? run.items.map((id) => `<span class="chip item" title="${ITEMS[id].desc}">${art(id, 'ico', '')}${ITEMS[id].name}</span>`).join('') : '<span class="dim">sem itens</span>';
+  const items = run.items.length ? run.items.map(itemChip).join('') :'<span class="dim">sem itens</span>';
 
   return `<section class="stack">
-    <div class="row" style="justify-content:space-between"><h3 style="margin:0">Fase ${stageOf(run) + 1}/${ARENAS.length} · ${arena.name} · Luta ${run.encounter + 1}/${run.enemies.length}${isBoss ? ' · <span style="color:var(--red)">CHEFE</span>' : ''}</h3>
+    <div class="row between"><h3 class="flush">Fase ${stageOf(run) + 1}/${ARENAS.length} · ${arena.name} · Luta ${run.encounter + 1}/${run.enemies.length}${isBoss ? ` · ${bossTag()}` : ''}</h3>
     <div class="chips">${items}</div></div>
     ${banner}
     <div class="combat">
@@ -85,7 +85,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null): 
           ${actor(c.enemy, eHp, fresh, run.enemies[run.encounter], isBoss ? 'boss' : 'enemy', isBoss)}
         </div>
         <div class="cards">${fighterCard(c.player, pHp, animating)}${fighterCard(c.enemy, eHp, animating)}</div>
-        <p class="dim center" style="font-size:0.95rem">${order} Defender sempre age antes.</p>
+        <p class="dim center small">${order} Defender sempre age antes.</p>
         ${controls}
       </div>
       <div class="sketch log" aria-label="Registro de combate"><h3>Registro</h3><ol>

@@ -355,3 +355,17 @@ button.poor { border-color: var(--line); color: var(--dim); }
   .scene { aspect-ratio: 4 / 3; }
   .scene-portrait { height: 70%; max-width: 55%; }
 }
+
+/* ---------- utilitários e blocos antes escritos como style="" nas telas ---------- */
+.between { justify-content: space-between; }
+.centered { justify-content: center; }
+.flush { margin: 0; }
+.wide { width: 100%; }
+.small { font-size: 0.95rem; }
+.gap-top { margin-top: 8px; }
+.boss-tag { color: var(--red); }
+.gold-text { color: var(--gold); }
+.hero-line { font-size: 1.3rem; }
+.legacy { max-width: 440px; margin: 24px auto; text-align: left; }
+.howto { max-width: 600px; margin: 28px auto 0; text-align: left; }
+.report { max-width: 560px; margin: 0 auto; text-align: left; }

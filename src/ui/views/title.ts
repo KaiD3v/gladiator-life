@@ -14,14 +14,14 @@ export function titleView(g: GameState): string {
     </div>
     <p class="dim">Escolha sua classe, monte sua build e sobreviva até o chefe.</p>
     ${g.notice ? `<p class="sketch notice" role="alert">${esc(g.notice)}</p>` : ''}
-    <div class="sketch" style="max-width:440px;margin:24px auto;text-align:left">
+    <div class="sketch legacy">
       <h3>Seu legado</h3>
       <p>Nível <b>${lvl}</b> <span class="dim">(+${HP_PER_LEVEL * (lvl - 1)} de vida inicial)</span></p>
       ${bar('xp', into, span, `${into}/${span} XP até o nível ${lvl + 1}`)}
-      <p class="dim" style="margin-top:8px">Campanhas: ${save.runs} · Completas: ${save.wins} · Recorde: ${save.best}/${ARENAS.length} títulos</p>
+      <p class="dim gap-top">Campanhas: ${save.runs} · Completas: ${save.wins} · Recorde: ${save.best}/${ARENAS.length} títulos</p>
     </div>
     <button class="primary" data-a="new">Nova campanha</button>
-    <div class="sketch" style="max-width:600px;margin:28px auto 0;text-align:left">
+    <div class="sketch howto">
       <h3>Como jogar</h3>
       <p>Cada rodada você escolhe <b>uma</b> ação; quem tem mais velocidade age primeiro, mas <b>Defender</b> sempre vem antes.
       Habilidades gastam energia e ficam mais fortes com o atributo ligado a elas (Força, Destreza ou Sabedoria).
