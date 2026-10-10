@@ -1,5 +1,5 @@
-import { ARENAS, CROWD, SKILLS, STATUS_INFO } from '../../data';
-import { actionsFor, canUse, crowdView, fleeChance, hasStatus, intentView, playerActsFirst, type CombatState, type Fighter, type IntentView, type LogEntry } from '../../engine/combat';
+import { ARENAS, CROWD, SKILLS, STATUS_INFO, WEAK_INFO } from '../../data';
+import { actionsFor, canUse, crowdView, fleeChance, hasStatus, intentView, playerActsFirst, postureView, type CombatState, type Fighter, type IntentView, type LogEntry } from '../../engine/combat';
 import { arenaById, isBossFight, nextArena, stageOf, type GameState } from '../../state';
 import { art, assetUrl, attrTag, bar, bossTag, esc, itemChip, statusArt } from '../components';
 
@@ -7,6 +7,7 @@ const GLYPH: Record<IntentView['kind'], string> = { attack: '⚔', magic: '✦',
 
 /** Resumo em texto da intenção: "Pancada 12–15×2 · Atordoar 40%". */
 function intentText(v: IntentView, stunned: boolean): string {
+  if (v.lost) return `${v.label} (${v.lost.toLowerCase()})`;
   const dmg = v.dmg ? ` ${v.dmg[0]}–${v.dmg[1]}${v.hits && v.hits > 1 ? `×${v.hits}` : ''}` : '';
   const fx = v.effects.length ? ` · ${v.effects.join(', ')}` : '';
   return `${v.label}${dmg}${fx}${v.kind === 'prep' ? ' (golpe na próxima rodada)' : ''}${stunned ? ' (atordoado: perde a vez)' : ''}`;
@@ -15,8 +16,8 @@ function intentText(v: IntentView, stunned: boolean): string {
 function intentBadge(v: IntentView, stunned: boolean): string {
   const dmg = v.dmg ? `<b class="idmg">${v.dmg[0]}–${v.dmg[1]}${v.hits && v.hits > 1 ? `×${v.hits}` : ''}</b>` : '';
   const fx = v.effects.map((e) => `<span class="itag">${e}</span>`).join('');
-  const note = stunned ? '<small>Atordoado: perde a vez</small>' : v.kind === 'prep' ? `<small>${v.warning ?? ''}</small>` : '';
-  return `<div class="intent ${v.kind}${stunned ? ' stunned' : ''}" role="status" aria-label="Próxima ação do inimigo: ${intentText(v, stunned)}">
+  const note = v.lost ? `<small>${v.lost}</small>` : stunned ? '<small>Atordoado: perde a vez</small>' : v.kind === 'prep' ? `<small>${v.warning ?? ''}</small>` : '';
+  return `<div class="intent ${v.kind}${stunned || v.lost ? ' stunned' : ''}" role="status" aria-label="Próxima ação do inimigo: ${intentText(v, stunned)}">
     <span class="iglyph" aria-hidden="true">${GLYPH[v.kind]}</span><span class="ilabel">${v.label}</span>${dmg}${fx}${note}
   </div>`;
 }
@@ -35,7 +36,19 @@ function crowdMeter(c: CombatState, value: number, fresh: LogEntry | null): stri
   </div>`;
 }
 
-function fighterCard(f: Fighter, hp: number, animating: boolean, intent = '', crowdChips = ''): string {
+function postureRow(c: CombatState): string {
+  const p = postureView(c);
+  if (!p.max) return '';
+  const pips = Array.from({ length: p.max }, (_, i) => `<i class="${i < p.value ? 'on' : ''}"></i>`).join('');
+  const weak = p.weak.map((t) => (t ? `<span class="chip weak" title="${WEAK_INFO[t].desc}">${WEAK_INFO[t].name}</span>` : '<span class="chip weak unknown" title="Ponto fraco ainda não descoberto">?</span>')).join('');
+  return `<div class="posture${p.broken ? ' broken' : ''}">
+    <div class="row between"><b>Postura</b>${p.broken ? '<span class="broken-tag">DESEQUILIBRADO</span>' : ''}</div>
+    <div class="pips" role="meter" aria-label="Postura ${p.value}/${p.max}" aria-valuenow="${p.value}" aria-valuemin="0" aria-valuemax="${p.max}">${pips}</div>
+    ${weak ? `<div class="chips"><span class="dim">Fraco:</span>${weak}</div>` : ''}
+  </div>`;
+}
+
+function fighterCard(f: Fighter, hp: number, animating: boolean, intent = '', crowdChips = '', extra = ''): string {
   const chips = [
     crowdChips,
     animating && f.defending ? `<span class="chip defending">${statusArt('defend')}Defendendo</span>` : '',
@@ -51,19 +64,26 @@ function fighterCard(f: Fighter, hp: number, animating: boolean, intent = '', cr
       ${bar('hp', hp, f.stats.maxHp, `Vida ${hp}/${f.stats.maxHp}`)}
       ${bar('en', f.energy, f.stats.maxEnergy, `Energia ${f.energy}/${f.stats.maxEnergy}`)}
       <div class="chips">${chips}</div>
+      ${extra}
       ${intent}
     </div>
   </div>`;
 }
 
 /** Sprite no palco: avança quando ataca, pisca ao sofrer dano, brilha ao curar, cai ao ser derrotado. */
-function actor(f: Fighter, hp: number, fresh: LogEntry | null, sprite: string, fb: string, boss = false): string {
+function actor(f: Fighter, hp: number, fresh: LogEntry | null, sprite: string, fb: string, boss = false, enraged = false): string {
   const hit = fresh?.target === f.side && fresh.amount ? fresh : null;
   const state = hp <= 0 ? 'down' : hit ? (hit.heal ? 'healed' : 'hurt') : fresh?.kind === f.side && fresh.target && fresh.target !== f.side ? 'lunge' : '';
-  return `<div class="actor ${f.side} ${state}${boss ? ' boss' : ''}">
+  return `<div class="actor ${f.side} ${state}${boss ? ' boss' : ''}${enraged ? ' enraged' : ''}">
     ${hit ? `<span class="float ${hit.heal ? 'heal' : hit.crit ? 'crit' : 'dmg'}">${hit.heal ? '+' : '-'}${hit.amount}</span>` : ''}
     ${art(sprite, 'sprite', f.name, fb)}
   </div>`;
+}
+
+/** Balão de fala: a fala nova durante a animação; parado, a última da rodada anterior. */
+function bubble(c: CombatState, fresh: LogEntry | null, animating: boolean): string {
+  const b = animating ? (fresh?.bark ? fresh : null) : c.log.filter((l) => l.bark && (l.round === c.round - 1 || (c.round === 1 && l.round === 1))).pop();
+  return b ? `<div class="bubble" role="status"><b>${esc(c.enemy.name)}</b>“${esc(b.text)}”</div>` : '';
 }
 
 function continueLabel(c: CombatState, isBoss: boolean, nextArena?: string): string {
@@ -130,15 +150,16 @@ export function combatView(g: GameState, c: CombatState, shown: number | null): 
         ${crowdMeter(c, last.crowd, fresh)}
         <div class="stage" style="background-image:url(${assetUrl(`bg-${arena.id}`)})">
           ${actor(c.player, pHp, fresh, run.classId, run.classId)}
-          ${actor(c.enemy, eHp, fresh, run.enemies[run.encounter], isBoss ? 'boss' : 'enemy', isBoss)}
+          ${actor(c.enemy, eHp, fresh, run.enemies[run.encounter], isBoss ? 'boss' : 'enemy', isBoss, c.phased)}
+          ${bubble(c, fresh, animating)}
           ${iv ? intentBadge(iv, enemyStunned) : ''}
         </div>
-        <div class="cards">${fighterCard(c.player, pHp, animating, '', `${cv.ovation ? `<span class="chip ovation">Ovação +${Math.round(CROWD.ovationBonus * 100)}% dano</span>` : ''}${cv.lastStandReady ? '<span class="chip exige">A multidão exige mais</span>' : ''}`)}${fighterCard(c.enemy, eHp, animating, iv ? `<p class="inext">Próxima ação: ${intentText(iv, enemyStunned)}</p>` : '')}</div>
+        <div class="cards">${fighterCard(c.player, pHp, animating, '', `${cv.ovation ? `<span class="chip ovation">Ovação +${Math.round(CROWD.ovationBonus * 100)}% dano</span>` : ''}${cv.lastStandReady ? '<span class="chip exige">A multidão exige mais</span>' : ''}`)}${fighterCard(c.enemy, eHp, animating, iv ? `<p class="inext${iv.lost ? ' lost' : ''}">Próxima ação: ${intentText(iv, enemyStunned)}</p>` : '', '', postureRow(c))}</div>
         <p class="dim center small">${order} Defender só protege na rodada em que é usado e sempre age antes.</p>
         ${controls}
       </div>
       <div class="sketch log" aria-label="Registro de combate"><h3>Registro</h3><ol>
-        ${visible.map((l, i) => `<li class="${l.kind}${animating && i === visible.length - 1 ? ' fresh' : ''}"><span class="rd">R${l.round}</span>${esc(l.text)}</li>`).join('')}
+        ${visible.map((l, i) => `<li class="${l.kind}${l.bark ? ' bark' : ''}${animating && i === visible.length - 1 ? ' fresh' : ''}"><span class="rd">R${l.round}</span>${l.bark ? `${esc(c.enemy.name)}: “${esc(l.text)}”` : esc(l.text)}</li>`).join('')}
       </ol></div>
     </div>
   </section>`;
