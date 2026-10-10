@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CLASSES, ENEMIES } from '../data';
-import { NO_PERKS, addStatus, createCombat, makeFighter, resolveRound, type CombatState } from './combat';
+import { NO_PERKS, addStatus, createCombat, intentView, makeFighter, resolveRound, type CombatState } from './combat';
 
 const hero = (cls: keyof typeof CLASSES = 'warrior') => {
   const c = CLASSES[cls];
@@ -8,7 +8,7 @@ const hero = (cls: keyof typeof CLASSES = 'warrior') => {
 };
 const foe = (id = 'bandit') => {
   const e = ENEMIES[id];
-  return makeFighter(e.name, 'enemy', { ...e.stats }, { ...NO_PERKS, ...e.perks }, { ...e.attrs }, [...e.skills]);
+  return makeFighter(e.name, 'enemy', { ...e.stats }, { ...NO_PERKS, ...e.perks }, { ...e.attrs }, [...e.skills], undefined, [...e.pattern]);
 };
 const fight = (p = hero(), e = foe(), seed = 1) => createCombat(p, e, seed);
 
@@ -209,5 +209,156 @@ describe('efeitos sonoros', () => {
     for (const l of s.log) if (l.amount) expect(l.sfx, l.text).toBeTruthy();
     expect(s.log.some((l) => l.kind === 'player' && l.sfx === 'magic')).toBe(true);
     expect(s.log.at(-1)!.sfx).toBe(s.outcome === 'victory' ? 'victory' : 'defeat');
+  });
+});
+
+// ---------- Intenções do inimigo (padrões, preparo, Firme) ----------
+
+/** Herói resistente: os testes de padrão não dependem de quem morre primeiro. */
+const tank = () => {
+  const p = hero('warrior');
+  p.stats.maxHp = p.hp = 999;
+  return p;
+};
+const sturdy = (id: string) => {
+  const e = foe(id);
+  e.stats.maxHp = e.hp = 9999;
+  return e;
+};
+const rounds = (s: CombatState, n: number, action = 'defend') => {
+  for (let i = 0; i < n; i++) s = resolveRound(s, action);
+  return s;
+};
+
+describe('padrão e intenção', () => {
+  it('a intenção já existe no início e o padrão cicla a cada rodada', () => {
+    let s = fight(tank(), foe('bandit')); // [attack, dirtyCut, attack, defend]
+    const seen = [s.intent.action];
+    for (let i = 0; i < 5; i++) {
+      s = resolveRound(s, 'defend');
+      seen.push(s.intent.action);
+    }
+    expect(seen).toEqual(['attack', 'dirtyCut', 'attack', 'defend', 'attack', 'dirtyCut']);
+  });
+
+  it('a ação executada é a anunciada', () => {
+    const s = rounds(fight(tank(), foe('bandit')), 1); // anuncia Corte Sujo
+    const next = resolveRound(s, 'defend');
+    expect(next.log.some((l) => l.round === 2 && l.kind === 'enemy' && l.text.includes('Corte Sujo'))).toBe(true);
+  });
+
+  it('sem energia para a ação do padrão, cai para o ataque básico e o padrão segue', () => {
+    const s = fight(tank(), foe('bandit'));
+    s.enemy.energy = 0; // rodada 1 (attack, custo 0) e regen 2 < 4 do Corte Sujo
+    const next = resolveRound(s, 'defend');
+    expect(next.intent).toEqual({ action: 'attack' });
+    expect(next.step).toBe(1);
+    expect(resolveRound(next, 'defend').intent.action).toBe('attack'); // passo 2 do padrão; energia já voltou
+  });
+
+  it('o inimigo não sorteia a ação: resolveRound usa s.intent', () => {
+    const s = fight(tank(), foe('wolf'));
+    s.intent = { action: 'bite' };
+    const next = resolveRound(s, 'defend');
+    expect(next.log.some((l) => l.kind === 'enemy' && l.text.includes('Mordida'))).toBe(true);
+  });
+
+  it('ação inválida devolve o mesmo objeto', () => {
+    const s = fight();
+    expect(resolveRound(s, 'inexistente')).toBe(s);
+  });
+});
+
+describe('golpe pesado (preparo)', () => {
+  const brute = () => rounds(fight(tank(), sturdy('brute')), 2, 'attack'); // [attack, attack, smash]
+
+  it('é anunciado como preparo, sem dano, e acerta na rodada seguinte', () => {
+    const s = brute();
+    expect(s.intent).toEqual({ action: 'smash', prep: true });
+    const hpBefore = s.player.hp;
+    const prep = resolveRound(s, 'attack');
+    expect(prep.player.hp).toBe(hpBefore);
+    expect(prep.log.some((l) => l.round === s.round && l.text.includes('se prepara para Pancada'))).toBe(true);
+    expect(prep.intent).toEqual({ action: 'smash' });
+    expect(prep.step).toBe(s.step); // o passo só avança quando o golpe sai
+    const hit = resolveRound(prep, 'attack');
+    expect(hit.player.hp).toBeLessThan(hpBefore);
+    expect(hit.log.some((l) => l.round === prep.round && l.kind === 'enemy' && l.text.includes('usa Pancada'))).toBe(true);
+    expect(hit.intent).toEqual({ action: 'attack' });
+    expect(hit.step).toBe(s.step + 1);
+  });
+
+  it('atordoar durante o preparo cancela o golpe e avança o padrão', () => {
+    const s = brute();
+    addStatus(s.enemy, 'stun', 1, 0);
+    const next = resolveRound(s, 'attack');
+    expect(next.log.some((l) => l.text.includes('perde a concentração'))).toBe(true);
+    expect(next.log.some((l) => l.text.includes('se prepara'))).toBe(false);
+    expect(next.intent).toEqual({ action: 'attack' }); // voltou ao início do ciclo, sem golpe pendente
+    expect(next.step).toBe(s.step + 1);
+    expect(next.player.hp).toBe(s.player.hp);
+  });
+});
+
+describe('Firme (anti stun-lock)', () => {
+  it('quem consome um atordoamento resiste ao seguinte na rodada seguinte; depois volta ao normal', () => {
+    const p = tank(); // Guerreiro: Golpe de Escudo atordoa com 60%
+    let s = fight(p, sturdy('bandit'));
+    addStatus(s.enemy, 'stun', 1, 0);
+    s = resolveRound(s, 'defend');
+    expect(s.enemy.statuses.find((x) => x.id === 'steady')?.turns).toBe(1);
+    s = resolveRound(s, 'shieldBash');
+    expect(s.log.some((l) => l.text.includes('está firme e resiste a Atordoado'))).toBe(true);
+    expect(s.enemy.statuses.some((x) => x.id === 'stun')).toBe(false);
+    expect(s.enemy.statuses.some((x) => x.id === 'steady')).toBe(false); // expirou
+  });
+
+  it('vale para o jogador também', () => {
+    let s = fight(tank(), sturdy('brute'));
+    addStatus(s.player, 'stun', 1, 0);
+    s = resolveRound(s, 'attack');
+    expect(s.player.statuses.some((x) => x.id === 'steady')).toBe(true);
+    s.intent = { action: 'smash' }; // golpe que atordoa, já pronto
+    s = resolveRound(s, 'attack');
+    expect(s.log.some((l) => l.text.includes('Herói está firme'))).toBe(true);
+    expect(s.player.statuses.some((x) => x.id === 'stun')).toBe(false);
+  });
+});
+
+describe('intentView', () => {
+  it('descreve o preparo com aviso e os demais tipos de ação', () => {
+    const s = rounds(fight(tank(), sturdy('brute')), 2, 'attack');
+    const v = intentView(s);
+    expect(v).toMatchObject({ kind: 'prep', skill: 'smash', label: 'Prepara Pancada' });
+    expect(v.warning).toBeTruthy();
+    expect(v.effects).toEqual(['Atordoar 40%']);
+    expect(intentView({ ...s, intent: { action: 'defend' } })).toMatchObject({ kind: 'defend', label: 'Defender', effects: [] });
+    expect(intentView({ ...s, intent: { action: 'roar' } }).kind).toBe('buff');
+    expect(intentView({ ...s, intent: { action: 'bite' } }).effects).toEqual(['Veneno 2']);
+  });
+
+  it('o intervalo de dano contém todo golpe real sem crítico', () => {
+    let checked = 0;
+    for (let seed = 1; seed <= 200; seed++) {
+      const s = rounds(fight(tank(), foe('bandit'), seed), 1, 'attack'); // próxima: Corte Sujo
+      const v = intentView(s);
+      const next = resolveRound(s, 'attack');
+      const h = next.log.find((l) => l.round === s.round && l.kind === 'enemy' && l.target === 'player' && l.amount && !l.crit);
+      if (!h) continue;
+      checked++;
+      expect(h.amount!).toBeGreaterThanOrEqual(v.dmg![0]);
+      expect(h.amount!).toBeLessThanOrEqual(v.dmg![1]);
+    }
+    expect(checked).toBeGreaterThan(100);
+  });
+
+  it('considera a Guarda do jogador e o Enfraquecer do inimigo', () => {
+    const s = rounds(fight(tank(), foe('bandit')), 1, 'attack');
+    const plain = intentView(s).dmg!;
+    addStatus(s.player, 'guard', 2, 0);
+    const guarded = intentView(s).dmg!;
+    expect(guarded[1]).toBeLessThan(plain[1]);
+    addStatus(s.enemy, 'weaken', 2, 0);
+    expect(intentView(s).dmg![1]).toBeLessThan(guarded[1]);
   });
 });

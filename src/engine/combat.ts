@@ -17,6 +17,7 @@ export interface Fighter {
   perks: Perks;
   attrs: Attrs;
   skills: string[];
+  pattern: string[]; // ciclo de ações do inimigo (vazio no jogador)
   hp: number;
   energy: number;
   statuses: Status[];
@@ -35,6 +36,19 @@ export interface LogEntry {
   hp: [number, number]; // vida [jogador, inimigo] após o evento, para animar a UI
 }
 
+/** Próxima ação do inimigo, anunciada ao jogador. `prep`: nesta rodada ele só prepara `action`, que acerta na seguinte. */
+export interface Intent { action: string; prep?: boolean }
+
+export interface IntentView {
+  kind: 'attack' | 'magic' | 'defend' | 'buff' | 'prep';
+  skill: string; // id da habilidade pretendida
+  label: string;
+  dmg?: [number, number]; // dano esperado POR GOLPE no jogador (sem crítico), já com armadura, enfraquecer e guarda atual; em 'prep', é o golpe da rodada seguinte
+  hits?: number;
+  effects: string[];
+  warning?: string;
+}
+
 export interface CombatState {
   round: number;
   player: Fighter;
@@ -44,16 +58,19 @@ export interface CombatState {
   seed: number;
   dealt: number;
   taken: number;
+  intent: Intent;
+  step: number; // posição no padrão do inimigo
 }
 
 export const NO_PERKS: Perks = { counter: 0, lifesteal: 0, thorns: 0, poisonOnHit: 0, hpRegen: 0 };
 
-export function makeFighter(name: string, side: Side, stats: Stats, perks: Perks, attrs: Attrs, skills: string[], hp = stats.maxHp): Fighter {
-  return { name, side, stats, perks, attrs, skills, hp: Math.min(hp, stats.maxHp), energy: stats.maxEnergy, statuses: [], defending: false };
+export function makeFighter(name: string, side: Side, stats: Stats, perks: Perks, attrs: Attrs, skills: string[], hp = stats.maxHp, pattern: string[] = []): Fighter {
+  return { name, side, stats, perks, attrs, skills, pattern, hp: Math.min(hp, stats.maxHp), energy: stats.maxEnergy, statuses: [], defending: false };
 }
 
 export function createCombat(player: Fighter, enemy: Fighter, seed: number): CombatState {
-  const s: CombatState = { round: 1, player, enemy, log: [], outcome: null, seed, dealt: 0, taken: 0 };
+  const s: CombatState = { round: 1, player, enemy, log: [], outcome: null, seed, dealt: 0, taken: 0, intent: { action: 'attack' }, step: 0 };
+  s.intent = planIntent(s);
   log(s, `${player.name} enfrenta ${enemy.name}!`, 'system');
   return s;
 }
@@ -77,11 +94,11 @@ export const playerActsFirst = (s: CombatState) => s.player.stats.speed >= s.ene
 export function resolveRound(state: CombatState, playerAction: string): CombatState {
   if (!canUse(state, playerAction)) return state;
   const s = structuredClone(state);
-  const enemyAction = chooseEnemyAction(s);
+  let lostTurn = false; // o inimigo perdeu a vez por atordoamento
   s.player.defending = s.enemy.defending = false;
 
   const prio = (id: string) => (id === 'defend' || id === 'flee' ? 1 : 0);
-  const turns: [Fighter, string][] = [[s.player, playerAction], [s.enemy, enemyAction]];
+  const turns: [Fighter, string][] = [[s.player, playerAction], [s.enemy, s.intent.prep ? 'prep' : s.intent.action]];
   turns.sort(([a, aId], [b, bId]) => prio(bId) - prio(aId) || b.stats.speed - a.stats.speed); // sort estável: jogador vence empates
 
   for (const [actor, id] of turns) {
@@ -89,22 +106,73 @@ export function resolveRound(state: CombatState, playerAction: string): CombatSt
     const stun = actor.statuses.find((x) => x.id === 'stun');
     if (stun) {
       actor.statuses = actor.statuses.filter((x) => x !== stun);
+      addStatus(actor, 'steady', 2, 0); // Firme: sem novo atordoamento até o fim da próxima rodada
       log(s, `${actor.name} está atordoado e perde a vez.`, 'status');
+      if (actor === s.enemy) {
+        lostTurn = true;
+        if (s.intent.prep) log(s, `${actor.name} perde a concentração.`, 'enemy');
+      }
+      continue;
+    }
+    if (id === 'prep') {
+      log(s, `${actor.name} se prepara para ${SKILLS[s.intent.action].name}…`, 'enemy', { sfx: 'status' });
       continue;
     }
     act(s, actor, actor === s.player ? s.enemy : s.player, SKILLS[id]);
     checkEnd(s);
   }
-  if (!s.outcome) endOfRound(s);
+  if (!s.outcome) {
+    endOfRound(s);
+    if (!s.outcome) advanceIntent(s, lostTurn);
+  }
   return s;
 }
 
-export function chooseEnemyAction(s: CombatState): string {
+/** Próxima ação do padrão (cíclico); sem energia, cai para o ataque básico. Golpes pesados começam por uma rodada de preparo. */
+function planIntent(s: CombatState): Intent {
   const e = s.enemy;
-  if (e.hp < e.stats.maxHp * 0.35 && rand(s) < 0.25) return 'defend';
-  const special = e.skills.filter((id) => id !== 'attack' && SKILLS[id].cost <= e.energy);
-  if (special.length && rand(s) < 0.6) return special[Math.floor(rand(s) * special.length)];
-  return 'attack';
+  const wanted = e.pattern.length ? e.pattern[s.step % e.pattern.length] : 'attack';
+  const action = SKILLS[wanted].cost <= e.energy ? wanted : 'attack';
+  return SKILLS[action].windup ? { action, prep: true } : { action };
+}
+
+/** Depois de uma rodada: o preparo cumprido leva ao golpe (mesmo passo); qualquer outro caso avança o padrão. */
+function advanceIntent(s: CombatState, lostTurn: boolean) {
+  if (s.intent.prep && !lostTurn) {
+    const a = s.intent.action;
+    s.intent = { action: SKILLS[a].cost <= s.enemy.energy ? a : 'attack' };
+    return;
+  }
+  s.step++;
+  s.intent = planIntent(s);
+}
+
+const EFFECT_TAG: Record<string, string> = { stun: 'Atordoar', poison: 'Veneno', burn: 'Queimadura', weaken: 'Enfraquecer', regen: 'Regenera', guard: 'Guarda' };
+
+/** O que o inimigo fará, para a UI. Não sorteia nada; dano é o intervalo (0.9x a 1.1x, sem crítico) contra o jogador agora. */
+export function intentView(s: CombatState): IntentView {
+  const { action, prep } = s.intent;
+  const sk = SKILLS[action];
+  const { enemy: e, player: p } = s;
+  const effects = (sk.effects ?? [])
+    .filter((x) => !(x.status === 'stun' && hasStatus(p, 'steady')))
+    .map((x) => EFFECT_TAG[x.status] + (x.power ? ` ${x.power}` : '') + (x.chance !== undefined && x.chance < 1 ? ` ${Math.round(x.chance * 100)}%` : ''));
+  const view: IntentView = {
+    kind: prep ? 'prep' : sk.type === 'defend' ? 'defend' : sk.type === 'magic' ? 'magic' : sk.type === 'self' ? 'buff' : 'attack',
+    skill: action,
+    label: prep ? `Prepara ${sk.name}` : sk.name,
+    effects,
+  };
+  if (sk.type === 'physical' || sk.type === 'magic') {
+    const physical = sk.type === 'physical';
+    const weak = hasStatus(e, 'weaken') ? 0.7 : 1;
+    const base = ((physical ? e.stats.atk : e.stats.mag) * (sk.power ?? 1) + (sk.attr ? e.attrs[sk.attr] * ATTR_SKILL_BONUS : 0)) * weak
+      * armor(physical ? p.stats.def : p.stats.def / 2) * (hasStatus(p, 'guard') ? 0.5 : 1);
+    view.dmg = [Math.max(1, Math.round(base * 0.9)), Math.max(1, Math.round(base * 1.1))];
+    view.hits = sk.hits ?? 1;
+  }
+  if (prep) view.warning = 'Golpe pesado na próxima rodada: atordoe agora ou defenda então!';
+  return view;
 }
 
 function act(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef) {
@@ -124,6 +192,10 @@ function act(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef) {
   for (const e of skill.effects ?? []) {
     const target = e.target === 'self' ? actor : foe;
     if (target.hp <= 0 || actor.hp <= 0) continue;
+    if (e.status === 'stun' && hasStatus(target, 'steady')) {
+      log(s, `${target.name} está firme e resiste a ${statusName(e.status)}.`, 'status');
+      continue;
+    }
     if (e.chance !== undefined && rand(s) >= e.chance) {
       log(s, `${target.name} resiste a ${statusName(e.status)}.`, 'status');
       continue;

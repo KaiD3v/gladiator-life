@@ -1,7 +1,7 @@
 // Tipos do conteúdo do jogo. Só formas de dados: nenhum valor aqui.
 
 export type ClassId = 'warrior' | 'mage' | 'assassin';
-export type StatusId = 'poison' | 'burn' | 'stun' | 'guard' | 'weaken' | 'regen';
+export type StatusId = 'poison' | 'burn' | 'stun' | 'guard' | 'weaken' | 'regen' | 'steady';
 export type Attr = 'str' | 'dex' | 'wis';
 export type Attrs = Record<Attr, number>;
 
@@ -45,6 +45,7 @@ export interface SkillDef {
   heal?: number; // cura base no próprio usuário (+ATTR_HEAL_BONUS por ponto do atributo)
   critBonus?: number;
   critIfPoisoned?: boolean;
+  windup?: boolean; // golpe pesado: quando o inimigo o usa, gasta uma rodada preparando e só acerta na seguinte
   effects?: Effect[];
   // Habilidades de jogador: atributo que escala o efeito, requisito para aprender e preço no treinador
   attr?: Attr;
@@ -70,6 +71,7 @@ export interface EnemyDef {
   stats: Stats;
   perks?: Partial<Perks>;
   skills: string[];
+  pattern: string[]; // ciclo de ações (ids de habilidade ou 'defend'), uma por rodada
   attrs: Attrs;
   xp: number;
   gold: number;
