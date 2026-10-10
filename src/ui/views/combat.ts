@@ -61,7 +61,7 @@ function hazardBadge(c: CombatState): string {
 }
 
 /** HUD compacto do lutador: nome, vida, energia e efeitos numa linha que rola de lado se precisar. */
-function fighterHud(f: Fighter, hp: number, animating: boolean, first: boolean, extraChips = '', extra = ''): string {
+function fighterHud(f: Fighter, hp: number, en: number, animating: boolean, first: boolean, extraChips = '', extra = ''): string {
   const chips = [
     extraChips,
     animating && f.defending ? `<span class="chip defending">${statusArt('defend')}Defendendo</span>` : '',
@@ -74,7 +74,7 @@ function fighterHud(f: Fighter, hp: number, animating: boolean, first: boolean, 
   return `<div class="sketch fighter hud ${f.side}">
     <div class="hud-top"><span class="name">${esc(f.name)}</span>${first ? '<span class="first" title="Age primeiro nesta rodada (maior velocidade)">1º</span>' : ''}<span class="statline">Vel ${f.stats.speed} · Def ${f.stats.def}</span></div>
     ${bar('hp', hp, f.stats.maxHp, `Vida ${hp}/${f.stats.maxHp}`)}
-    ${bar('en', f.energy, f.stats.maxEnergy, `Energia ${f.energy}/${f.stats.maxEnergy}`)}
+    ${bar('en', en, f.stats.maxEnergy, `Energia ${en}/${f.stats.maxEnergy} · +${f.stats.regen}/rod.`)}
     ${chips ? `<div class="chips">${chips}</div>` : ''}
     ${extra}
   </div>`;
@@ -146,6 +146,8 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
   const last = visible[visible.length - 1];
   const fresh = animating ? last : null;
   const [pHp, eHp] = last.hp;
+  // Energia: durante a animação, a do evento (o custo cai na hora); parada, a atual (já com a regeneração do fim da rodada).
+  const [pEn, eEn] = animating ? last.en : [c.player.energy, c.enemy.energy];
 
   let banner: string;
   if (animating) banner = `<div class="turn-banner wait" aria-live="polite">Resolvendo a rodada ${c.round}…</div>`;
@@ -223,8 +225,8 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
       ${iv ? intentBadge(iv, enemyStunned) : ''}
     </div>
     <div class="huds">
-      ${fighterHud(c.player, pHp, animating, pFirst && !c.outcome, crowdChips)}
-      ${fighterHud(c.enemy, eHp, animating, !pFirst && !c.outcome, carry, `${postureRow(c)}${iv ? `<p class="inext${iv.lost ? ' lost' : ''}">Próxima: ${intentText(iv, enemyStunned)}</p>` : ''}`)}
+      ${fighterHud(c.player, pHp, pEn, animating, pFirst && !c.outcome, crowdChips)}
+      ${fighterHud(c.enemy, eHp, eEn, animating, !pFirst && !c.outcome, carry, `${postureRow(c)}${iv ? `<p class="inext${iv.lost ? ' lost' : ''}">Próxima: ${intentText(iv, enemyStunned)}</p>` : ''}`)}
     </div>
     ${controls}
     <aside class="sketch log side-log" aria-label="Registro de combate"><h3>Registro</h3>${logList}</aside>

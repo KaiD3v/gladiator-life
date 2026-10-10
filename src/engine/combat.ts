@@ -43,6 +43,7 @@ export interface LogEntry {
   bark?: true; // fala do inimigo (kind 'enemy'): a UI pode mostrar como balão; o texto é só a fala
   sfx?: Sfx; // efeito sonoro do evento (public/audio/sfx/<sfx>.mp3)
   hp: [number, number]; // vida [jogador, inimigo] após o evento, para animar a UI
+  en: [number, number]; // energia [jogador, inimigo] após o evento (a regeneração do fim da rodada vem depois do último evento)
   crowd: number; // favor da multidão (0..100) após o evento
   crowdDelta?: number; // variação causada por este evento
 }
@@ -606,7 +607,7 @@ function dropNote(s: CombatState) {
 const statusName = (id: StatusId) => STATUS_INFO[id].name;
 
 function log(s: CombatState, text: string, kind: LogEntry['kind'], extra: Partial<LogEntry> = {}) {
-  s.log.push({ round: s.round, text, kind, ...extra, hp: [s.player.hp, s.enemy.hp], crowd: s.crowd });
+  s.log.push({ round: s.round, text, kind, ...extra, hp: [s.player.hp, s.enemy.hp], en: [s.player.energy, s.enemy.energy], crowd: s.crowd });
   if (s.lastStandNote) {
     s.lastStandNote = false;
     log(s, 'A multidão exige mais! Você se levanta com 1 de vida.', 'system', { sfx: 'crowd-roar' });

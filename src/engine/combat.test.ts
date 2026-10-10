@@ -39,6 +39,14 @@ describe('ações e turnos', () => {
     expect(full.player.energy).toBe(full.player.stats.maxEnergy);
   });
 
+  it('o log guarda a energia por evento: o custo cheio aparece no golpe, a regeneração só depois', () => {
+    const s = fight();
+    const next = resolveRound(s, 'shieldBash'); // custo 4
+    const used = next.log.find((l) => l.kind === 'player' && l.text.includes('Golpe de Escudo'))!;
+    expect(used.en[0]).toBe(s.player.stats.maxEnergy - 4);
+    expect(next.player.energy).toBe(used.en[0] + s.player.stats.regen);
+  });
+
   it('o mais rápido age primeiro; Defender tem prioridade', () => {
     const s = fight(hero('warrior'), foe('wolf')); // lobo velocidade 10 > 4
     const atk = resolveRound(s, 'attack');
