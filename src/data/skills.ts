@@ -4,6 +4,21 @@ export const SKILLS: Record<string, SkillDef> = {
   attack: { id: 'attack', name: 'Ataque', desc: 'Golpe básico. Sem custo.', cost: 0, type: 'physical', power: 1 },
   defend: { id: 'defend', name: 'Defender', desc: 'Age primeiro, reduz o dano da rodada e recupera +2 de energia. Ideal contra golpes pesados anunciados.', cost: 0, type: 'defend' },
   flee: { id: 'flee', name: 'Fugir', desc: 'Age primeiro. Disputa de Destreza: se falhar, sofre um golpe de oportunidade.', cost: 0, type: 'flee' },
+  // Golpes de Glória (um por classe; só com a torcida em 100)
+  pitFury: {
+    id: 'pitFury', name: 'Fúria do Fosso', desc: 'Golpe de Glória: dano físico 2.6x e atordoa. Exige a torcida em 100.', cost: 0, type: 'physical', power: 2.6, glory: true,
+    effects: [{ status: 'stun', target: 'foe', turns: 1 }],
+  },
+  arenaInferno: {
+    id: 'arenaInferno', name: 'Inferno da Arena', desc: 'Golpe de Glória: dano mágico 2.6x e queimadura forte. Exige a torcida em 100.', cost: 0, type: 'magic', power: 2.6, glory: true,
+    effects: [{ status: 'burn', target: 'foe', turns: 3, power: 5 }],
+  },
+  thousandCuts: {
+    id: 'thousandCuts', name: 'Mil Cortes', desc: 'Golpe de Glória: 4 golpes de 0.8x com +30% de crítico. Exige a torcida em 100.', cost: 0, type: 'physical', power: 0.8, hits: 4, critBonus: 0.3, glory: true,
+  },
+  // Veredito (luta comum, inimigo com 15% de vida ou menos)
+  execute: { id: 'execute', name: 'Executar', desc: 'Encerra a luta: a multidão vibra e os patronos pagam mais. Não vale contra chefes.', cost: 0, type: 'verdict' },
+  spare: { id: 'spare', name: 'Poupar', desc: 'Encerra a luta e deixa o inimigo vivo: menos ouro, mais experiência. Não vale contra chefes.', cost: 0, type: 'verdict' },
   // Força
   shieldBash: {
     id: 'shieldBash', name: 'Golpe de Escudo', desc: 'Dano físico 1.3x, 60% de chance de atordoar.', cost: 4, type: 'physical', power: 1.3,

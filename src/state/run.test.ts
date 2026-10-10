@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { ARENAS, CLASSES, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, START_GOLD } from '../data';
+﻿import { describe, expect, it } from 'vitest';
+import { ARENAS, CLASSES, CROWD, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, START_GOLD } from '../data';
 import {
   defaultSave, freeDays, initialState, learnBlock, levelOf, maxHp, parseSave, playerBuild, reduce, restPrice, trainPrice,
   type GameState, type RunState,
@@ -85,7 +85,8 @@ describe('run completa, dias e fuga', () => {
       expect(g.screen.name).toBe('camp');
       expect(g.run!.day).toBe(i + 2);
     }
-    expect(g.run!.gold).toBe(START_GOLD + g.run!.kills.reduce((n, id) => n + ENEMIES[id].gold, 0));
+    // Torcida inicial (favor 30) paga ouro × (1 + 30/200) por vitória forçada, sem ação do jogador
+    expect(g.run!.gold).toBe(START_GOLD + g.run!.kills.reduce((n, id) => n + Math.round(ENEMIES[id].gold * (1 + CROWD.start / CROWD.goldDivisor)), 0));
     // Build montada antes de virar campeão
     g = withRun(g, { items: ['chippedSword'], attrs: { str: 9, dex: 3, wis: 2 }, skills: ['shieldBash', 'ironStance', 'warCry'], hp: 20 });
     g = fightAs(g, 'victory'); // chefe do Fosso
@@ -239,3 +240,41 @@ describe('acampamento', () => {
     expect(b.perks.lifesteal).toBe(ITEMS.vampireChalice.perks!.lifesteal);
   });
 });
+
+describe('recompensas da torcida', () => {
+  /** Vence a próxima luta com o favor e o veredito dados. */
+  function winWith(crowd: number, verdict?: 'executed' | 'spared') {
+    const g = skip(reduce(start(), { type: 'fight' }));
+    if (g.screen.name !== 'combat') throw new Error();
+    const combat = { ...g.screen.combat, outcome: 'victory' as const, crowd, verdict };
+    const after = skip(reduce({ ...g, screen: { name: 'combat', combat } }, { type: 'continue' }));
+    return { after, enemy: ENEMIES[g.run!.enemies[0]] };
+  }
+
+  it('ouro × (1 + favor/200)', () => {
+    const { after, enemy } = winWith(100);
+    expect(after.run!.gold - START_GOLD).toBe(Math.round(enemy.gold * (1 + 100 / CROWD.goldDivisor)));
+    expect(after.run!.xp).toBe(enemy.xp);
+    expect(after.screen.name === 'camp' && after.screen.news).toContain('moedas');
+  });
+
+  it('executar paga mais ouro; poupar paga menos ouro e mais XP', () => {
+    const ex = winWith(40, 'executed');
+    expect(ex.after.run!.gold - START_GOLD).toBe(Math.round(ex.enemy.gold * (1 + 40 / CROWD.goldDivisor) * CROWD.executeGold));
+    expect(ex.after.screen.name === 'camp' && ex.after.screen.news).toContain('executou');
+    const sp = winWith(40, 'spared');
+    expect(sp.after.run!.gold - START_GOLD).toBe(Math.round(sp.enemy.gold * (1 + 40 / CROWD.goldDivisor) * CROWD.spareGold));
+    expect(sp.after.run!.xp).toBe(Math.round(sp.enemy.xp * CROWD.spareXp));
+    expect(sp.after.screen.name === 'camp' && sp.after.screen.news).toContain('poupou');
+  });
+
+  it('a luta contra o chefe nasce marcada como chefe (sem veredito)', () => {
+    let g = start();
+    for (let i = 0; i < 3; i++) g = fightAs(g, 'victory');
+    g = skip(reduce(g, { type: 'fight' }));
+    if (g.screen.name !== 'combat') throw new Error();
+    expect(g.screen.combat.boss).toBe(true);
+    expect(g.screen.combat.player.glory).toBe(CLASSES.warrior.glory);
+  });
+});
+

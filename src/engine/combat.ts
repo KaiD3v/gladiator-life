@@ -1,6 +1,6 @@
 // Regras de combate. Funções puras sobre CombatState: nenhuma dependência de DOM.
 import {
-  ATTR_HEAL_BONUS, ATTR_SKILL_BONUS, SKILLS, STATUS_INFO, type Attrs, type Perks, type SkillDef, type Stats, type StatusId,
+  ATTR_HEAL_BONUS, ATTR_SKILL_BONUS, CROWD, SKILLS, STATUS_INFO, type Attrs, type Perks, type SkillDef, type Stats, type StatusId,
 } from '../data';
 import { rand } from '../core/rng';
 
@@ -18,6 +18,7 @@ export interface Fighter {
   attrs: Attrs;
   skills: string[];
   pattern: string[]; // ciclo de ações do inimigo (vazio no jogador)
+  glory?: string; // Golpe de Glória do jogador (id de habilidade)
   hp: number;
   energy: number;
   statuses: Status[];
@@ -34,6 +35,8 @@ export interface LogEntry {
   crit?: boolean;
   sfx?: Sfx; // efeito sonoro do evento (public/audio/sfx/<sfx>.mp3)
   hp: [number, number]; // vida [jogador, inimigo] após o evento, para animar a UI
+  crowd: number; // favor da multidão (0..100) após o evento
+  crowdDelta?: number; // variação causada por este evento
 }
 
 /** Próxima ação do inimigo, anunciada ao jogador. `prep`: nesta rodada ele só prepara `action`, que acerta na seguinte. */
@@ -60,6 +63,13 @@ export interface CombatState {
   taken: number;
   intent: Intent;
   step: number; // posição no padrão do inimigo
+  boss: boolean; // luta de chefe: sem veredito (Executar/Poupar)
+  crowd: number; // favor da multidão, 0..100
+  lastAction: string | null; // última ação do jogador
+  streak: number; // quantas rodadas seguidas o jogador repetiu lastAction
+  lastStandUsed: boolean; // "A multidão exige mais!" já aconteceu nesta luta
+  lastStandNote: boolean; // interno: a mensagem entra logo após o evento que causou a salvação
+  verdict?: 'executed' | 'spared';
 }
 
 export const NO_PERKS: Perks = { counter: 0, lifesteal: 0, thorns: 0, poisonOnHit: 0, hpRegen: 0 };
@@ -68,17 +78,72 @@ export function makeFighter(name: string, side: Side, stats: Stats, perks: Perks
   return { name, side, stats, perks, attrs, skills, pattern, hp: Math.min(hp, stats.maxHp), energy: stats.maxEnergy, statuses: [], defending: false };
 }
 
-export function createCombat(player: Fighter, enemy: Fighter, seed: number): CombatState {
-  const s: CombatState = { round: 1, player, enemy, log: [], outcome: null, seed, dealt: 0, taken: 0, intent: { action: 'attack' }, step: 0 };
+export function createCombat(player: Fighter, enemy: Fighter, seed: number, opts: { boss?: boolean } = {}): CombatState {
+  const s: CombatState = {
+    round: 1, player, enemy, log: [], outcome: null, seed, dealt: 0, taken: 0, intent: { action: 'attack' }, step: 0,
+    boss: !!opts.boss, crowd: CROWD.start, lastAction: null, streak: 0, lastStandUsed: false, lastStandNote: false,
+  };
   s.intent = planIntent(s);
   log(s, `${player.name} enfrenta ${enemy.name}!`, 'system');
   return s;
 }
 
-export const actionsFor = (f: Fighter): string[] => ['attack', ...f.skills, 'defend', 'flee'];
+/** Veredito liberado: luta comum, inimigo vivo com até CROWD.verdictHp de vida. */
+export const verdictAvailable = (s: CombatState) =>
+  !s.outcome && !s.boss && s.enemy.hp > 0 && s.enemy.hp <= s.enemy.stats.maxHp * CROWD.verdictHp;
+
+/**
+ * Ordem ESTÁVEL (atalhos de teclado): ataque, habilidades, Golpe de Glória (se a classe tem), defender, fugir
+ * e, com o estado de combate, Executar/Poupar quando o veredito está liberado.
+ */
+export const actionsFor = (f: Fighter, s?: CombatState): string[] => [
+  'attack', ...f.skills, ...(f.glory ? [f.glory] : []), 'defend', 'flee', ...(s && verdictAvailable(s) ? ['execute', 'spare'] : []),
+];
 
 export function canUse(s: CombatState, id: string): boolean {
-  return !s.outcome && actionsFor(s.player).includes(id) && s.player.energy >= SKILLS[id].cost;
+  if (s.outcome || !actionsFor(s.player, s).includes(id)) return false;
+  const sk = SKILLS[id];
+  return s.player.energy >= sk.cost && (!sk.glory || s.crowd >= 100);
+}
+
+/** Estado da torcida para a UI. */
+export function crowdView(s: CombatState) {
+  const v = s.crowd;
+  const label = v >= 100 ? 'Em delírio' : v >= 75 ? 'Em êxtase' : v >= 50 ? 'Animada' : v >= 25 ? 'Indiferente' : 'Hostil';
+  return {
+    value: v, label, ovation: v >= CROWD.ovationAt, gloryReady: !!s.player.glory && v >= 100,
+    lastStandReady: v >= CROWD.lastStandAt && !s.lastStandUsed,
+  };
+}
+
+/** Ajusta o favor (0..100), anota a variação no último evento do log e avisa só ao cruzar marcos. */
+function gain(s: CombatState, delta: number) {
+  const before = s.crowd;
+  s.crowd = Math.max(0, Math.min(100, before + delta));
+  const d = s.crowd - before, last = s.log[s.log.length - 1];
+  if (d && last) { last.crowd = s.crowd; last.crowdDelta = (last.crowdDelta ?? 0) + d; }
+  const after = s.crowd;
+  if (before < 100 && after >= 100) log(s, 'A multidão ruge: Golpe de Glória liberado!', 'system');
+  else if (before < 50 && after >= 50) log(s, 'A multidão está com você!', 'system');
+  else if (before >= 50 && after < 50) log(s, 'A multidão esfria.', 'system');
+  else if (before >= 25 && after < 25) log(s, 'A multidão vaia!', 'system');
+}
+
+/** Veredito: encerra a luta como vitória sem o inimigo agir. */
+function judge(state: CombatState, id: string): CombatState {
+  const s = structuredClone(state);
+  if (id === 'execute') {
+    s.enemy.hp = 0;
+    s.verdict = 'executed';
+    log(s, `${s.player.name} executa ${s.enemy.name} sob o rugido da arena!`, 'player', { target: 'enemy', sfx: 'crit' });
+    gain(s, CROWD.execute);
+  } else {
+    s.verdict = 'spared';
+    log(s, `${s.player.name} poupa ${s.enemy.name}. A multidão aplaude a clemência.`, 'player');
+  }
+  s.outcome = 'victory';
+  log(s, s.verdict === 'executed' ? `${s.enemy.name} foi derrotado!` : `${s.enemy.name} se rende.`, 'system', { sfx: 'victory' });
+  return s;
 }
 
 export const hasStatus = (f: Fighter, id: StatusId) => f.statuses.some((x) => x.id === id);
@@ -93,9 +158,15 @@ export const playerActsFirst = (s: CombatState) => s.player.stats.speed >= s.ene
  */
 export function resolveRound(state: CombatState, playerAction: string): CombatState {
   if (!canUse(state, playerAction)) return state;
+  if (SKILLS[playerAction].type === 'verdict') return judge(state, playerAction);
   const s = structuredClone(state);
   let lostTurn = false; // o inimigo perdeu a vez por atordoamento
   s.player.defending = s.enemy.defending = false;
+  // Estilo de jogo para a torcida (aplicado depois da ação do jogador, para a variação cair no evento certo)
+  const prevAction = s.lastAction;
+  s.streak = playerAction === prevAction ? s.streak + 1 : 1;
+  s.lastAction = playerAction;
+  const idleFoe = s.intent.prep || ['defend', 'self'].includes(SKILLS[s.intent.action].type); // inimigo não vai causar dano
 
   const prio = (id: string) => (id === 'defend' || id === 'flee' ? 1 : 0);
   const turns: [Fighter, string][] = [[s.player, playerAction], [s.enemy, s.intent.prep ? 'prep' : s.intent.action]];
@@ -119,6 +190,17 @@ export function resolveRound(state: CombatState, playerAction: string): CombatSt
       continue;
     }
     act(s, actor, actor === s.player ? s.enemy : s.player, SKILLS[id]);
+    if (actor === s.player) {
+      const sk = SKILLS[id];
+      if (sk.glory) gain(s, CROWD.gloryDrop - s.crowd);
+      else {
+        let d = 0;
+        if (s.streak >= CROWD.repeatAfter) d += CROWD.repeat;
+        else if (prevAction && prevAction !== id && sk.type !== 'defend' && sk.type !== 'flee') d += CROWD.variety;
+        if (id === 'defend' && idleFoe) d += CROWD.coward;
+        if (d) gain(s, d);
+      }
+    } else if (SKILLS[id].windup && s.player.defending && s.player.hp > 0) gain(s, CROWD.perfectBlock);
     checkEnd(s);
   }
   if (!s.outcome) {
@@ -202,6 +284,7 @@ function act(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef) {
     }
     addStatus(target, e.status, e.turns, e.power ?? 0);
     log(s, `${target.name}: ${statusName(e.status)} (${e.turns} rod.)`, 'status', { target: target.side, sfx: 'status' });
+    if (e.status === 'stun' && actor === s.player) gain(s, CROWD.stun + (s.intent.prep ? CROWD.interrupt : 0));
   }
 }
 
@@ -223,6 +306,7 @@ function flee(s: CombatState, actor: Fighter, foe: Fighter) {
     return;
   }
   log(s, `${actor.name} tenta fugir, mas ${foe.name} bloqueia a saída! (${roll})`, actor.side);
+  if (actor === s.player) gain(s, CROWD.failedFlee);
   hit(s, foe, actor, SKILLS.attack, 'aproveita e golpeia');
 }
 
@@ -234,10 +318,12 @@ function hit(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef, verb
   dmg *= armor(physical ? foe.stats.def : foe.stats.def / 2);
   const crit = (skill.critIfPoisoned && hasStatus(foe, 'poison')) || rand(s) < actor.stats.crit + (skill.critBonus ?? 0);
   if (crit) dmg *= actor.stats.critMult;
+  if (actor === s.player && s.crowd >= CROWD.ovationAt) dmg *= 1 + CROWD.ovationBonus; // ovação
   const amount = Math.max(1, Math.round(mitigate(foe, dmg)));
   damage(s, foe, amount);
   const verb = verbOverride ?? (skill.id === 'attack' ? 'ataca' : `usa ${skill.name} em`);
   log(s, `${actor.name} ${verb} ${foe.name}: ${amount}${crit ? ' CRÍTICO!' : ''}${foe.defending ? ' (bloqueado)' : ''}`, actor.side, { target: foe.side, amount, crit, sfx: crit ? 'crit' : physical ? 'hit' : 'magic' });
+  if (crit) gain(s, actor === s.player ? CROWD.crit : CROWD.critTaken);
 
   if (actor.perks.lifesteal) heal(s, actor, Math.round(amount * actor.perks.lifesteal), 'Roubo de vida');
   if (physical && actor.perks.poisonOnHit && foe.hp > 0) addStatus(foe, 'poison', 3, actor.perks.poisonOnHit);
@@ -250,6 +336,7 @@ function hit(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef, verb
     const c = Math.max(1, Math.round(mitigate(actor, foe.stats.atk * foe.perks.counter * armor(actor.stats.def))));
     damage(s, actor, c);
     log(s, `${foe.name} contra-ataca: ${c}`, foe.side, { target: actor.side, amount: c, sfx: 'hit' });
+    if (foe === s.player) gain(s, CROWD.counter);
   }
 }
 
@@ -263,6 +350,10 @@ function mitigate(f: Fighter, dmg: number): number {
 
 function damage(s: CombatState, target: Fighter, amount: number) {
   target.hp = Math.max(0, target.hp - amount);
+  if (target === s.player && target.hp <= 0 && !s.lastStandUsed && s.crowd >= CROWD.lastStandAt) {
+    target.hp = 1; // "A multidão exige mais!": a mensagem e o custo entram logo após o evento (ver log)
+    s.lastStandUsed = s.lastStandNote = true;
+  }
   if (target.side === 'enemy') s.dealt += amount;
   else s.taken += amount;
 }
@@ -321,5 +412,10 @@ function checkEnd(s: CombatState) {
 const statusName = (id: StatusId) => STATUS_INFO[id].name;
 
 function log(s: CombatState, text: string, kind: LogEntry['kind'], extra: Partial<LogEntry> = {}) {
-  s.log.push({ round: s.round, text, kind, ...extra, hp: [s.player.hp, s.enemy.hp] });
+  s.log.push({ round: s.round, text, kind, ...extra, hp: [s.player.hp, s.enemy.hp], crowd: s.crowd });
+  if (s.lastStandNote) {
+    s.lastStandNote = false;
+    log(s, 'A multidão exige mais! Você se levanta com 1 de vida.', 'system', { sfx: 'status' });
+    gain(s, -CROWD.lastStandCost);
+  }
 }
