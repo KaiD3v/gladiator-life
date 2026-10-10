@@ -10,6 +10,10 @@ import type { RunState } from './types';
 export const arenaById = (id: string): ArenaDef => ARENAS.find((a) => a.id === id)!;
 /** Índice da fase atual (0 = primeira arena). */
 export const stageOf = (run: Pick<RunState, 'arenaId'>) => ARENAS.findIndex((a) => a.id === run.arenaId);
+/** Próxima arena da campanha (undefined na última). */
+export const nextArena = (run: Pick<RunState, 'arenaId'>): ArenaDef | undefined => ARENAS[stageOf(run) + 1];
+/** A luta atual (ou a próxima, no acampamento) é contra o chefe da arena. */
+export const isBossFight = (run: Pick<RunState, 'encounter' | 'enemies'>) => run.encounter === run.enemies.length - 1;
 
 export function playerBuild(run: Pick<RunState, 'classId' | 'items' | 'level' | 'attrs'>): { stats: Stats; perks: Perks } {
   const cls = CLASSES[run.classId];

@@ -1,5 +1,6 @@
 import { CLASSES, SCENES, SPEAKERS } from '../../data';
 import type { GameState, ScreenOf } from '../../state';
+import type { Track } from '../audio';
 import { art, assetUrl, esc } from '../components';
 
 export function sceneView(g: GameState, s: ScreenOf<'scene'>): string {
@@ -43,3 +44,6 @@ export function preloadScenes(queue: string[]) {
     }
   }
 }
+
+/** Faixa de música da cena atual da fila. */
+export const sceneTrack = (queue: string[]): Track => SCENES[queue[0]].music ?? 'menu';

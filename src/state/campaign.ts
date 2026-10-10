@@ -1,7 +1,7 @@
 // Fluxo da campanha: criar o gladiador, entrar em luta, resolver o resultado, transferir de arena e encerrar.
 import { resolveRound } from '../engine/combat';
 import { ARENAS, CLASSES, ENEMIES, GOLD_PER_LEVEL, START_GOLD, WIN_BONUS_XP } from '../data';
-import { arenaById, enterArena, freeDays, maxHp, rollShop, stageOf, startFight } from './run';
+import { arenaById, enterArena, freeDays, isBossFight, maxHp, nextArena, rollShop, stageOf, startFight } from './run';
 import { levelOf, type SaveData } from './save';
 import { scene } from './scenes';
 import type { ActionOf, GameState, RunState, Screen, Summary } from './types';
@@ -54,7 +54,7 @@ export function fight(g: GameState): GameState {
   const run = structuredClone(g.run);
   const combat: Screen = { name: 'combat', combat: startFight(run) };
   const boss = run.enemies[run.encounter];
-  if (run.encounter < run.enemies.length - 1 || run.seen.includes(boss)) return { ...g, run, screen: combat };
+  if (!isBossFight(run) || run.seen.includes(boss)) return { ...g, run, screen: combat };
   run.seen.push(boss);
   return { ...g, run, screen: scene([`boss-intro-${boss}`], combat) };
 }
@@ -65,7 +65,7 @@ export function afterCombat(g: GameState): GameState {
   const c = g.screen.combat;
   const run = structuredClone(g.run);
   const enemyId = run.enemies[run.encounter];
-  const isBoss = run.encounter === run.enemies.length - 1;
+  const isBoss = isBossFight(run);
   const tier = arenaById(run.arenaId).tier;
   run.hp = c.player.hp;
   run.rounds += c.round;
@@ -84,7 +84,7 @@ export function afterCombat(g: GameState): GameState {
       const arena = arenaById(run.arenaId);
       run.titles.push(arena.id);
       run.xp += WIN_BONUS_XP * tier;
-      const next = ARENAS[stageOf(run) + 1];
+      const next = nextArena(run);
       if (!next) {
         const done = finish(g, run, 'victory');
         return { ...done, screen: scene([`boss-defeat-${enemyId}`, 'epilogue'], done.screen) };

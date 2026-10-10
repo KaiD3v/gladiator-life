@@ -1,6 +1,6 @@
 // Acampamento (vida fora das batalhas).
 import { ARENAS, ATTR_INFO, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, type NpcId } from '../../data';
-import { arenaById, freeDays, learnBlock, maxHp, playerBuild, restPrice, stageOf, trainPrice, type GameState, type RunState } from '../../state';
+import { arenaById, freeDays, isBossFight, learnBlock, maxHp, playerBuild, restPrice, stageOf, trainPrice, type GameState, type RunState } from '../../state';
 import { ATTRS, art, assetUrl, attrTag, bar, esc, goldPill, statLine } from '../components';
 
 const CAMP_NPCS: NpcId[] = ['merchant', 'str', 'dex', 'wis', 'inn'];
@@ -55,7 +55,7 @@ export function campView(g: GameState, npc: NpcId | null, line: string, news: st
   const arena = arenaById(run.arenaId);
   const { stats } = playerBuild(run);
   const next = ENEMIES[run.enemies[run.encounter]];
-  const isBoss = run.encounter === run.enemies.length - 1;
+  const isBoss = isBossFight(run);
   const free = freeDays(run);
 
   const npcButtons = CAMP_NPCS.map((id) => `<button class="npc${npc === id ? ' selected' : ''}" data-a="talk" data-v="${id}" aria-pressed="${npc === id}">

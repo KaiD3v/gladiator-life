@@ -1,6 +1,6 @@
 import { ARENAS, ITEMS, SKILLS, STATUS_INFO } from '../../data';
 import { actionsFor, canUse, fleeChance, hasStatus, playerActsFirst, type CombatState, type Fighter, type LogEntry } from '../../engine/combat';
-import { arenaById, stageOf, type GameState } from '../../state';
+import { arenaById, isBossFight, nextArena, stageOf, type GameState } from '../../state';
 import { art, assetUrl, attrTag, bar, esc, statusArt } from '../components';
 
 function fighterCard(f: Fighter, hp: number, animating: boolean): string {
@@ -41,7 +41,7 @@ function continueLabel(c: CombatState, isBoss: boolean, nextArena?: string): str
 export function combatView(g: GameState, c: CombatState, shown: number | null): string {
   const run = g.run!;
   const arena = arenaById(run.arenaId);
-  const isBoss = run.encounter === run.enemies.length - 1;
+  const isBoss = isBossFight(run);
   const animating = shown !== null;
   const visible = c.log.slice(0, shown ?? c.log.length);
   const last = visible[visible.length - 1];
@@ -62,7 +62,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null): 
     : `${esc(c.enemy.name)} age primeiro (Vel ${c.enemy.stats.speed} × ${c.player.stats.speed}).`;
 
   const controls = c.outcome && !animating
-    ? `<button class="primary" data-a="continue" style="width:100%">${continueLabel(c, isBoss, ARENAS[stageOf(run) + 1]?.name)}</button>`
+    ? `<button class="primary" data-a="continue" style="width:100%">${continueLabel(c, isBoss, nextArena(run)?.name)}</button>`
     : `<div class="actions">${actionsFor(c.player).map((id, i) => {
         const s = SKILLS[id];
         const extra = id === 'flee' ? ` · chance ${Math.round(fleeChance(c.player, c.enemy) * 100)}%` : '';

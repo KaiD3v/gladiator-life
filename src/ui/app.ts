@@ -1,15 +1,15 @@
 // Interface: estado da página, despacho de ações, render e eventos. Nenhuma regra de jogo aqui.
 import { isMuted, playSfx, setTrack, toggleMute, type Track } from './audio';
-import { SCENES, type Attr, type ClassId, type NpcId } from '../data';
+import { type Attr, type ClassId, type NpcId } from '../data';
 import { actionsFor } from '../engine/combat';
-import { SAVE_KEY, initialState, parseSave, reduce, type GameAction, type GameState, type SaveData } from '../state';
+import { SAVE_KEY, initialState, isBossFight, parseSave, reduce, type GameAction, type GameState, type SaveData } from '../state';
 import { icon } from './components';
 import { titleView } from './views/title';
 import { createView, type CreateForm } from './views/create';
 import { combatView } from './views/combat';
 import { campView } from './views/camp';
 import { summaryView } from './views/summary';
-import { preloadScenes, sceneView } from './views/scene';
+import { preloadScenes, sceneTrack, sceneView } from './views/scene';
 
 const app = document.getElementById('app')!;
 const form: CreateForm = { name: '', classId: 'warrior' };
@@ -76,9 +76,9 @@ function render() {
 
 /** Combate comum, chefe ou ambiente (menus, acampamento e resumo). */
 function trackFor(state: GameState): Track {
-  if (state.screen.name === 'scene') return SCENES[state.screen.queue[0]].music ?? 'menu';
+  if (state.screen.name === 'scene') return sceneTrack(state.screen.queue);
   if (state.screen.name !== 'combat' || !state.run) return 'menu';
-  return state.run.encounter === state.run.enemies.length - 1 ? 'boss' : 'battle';
+  return isBossFight(state.run) ? 'boss' : 'battle';
 }
 
 // Botão de som (música e efeitos) fora do #app: sobrevive aos re-renders.
