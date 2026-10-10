@@ -19,7 +19,7 @@ SIZES = {
                        'manaCrystal', 'vampireChalice', 'thornCloak', 'venomFlask', 'ritualBandage', 'warHorn', 'rest']},
     **{k: 128 for k in ['victory', 'defeat', 'chest']},
     **{f'st-{k}': 32 for k in ['poison', 'burn', 'stun', 'guard', 'weaken', 'regen', 'defend', 'flee']},
-    **{f'npc-{k}': 160 for k in ['merchant', 'str', 'dex', 'wis', 'inn']},
+    **{f'npc-{k}': 160 for k in ['merchant', 'str', 'dex', 'wis', 'inn', 'general', 'mother', 'father']},
     **{k: 32 for k in ['attr-str', 'attr-dex', 'attr-wis', 'gold', 'day']},
 }
 # Sprites gerados olhando para o lado errado (jogador deve olhar à direita, inimigos à esquerda).
@@ -67,7 +67,7 @@ def background(src: Path) -> Image.Image:
 def main(src_dir: Path):
     OUT.mkdir(parents=True, exist_ok=True)
     missing = []
-    for name in [*SIZES, 'bg-pit', 'bg-colosseum', 'bg-crimson', 'bg-title', 'bg-town']:
+    for name in [*SIZES, 'bg-pit', 'bg-colosseum', 'bg-crimson', 'bg-title', 'bg-town', 'bg-village', 'bg-road']:
         src = src_dir / f'{name}.png'
         if not src.exists():
             missing.append(name)

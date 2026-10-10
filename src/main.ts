@@ -10,6 +10,7 @@ import {
   SAVE_KEY, arenaById, freeDays, stageOf, xpForLevel, initialState, learnBlock, levelOf, maxHp, parseSave, playerBuild, reduce, restPrice, trainPrice,
   type GameAction, type GameState, type RunState, type SaveData, type Summary,
 } from './run';
+import { SCENES, SPEAKERS } from './story';
 
 const app = document.getElementById('app')!;
 const form = { name: '', classId: 'warrior' as ClassId };
@@ -139,7 +140,8 @@ function createView(): string {
       <p class="statline">${a.fights} lutas + chefe ${ENEMIES[a.boss].name} · prazo ${a.days} dias</p>
     </div>`).join('<span class="stage-arrow" aria-hidden="true">➜</span>');
   return `<form id="create" class="stack" autocomplete="off">
-    <h2>Novo gladiador</h2>
+    <h2>Registro do ludus</h2>
+    <p class="dim">O escrivão do general molha a pena na tinta, sem levantar os olhos: “Nome? E como você luta?”</p>
     <label>Nome do gladiador<br><input id="name" type="text" maxlength="16" required placeholder="Ex.: Spartacus" value="${esc(form.name)}"></label>
     <h3>Classe</h3><div class="grid">${classes}</div>
     <h3>Campanha</h3>
@@ -376,6 +378,38 @@ function summaryView(s: Summary): string {
   </section>`;
 }
 
+type SceneScreen = Extract<GameState['screen'], { name: 'scene' }>;
+
+function sceneView(s: SceneScreen): string {
+  const sc = SCENES[s.queue[0]];
+  const beat = sc.beats[s.beat];
+  const bg = sc.beats.slice(0, s.beat + 1).reduce((cur, b) => b.bg ?? cur, sc.bg);
+  // No epílogo a campanha já foi encerrada: o herói vem do resumo que espera depois da cena.
+  const run = g.run ?? (s.next.name === 'summary' ? s.next.summary.run : null);
+  const heroName = run ? esc(run.name) : 'Você';
+  const fill = (t: string) => esc(t).replace(/\{nome\}/g, heroName).replace(/\{classe\}/g, run ? CLASSES[run.classId].name : '');
+  const sp = SPEAKERS[beat.who];
+  const narrator = beat.who === 'narrator';
+  const name = beat.who === 'hero' ? heroName : sp.name;
+  const portrait = beat.who === 'hero' ? run?.classId : sp.art;
+  const total = s.queue.reduce((n, id) => n + SCENES[id].beats.length, 0) - s.beat - 1;
+  return `<section class="stack scene-wrap">
+    <div class="scene" style="background-image:url(${assetUrl(bg)})">
+      <span class="scene-title">${sc.title}</span>
+      ${portrait ? art(portrait, `scene-portrait ${sp.side}`, name) : ''}
+    </div>
+    <div class="sketch scene-box${narrator ? ' narration' : ''}" aria-live="polite">
+      ${narrator ? '' : `<b class="speaker ${sp.side}">${name}</b>`}
+      <p class="line">${narrator ? fill(beat.text) : `“${fill(beat.text)}”`}</p>
+      <div class="row scene-controls">
+        <span class="dim">${total > 0 ? `${total} fala(s) restante(s)` : 'Fim da cena'}</span>
+        <button data-a="skip">Pular cenas</button>
+        <button class="primary" data-a="next" id="next">Continuar ▸</button>
+      </div>
+    </div>
+  </section>`;
+}
+
 function render() {
   const s = g.screen;
   app.innerHTML =
@@ -383,12 +417,30 @@ function render() {
     : s.name === 'create' ? createView()
     : s.name === 'combat' ? combatView(s.combat)
     : s.name === 'camp' ? campView(s.npc, s.line, s.news)
+    : s.name === 'scene' ? sceneView(s)
     : summaryView(s.summary);
   setTrack(trackFor(g));
+  if (s.name === 'scene') {
+    preloadScenes(s.queue);
+    document.getElementById('next')?.focus({ preventScroll: true });
+  }
+}
+
+/** Baixa fundos e retratos das cenas da fila antes de aparecerem (evita retrato surgindo atrasado). */
+const preloaded = new Set<string>();
+function preloadScenes(queue: string[]) {
+  for (const sc of queue.map((id) => SCENES[id])) {
+    for (const name of [sc.bg, ...sc.beats.map((b) => b.bg ?? SPEAKERS[b.who].art)]) {
+      if (!name || preloaded.has(name)) continue;
+      preloaded.add(name);
+      new Image().src = assetUrl(name);
+    }
+  }
 }
 
 /** Combate comum, chefe ou ambiente (menus, acampamento e resumo). */
 function trackFor(state: GameState): Track {
+  if (state.screen.name === 'scene') return SCENES[state.screen.queue[0]].music ?? 'menu';
   if (state.screen.name !== 'combat' || !state.run) return 'menu';
   return state.run.encounter === state.run.enemies.length - 1 ? 'boss' : 'battle';
 }
@@ -420,6 +472,8 @@ app.addEventListener('click', (e) => {
     case 'class': form.classId = v as ClassId; return render();
     case 'act': return dispatch({ type: 'act', action: v });
     case 'continue': return dispatch({ type: 'continue' });
+    case 'next': return dispatch({ type: 'next' });
+    case 'skip': return dispatch({ type: 'skip' });
     case 'talk': return dispatch({ type: 'talk', npc: (v || null) as NpcId | null });
     case 'buy': return dispatch({ type: 'buy', itemId: v });
     case 'train': return dispatch({ type: 'train', attr: v as Attr });
@@ -450,7 +504,17 @@ app.addEventListener('submit', (e) => {
 });
 
 document.addEventListener('keydown', (e) => {
-  if (g.screen.name !== 'combat' || e.target instanceof HTMLInputElement) return;
+  if (e.target instanceof HTMLInputElement) return;
+  if (g.screen.name === 'scene') {
+    // Enter/Espaço num botão já viram clique; aqui só atalhos fora de botões.
+    if (e.key === 'Escape') dispatch({ type: 'skip' });
+    else if (e.key === 'ArrowRight' || ((e.key === 'Enter' || e.key === ' ') && !(e.target instanceof HTMLButtonElement))) {
+      e.preventDefault();
+      dispatch({ type: 'next' });
+    }
+    return;
+  }
+  if (g.screen.name !== 'combat') return;
   const id = actionsFor(g.screen.combat.player)[Number(e.key) - 1];
   if (id) dispatch({ type: 'act', action: id });
 });

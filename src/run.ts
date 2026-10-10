@@ -5,6 +5,7 @@ import {
   SHOP_SIZE, SKILLS, START_GOLD, TRAIN_BASE, TRAIN_STEP, WIN_BONUS_XP, XP_PER_LEVEL,
   type ArenaDef, type Attr, type Attrs, type ClassId, type NpcId, type Perks, type Stats,
 } from './data';
+import { SCENES } from './story';
 
 // ---------- Save ----------
 
@@ -64,6 +65,7 @@ export interface RunState {
   goldEarned: number;
   kills: string[];
   fled: string[];
+  seen: string[]; // chefes cuja cena de chegada já tocou (fugir e voltar não repete)
   rounds: number;
   dealt: number;
   taken: number;
@@ -82,7 +84,9 @@ export type Screen =
   | { name: 'create' }
   | { name: 'combat'; combat: CombatState }
   | { name: 'camp'; npc: NpcId | null; line: string; news: string }
-  | { name: 'summary'; summary: Summary };
+  | { name: 'summary'; summary: Summary }
+  /** Fila de cenas de história; ao terminar (ou pular) segue para `next`. */
+  | { name: 'scene'; queue: string[]; beat: number; next: Screen };
 
 export interface GameState { screen: Screen; save: SaveData; run: RunState | null; notice?: string }
 
@@ -97,6 +101,8 @@ export type GameAction =
   | { type: 'learn'; skill: string }
   | { type: 'rest' }
   | { type: 'fight' }
+  | { type: 'next' } // próxima fala da cena
+  | { type: 'skip' } // pula todas as cenas da fila
   | { type: 'toTitle' };
 
 export const initialState = (save: SaveData, notice?: string): GameState => ({ screen: { name: 'title' }, save, run: null, notice });
@@ -200,12 +206,24 @@ function campAction(g: GameState, npc: NpcId, fn: (run: RunState) => keyof Omit<
   return { ...g, run, screen: { ...scr, npc, line: pick(run, NPCS[npc][outcome]) } };
 }
 
+const scene = (queue: string[], next: Screen): Screen => ({ name: 'scene', queue, beat: 0, next });
+
 /** Única porta de entrada para mudar o estado. Ação inválida para a tela atual => estado inalterado. */
 export function reduce(g: GameState, a: GameAction): GameState {
   const scr = g.screen;
   switch (a.type) {
     case 'newGame':
-      return scr.name === 'title' ? { ...g, screen: { name: 'create' }, notice: undefined } : g;
+      return scr.name === 'title' ? { ...g, screen: scene(['prologue-village'], { name: 'create' }), notice: undefined } : g;
+
+    case 'next': {
+      if (scr.name !== 'scene') return g;
+      if (scr.beat + 1 < SCENES[scr.queue[0]].beats.length) return { ...g, screen: { ...scr, beat: scr.beat + 1 } };
+      const queue = scr.queue.slice(1);
+      return { ...g, screen: queue.length ? { ...scr, queue, beat: 0 } : scr.next };
+    }
+
+    case 'skip':
+      return scr.name === 'scene' ? { ...g, screen: scr.next } : g;
 
     case 'toTitle':
       return scr.name === 'summary' || scr.name === 'create' ? { ...g, screen: { name: 'title' }, run: null } : g;
@@ -219,12 +237,12 @@ export function reduce(g: GameState, a: GameAction): GameState {
       const run: RunState = {
         name, classId: a.classId, arenaId: arena.id, titles: [], daysSpent: 0, level, attrs: { ...cls.attrs }, trained: { str: 0, dex: 0, wis: 0 },
         skills: [...cls.skills], items: [], gold: START_GOLD + GOLD_PER_LEVEL * (level - 1), day: 1, hp: 0, shop: [],
-        encounter: 0, enemies: [], seed: a.seed, xp: 0, goldEarned: 0, kills: [], fled: [], rounds: 0, dealt: 0, taken: 0,
+        encounter: 0, enemies: [], seed: a.seed, xp: 0, goldEarned: 0, kills: [], fled: [], seen: [], rounds: 0, dealt: 0, taken: 0,
       };
       run.hp = maxHp(run);
       enterArena(run);
       const news = `Bem-vindo ao ludus de ${arena.name}, fase 1 de ${ARENAS.length}. ${ENEMIES[arena.boss].name} precisa cair até o dia ${arena.days}.`;
-      return { ...g, run, screen: { name: 'camp', npc: null, line: '', news } };
+      return { ...g, run, screen: scene(['prologue-ludus'], { name: 'camp', npc: null, line: '', news }) };
     }
 
     case 'act': {
@@ -236,7 +254,11 @@ export function reduce(g: GameState, a: GameAction): GameState {
     case 'fight': {
       if (scr.name !== 'camp' || !g.run || freeDays(g.run) < 0) return g;
       const run = structuredClone(g.run);
-      return { ...g, run, screen: { name: 'combat', combat: startFight(run) } };
+      const combat: Screen = { name: 'combat', combat: startFight(run) };
+      const boss = run.enemies[run.encounter];
+      if (run.encounter < run.enemies.length - 1 || run.seen.includes(boss)) return { ...g, run, screen: combat };
+      run.seen.push(boss);
+      return { ...g, run, screen: scene([`boss-intro-${boss}`], combat) };
     }
 
     case 'continue': {
@@ -264,14 +286,18 @@ export function reduce(g: GameState, a: GameAction): GameState {
           run.titles.push(arena.id);
           run.xp += WIN_BONUS_XP * tier;
           const next = ARENAS[stageOf(run) + 1];
-          if (!next) return finish(g, run, 'victory');
+          if (!next) {
+            const done = finish(g, run, 'victory');
+            return { ...done, screen: scene([`boss-defeat-${enemyId}`, 'epilogue'], done.screen) };
+          }
           // Campeão: transferido para a próxima arena com a build intacta, curado, numa temporada nova.
           run.daysSpent += run.day - 1;
           run.arenaId = next.id;
           enterArena(run);
           run.hp = maxHp(run);
           const news = `Campeão de ${arena.name}! +${gold} de ouro. Você foi transferido para ${next.name} (fase ${stageOf(run) + 1} de ${ARENAS.length}): ${ENEMIES[next.boss].name} precisa cair até o dia ${next.days}.`;
-          return { ...g, run, screen: { name: 'camp', npc: null, line: '', news } };
+          const camp: Screen = { name: 'camp', npc: null, line: '', news };
+          return { ...g, run, screen: scene([`boss-defeat-${enemyId}`, `transfer-${next.id}`], camp) };
         }
         run.encounter++;
         news = `Vitória sobre ${ENEMIES[enemyId].name}! +${gold} de ouro.`;

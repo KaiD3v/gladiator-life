@@ -1,0 +1,11 @@
+STYLE (apply to every image): medieval/ancient-Roman gladiator fantasy, 16-bit SNES-era pixel art, crisp hard-edged pixels, no anti-aliasing, no blur, limited warm palette (bronze, rust red, bone, dark brown) with dark outlines, dramatic lighting.
+Each subject is a single sprite, centered, full subject visible with margin, on a plain solid pure magenta #FF00FF background (no shadow on the background, no ground, no text, no frame).
+These are story character portraits for dialogue scenes: half-body (waist up), facing slightly left toward the viewer, expressive face.
+Files:
+- npc-general.png: General Caius Varro, the main villain: tall imperial general in polished black-and-gold armor with a crimson cloak and a dragon emblem on the chest, short grey hair, cold calculating smile, one gloved hand resting on a sword pommel.
+- npc-mother.png: Helena, a kind shepherd mother in a simple undyed wool dress and a brown shawl, long dark braided hair, worried but brave expression.
+- npc-father.png: Marcus, a strong shepherd father with a short beard, simple tunic and leather vest, holding a wooden shepherd staff, determined expression.
+Then wide 16:9 landscape scene backgrounds (no magenta, full scene, no main characters in the foreground, calm darker lower-center area for dialogue):
+- bg-village.png: a small pastoral shepherd village in a valley at night being raided: thatched houses burning, smoke, silhouettes of imperial soldiers with dragon banners and torches, sheep pens broken.
+- bg-road.png: an imperial prison cage-wagon pulled by horses on a dusty road at dusk, escorted by soldiers carrying black dragon banners, distant arena silhouette on the horizon.
+Use your image generation tool once per file. After each generation copy the generated PNG into the current directory with the EXACT filename given. Do not post-process, resize or edit the images. Do not create any other files. At the end list the files you saved.

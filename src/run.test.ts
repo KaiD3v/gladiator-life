@@ -5,16 +5,19 @@ import {
   type GameState, type RunState,
 } from './run';
 
+/** Pula a fila de cenas de história, se houver. */
+const skip = (g: GameState) => reduce(g, { type: 'skip' });
+
 const start = (classId: 'warrior' | 'mage' | 'assassin' = 'warrior', g = initialState(defaultSave())) =>
-  reduce(reduce(g, { type: 'newGame' }), { type: 'startRun', name: '  Spartacus ', classId, seed: 42 });
+  skip(reduce(skip(reduce(g, { type: 'newGame' })), { type: 'startRun', name: '  Spartacus ', classId, seed: 42 }));
 
 const withRun = (g: GameState, patch: Partial<RunState>): GameState => ({ ...g, run: { ...g.run!, ...patch } });
 
 /** Do acampamento: entra na arena, força o resultado e volta (ou encerra a run). */
 function fightAs(g: GameState, outcome: 'victory' | 'defeat' | 'draw' | 'fled'): GameState {
-  g = reduce(g, { type: 'fight' });
+  g = skip(reduce(g, { type: 'fight' }));
   if (g.screen.name !== 'combat') throw new Error('não entrou em combate');
-  return reduce({ ...g, screen: { name: 'combat', combat: { ...g.screen.combat, outcome } } }, { type: 'continue' });
+  return skip(reduce({ ...g, screen: { name: 'combat', combat: { ...g.screen.combat, outcome } } }, { type: 'continue' }));
 }
 
 describe('save', () => {
@@ -57,7 +60,7 @@ describe('transições', () => {
   });
 
   it('não inicia run com nome vazio', () => {
-    const create = reduce(initialState(defaultSave()), { type: 'newGame' });
+    const create = skip(reduce(initialState(defaultSave()), { type: 'newGame' }));
     expect(reduce(create, { type: 'startRun', name: '   ', classId: 'mage', seed: 1 })).toBe(create);
   });
 

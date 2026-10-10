@@ -29,6 +29,7 @@ O conteúdo de `dist/` é estático e pode ser publicado em qualquer hospedagem 
 | `src/data.ts` | Dados: classes, habilidades, inimigos, itens, arenas, status. Sem lógica. |
 | `src/combat.ts` | Regras de combate puras (`resolveRound`), RNG determinístico no estado. |
 | `src/run.ts` | Estado do jogo, telas e transições (`reduce`), campanha, acampamento, XP e validação do save. |
+| `src/story.ts` | História: personagens que falam e as cenas (falas, fundos). Só dados. |
 | `src/main.ts` | Interface: renderiza o estado e despacha ações. Nenhuma regra de jogo. |
 | `src/*.test.ts` | Testes de combate e progressão. |
 | `public/assets/` | Pixel art (WebP) de personagens, inimigos, arenas, itens e status. |
@@ -47,6 +48,12 @@ python caminho/do/projeto/scripts/process_assets.py .   # requer Pillow
 ```
 
 Todas as imagens são locais. Se alguma não carregar, o jogo usa o ícone SVG equivalente (ou omite a imagem) e continua jogável.
+
+## História
+
+Ao começar uma campanha, a vila do personagem (Vale de Corvara) é atacada pelo General Caius Varro, os pais são mortos
+e ele é levado ao ludus, onde Varro promete a liberdade a quem conquistar as três arenas. Há cenas na chegada e na derrota
+de cada chefe, nas transferências entre arenas e um epílogo. Todas podem ser puladas (botão ou Esc); Enter/Espaço avançam.
 
 ## Regras principais
 
