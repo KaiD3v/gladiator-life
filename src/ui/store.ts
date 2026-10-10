@@ -1,5 +1,5 @@
 // Estado da página: jogo (`g`), formulário de criação, persistência, animação do log e render.
-import { playSfx, setAmbience, setTrack, type Ambience, type Track } from './audio';
+import { playSfx, setAmbience, setAmbienceLevel, setTrack, type Ambience, type Track } from './audio';
 import { SAVE_KEY, initialState, isBossFight, parseSave, reduce, type GameAction, type GameState, type SaveData } from '../state';
 import { titleView } from './views/title';
 import { createView, type CreateForm } from './views/create';
@@ -10,7 +10,9 @@ import { preloadScenes, sceneAmbience, sceneTrack, sceneView } from './views/sce
 
 export const app = document.getElementById('app')!;
 export const form: CreateForm = { name: '', classId: 'warrior' };
-const STEP_MS = matchMedia('(prefers-reduced-motion: reduce)').matches ? 120 : 520;
+const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const STEP_MS = REDUCED ? 120 : 520;
+const CRIT_EXTRA_MS = REDUCED ? 0 : 250; // pausa no golpe crítico (hit-stop)
 
 let g: GameState = boot();
 /** Quantas entradas do log já foram reveladas na animação da rodada; null = nada animando (entrada liberada). */
@@ -49,10 +51,11 @@ function animateFrom(start: number) {
       render();
       return;
     }
-    const sfx = g.screen.combat.log[shown!++].sfx;
-    if (sfx) playSfx(sfx);
+    const e = g.screen.combat.log[shown!++];
+    if (e.sfx) playSfx(e.sfx);
+    if (e.crit && e.kind === 'player') playSfx('crowd-gasp');
     render();
-    setTimeout(step, STEP_MS);
+    setTimeout(step, STEP_MS + (e.crit ? CRIT_EXTRA_MS : 0));
   };
   step();
 }
@@ -68,15 +71,17 @@ export function render() {
     : summaryView(s.summary);
   setTrack(trackFor(g));
   setAmbience(ambienceFor(g));
+  const log = s.name === 'combat' ? s.combat.log : null;
+  setAmbienceLevel(log ? 0.35 + 0.65 * (log[Math.max(0, (shown ?? log.length) - 1)].crowd / 100) : 1);
   if (s.name === 'scene') {
     preloadScenes(s.queue);
     document.getElementById('next')?.focus({ preventScroll: true });
   }
 }
 
-/** Som ambiente só toca em cena; fora dela, silêncio. */
+/** Ambiente: cenas têm o seu; no combate, a torcida (volume segue o favor); fora disso, silêncio. */
 export const ambienceFor = (state: GameState): Ambience | null =>
-  state.screen.name === 'scene' ? sceneAmbience(state.screen.queue, state.screen.beat) : null;
+  state.screen.name === 'scene' ? sceneAmbience(state.screen.queue, state.screen.beat) : state.screen.name === 'combat' ? 'arena-crowd' : null;
 
 /** Combate comum, chefe ou ambiente (menus, acampamento e resumo). */
 export function trackFor(state: GameState): Track {
