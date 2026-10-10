@@ -8,7 +8,15 @@ export const REST_FREE = 0.2; // fração recuperada dormindo de graça no está
 export const TRAIN_BASE = 25; // preço do 1º treino de um atributo
 export const TRAIN_STEP = 15; // aumento por treino já feito naquele atributo
 export const MAX_SKILLS = 4;
-export const SHOP_SIZE = 4;
+export const SHOP_SIZE = 4; // equipamentos no estoque do mercador
+export const SHOP_CONSUMABLES = 2; // consumíveis no estoque, além dos equipamentos
+export const BAG_SIZE = 4; // consumíveis carregados (repetidos contam separadamente)
+// Espólio: cada inimigo tenta LOOT.rolls vezes, com LOOT.chance, tirar um item do seu `loot`.
+export const LOOT = {
+  rolls: 2,
+  chance: 0.5,
+  healAt: 0.4, // fração de vida em que o inimigo usa item de defesa (cura, guarda, regeneração)
+};
 export const XP_PER_LEVEL = 100; // passar do nível N para N+1 custa XP_PER_LEVEL * N
 export const HP_PER_LEVEL = 4;
 export const WIN_BONUS_XP = 50; // por título de campeão, multiplicado pelo nível de perigo da arena

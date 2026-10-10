@@ -2,7 +2,7 @@
 import { rand } from '../core/rng';
 import { createCombat, type CombatState } from '../engine/combat';
 import { buildPlayer, createEnemyFighter, createPlayerFighter } from '../engine/characters';
-import { rollShop } from '../engine/items';
+import { rollLoot, rollShop } from '../engine/items';
 import { ARENAS, MAX_SKILLS, REST_PRICE, SKILLS, TRAIN_BASE, TRAIN_STEP, type ArenaDef, type Attr } from '../data';
 import type { RunState } from './types';
 
@@ -36,9 +36,20 @@ export function learnBlock(run: RunState, id: string): LearnBlock {
   return null;
 }
 
+export type UseBlock = 'missing' | 'combat' | 'full' | null;
+/** Usar consumível no acampamento: só os de cura, e só com a vida abaixo do máximo. */
+export function useBlock(run: RunState, itemId: string): UseBlock {
+  if (!run.bag.includes(itemId)) return 'missing';
+  if (!SKILLS[itemId].heal) return 'combat';
+  if (run.hp >= maxHp(run)) return 'full';
+  return null;
+}
+
 export function startFight(run: RunState): CombatState {
-  const enemy = createEnemyFighter(run.enemies[run.encounter], arenaById(run.arenaId).tier);
-  return createCombat(createPlayerFighter(run), enemy, Math.floor(rand(run) * 2 ** 32), { boss: isBossFight(run), hazard: arenaById(run.arenaId).hazard, known: run.bestiary[run.enemies[run.encounter]] });
+  const enemyId = run.enemies[run.encounter];
+  const seed = Math.floor(rand(run) * 2 ** 32);
+  const enemy = { ...createEnemyFighter(enemyId, arenaById(run.arenaId).tier), bag: rollLoot(enemyId, seed) };
+  return createCombat(createPlayerFighter(run), enemy, seed, { boss: isBossFight(run), hazard: arenaById(run.arenaId).hazard, known: run.bestiary[enemyId] });
 }
 
 /** Prepara a temporada da arena atual: adversários sorteados + chefe, dia 1, loja nova. */

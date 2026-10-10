@@ -1,3 +1,4 @@
+import { ITEMS } from './items';
 import type { SkillDef } from './types';
 
 export const SKILLS: Record<string, SkillDef> = {
@@ -100,4 +101,6 @@ export const SKILLS: Record<string, SkillDef> = {
     id: 'roar', name: 'Rugido', desc: 'Enfraquece o alvo e regenera vida.', cost: 4, type: 'self',
     effects: [{ status: 'weaken', target: 'foe', turns: 2 }, { status: 'regen', target: 'self', turns: 3, power: 5 }],
   },
+  // Consumíveis: a ação de cada item da bolsa (mesmo id, nome e descrição do item em items.ts)
+  ...Object.fromEntries(Object.values(ITEMS).filter((it) => it.use).map((it) => [it.id, { id: it.id, name: it.name, desc: it.desc, cost: 0, type: 'self', ...it.use } satisfies SkillDef])),
 };

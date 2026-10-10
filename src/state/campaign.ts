@@ -1,5 +1,6 @@
 // Fluxo da campanha: criar o gladiador, entrar em luta, resolver o resultado, transferir de arena e encerrar.
 import { resolveRound } from '../engine/combat';
+import { chooseBag, defaultKeep } from '../engine/items';
 import { scenesFor } from '../engine/scenes';
 import { ARENAS, CLASSES, CROWD, ENEMIES, GOLD_PER_LEVEL, START_GOLD, WIN_BONUS_XP } from '../data';
 import { arenaById, enterArena, freeDays, isBossFight, maxHp, nextArena, rollShop, stageOf, startFight } from './run';
@@ -35,7 +36,7 @@ export function startRun(g: GameState, a: ActionOf<'startRun'>): GameState {
   const level = levelOf(g.save.xp);
   const run: RunState = {
     name, classId: a.classId, arenaId: arena.id, titles: [], daysSpent: 0, level, attrs: { ...cls.attrs }, trained: { str: 0, dex: 0, wis: 0 },
-    skills: [...cls.skills], items: [], gold: START_GOLD + GOLD_PER_LEVEL * (level - 1), day: 1, hp: 0, shop: [],
+    skills: [...cls.skills], items: [], bag: [], gold: START_GOLD + GOLD_PER_LEVEL * (level - 1), day: 1, hp: 0, shop: [],
     encounter: 0, enemies: [], seed: a.seed, xp: 0, goldEarned: 0, kills: [], fled: [], bestiary: {}, seen: [], rounds: 0, dealt: 0, taken: 0,
   };
   run.hp = maxHp(run);
@@ -61,15 +62,25 @@ export function fight(g: GameState): GameState {
   return { ...g, run, screen: scene(intro, combat) };
 }
 
-/** Depois do combate: aplica o resultado e decide a próxima tela (acampamento, transferência, resumo). */
-export function afterCombat(g: GameState): GameState {
+/**
+ * Depois do combate: aplica o resultado e decide a próxima tela (acampamento, transferência, resumo).
+ * Na vitória, o jogador escolhe (`keep`) o que leva entre a própria bolsa e os itens que o inimigo não usou.
+ */
+export function afterCombat(g: GameState, a: ActionOf<'continue'>): GameState {
   if (g.screen.name !== 'combat' || !g.screen.combat.outcome || !g.run) return g;
   const c = g.screen.combat;
+  const won = c.outcome === 'victory';
+  const pool = [...c.player.bag, ...c.enemy.bag]; // o que foi gasto na luta não volta
+  const keep = a.keep ?? defaultKeep(pool.length);
+  const bag = won ? chooseBag(pool, keep) : [...c.player.bag];
+  if (!bag) return g;
+  const loot = won ? keep.filter((i) => i >= c.player.bag.length).sort((x, y) => x - y).map((i) => pool[i]) : [];
   const run = structuredClone(g.run);
   const enemyId = run.enemies[run.encounter];
   const isBoss = isBossFight(run);
   const tier = arenaById(run.arenaId).tier;
   run.hp = c.player.hp;
+  run.bag = bag;
   run.rounds += c.round;
   run.dealt += c.dealt;
   run.taken += c.taken;
@@ -100,7 +111,7 @@ export function afterCombat(g: GameState): GameState {
       enterArena(run);
       run.hp = maxHp(run);
       const news = `Campeão de ${arena.name}! +${gold} de ouro. Você foi transferido para ${next.name} (fase ${stageOf(run) + 1} de ${ARENAS.length}): ${ENEMIES[next.boss].name} precisa cair até o dia ${next.days}.`;
-      const camp: Screen = { name: 'camp', npc: null, line: '', news };
+      const camp: Screen = { name: 'camp', npc: null, line: '', news, loot };
       return { ...g, run, screen: scene([...scenesFor({ on: 'boss-defeat', boss: enemyId }), ...scenesFor({ on: 'arena-enter', arena: next.id })], camp) };
     }
     run.encounter++;
@@ -117,5 +128,5 @@ export function afterCombat(g: GameState): GameState {
   }
   if (freeDays(run) < 0) return finish(g, run, 'timeout');
   rollShop(run);
-  return { ...g, run, screen: { name: 'camp', npc: null, line: '', news } };
+  return { ...g, run, screen: { name: 'camp', npc: null, line: '', news, loot } };
 }

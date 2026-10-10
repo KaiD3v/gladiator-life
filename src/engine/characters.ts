@@ -43,7 +43,7 @@ export function buildPlayer(run: BuildInput): { stats: Stats; perks: Perks } {
 
 export function createPlayerFighter(run: RunState): Fighter {
   const { stats, perks } = buildPlayer(run);
-  return { ...makeFighter(run.name, 'player', stats, perks, { ...run.attrs }, [...run.skills], run.hp), glory: CLASSES[run.classId].glory };
+  return { ...makeFighter(run.name, 'player', stats, perks, { ...run.attrs }, [...run.skills], run.hp, [], { bag: [...run.bag] }), glory: CLASSES[run.classId].glory };
 }
 
 /** Inimigo escalado pelo nível de perigo da arena (tier 1 = sem escala). */

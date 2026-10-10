@@ -13,4 +13,13 @@ export const ITEMS: Record<string, ItemDef> = {
   venomFlask: { id: 'venomFlask', name: 'Frasco de Peçonha', price: 45, desc: 'Golpes físicos aplicam veneno 2.', perks: { poisonOnHit: 2 } },
   ritualBandage: { id: 'ritualBandage', name: 'Bandagem Ritual', price: 50, desc: 'Recupera 3 de vida por rodada.', perks: { hpRegen: 3 } },
   warHorn: { id: 'warHorn', name: 'Trompa de Guerra', price: 45, desc: 'Contra-ataca 40% do ataque ao defender.', perks: { counter: 0.4 } },
+  // Consumíveis (bolsa). Defesa: agem primeiro na rodada. Ataque: seguem a velocidade.
+  potion: { id: 'potion', name: 'Poção de Vida', price: 20, desc: 'Cura 30 de vida. Age primeiro. Também pode ser bebida no acampamento.', use: { heal: 30 } },
+  tonic: { id: 'tonic', name: 'Tônico', price: 15, desc: 'Recupera 6 de energia. Age primeiro.', use: { energy: 6 } },
+  antidote: { id: 'antidote', name: 'Antídoto', price: 15, desc: 'Remove veneno, queimadura e enfraquecer. Age primeiro.', use: { cleanse: true } },
+  salve: { id: 'salve', name: 'Unguento', price: 20, desc: 'Regenera 6 de vida por rodada durante 3 rodadas. Age primeiro.', use: { effects: [{ status: 'regen', target: 'self', turns: 3, power: 6 }] } },
+  guardStone: { id: 'guardStone', name: 'Pedra de Guarda', price: 20, desc: 'Guarda por 2 rodadas: metade do dano. Age primeiro.', use: { effects: [{ status: 'guard', target: 'self', turns: 2 }] } },
+  fireBomb: { id: 'fireBomb', name: 'Bomba de Fogo', price: 20, desc: 'Queima o alvo (5 por rodada, 3 rodadas).', use: { effects: [{ status: 'burn', target: 'foe', turns: 3, power: 5 }] } },
+  blindPowder: { id: 'blindPowder', name: 'Pó Cegante', price: 20, desc: '70% de chance de atordoar o alvo.', use: { effects: [{ status: 'stun', target: 'foe', turns: 1, chance: 0.7 }] } },
+  venomVial: { id: 'venomVial', name: 'Ampola de Veneno', price: 20, desc: 'Envenena o alvo (4 por rodada, acumula, 3 rodadas).', use: { effects: [{ status: 'poison', target: 'foe', turns: 3, power: 4 }] } },
 };

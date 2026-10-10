@@ -2,7 +2,7 @@
 import { pick } from '../core/rng';
 import { ITEMS, NPCS, REST_FREE, REST_PAID, SKILLS, type NpcDef, type NpcId } from '../data';
 import { acquireItem, buyBlock, withMaxHpGrowth } from '../engine/items';
-import { freeDays, learnBlock, maxHp, restPrice, trainPrice } from './run';
+import { freeDays, learnBlock, maxHp, restPrice, trainPrice, useBlock } from './run';
 import type { ActionOf, GameState, RunState } from './types';
 
 type NpcReaction = keyof Pick<NpcDef, 'greet' | 'deal' | 'poor' | 'denied'>;
@@ -36,12 +36,24 @@ export const buy = (g: GameState, a: ActionOf<'buy'>): GameState =>
   campAction(g, 'merchant', (run) => {
     const block = buyBlock(run, a.itemId);
     if (block === 'unavailable' || block === 'owned') return 'skip';
+    if (block === 'bag') return 'denied';
     if (block === 'gold') return 'poor';
     run.gold -= ITEMS[a.itemId].price;
     acquireItem(run, a.itemId);
     run.shop = run.shop.filter((id) => id !== a.itemId);
     return 'deal';
   });
+
+/** Bebe um consumível de cura fora da luta: não gasta dia. */
+export function useItem(g: GameState, a: ActionOf<'use'>): GameState {
+  const scr = g.screen;
+  if (scr.name !== 'camp' || !g.run || useBlock(g.run, a.itemId)) return g;
+  const run = structuredClone(g.run);
+  const before = run.hp;
+  run.hp = Math.min(maxHp(run), run.hp + SKILLS[a.itemId].heal!);
+  run.bag.splice(run.bag.indexOf(a.itemId), 1);
+  return { ...g, run, screen: { ...scr, news: `Você usa ${ITEMS[a.itemId].name}: +${run.hp - before} de vida.` } };
+}
 
 export const train = (g: GameState, a: ActionOf<'train'>): GameState =>
   campAction(g, a.attr, (run) => {

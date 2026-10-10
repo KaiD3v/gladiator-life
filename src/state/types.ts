@@ -13,7 +13,8 @@ export interface RunState {
   attrs: Attrs;
   trained: Attrs; // treinos comprados por atributo (define o preço do próximo)
   skills: string[];
-  items: string[];
+  items: string[]; // equipamentos
+  bag: string[]; // consumíveis (até BAG_SIZE, repetidos contam separadamente)
   gold: number;
   day: number;
   hp: number;
@@ -44,7 +45,8 @@ export type Screen =
   | { name: 'title' }
   | { name: 'create' }
   | { name: 'combat'; combat: CombatState }
-  | { name: 'camp'; npc: NpcId | null; line: string; news: string }
+  /** `loot`: itens coletados na última luta (a UI marca como novos até a próxima luta). */
+  | { name: 'camp'; npc: NpcId | null; line: string; news: string; loot?: string[] }
   | { name: 'summary'; summary: Summary }
   /** Fila de cenas de história; ao terminar (ou pular) segue para `next`. */
   | { name: 'scene'; queue: string[]; beat: number; next: Screen };
@@ -57,9 +59,11 @@ export type GameAction =
   | { type: 'newGame' }
   | { type: 'startRun'; name: string; classId: ClassId; seed: number }
   | { type: 'act'; action: string }
-  | { type: 'continue' }
+  /** `keep`: índices em `bolsa + itens caídos` que o jogador leva (só na vitória; padrão: a bolsa e o que couber). */
+  | { type: 'continue'; keep?: number[] }
   | { type: 'talk'; npc: NpcId | null }
   | { type: 'buy'; itemId: string }
+  | { type: 'use'; itemId: string } // consumível de cura fora da luta (não gasta dia)
   | { type: 'train'; attr: Attr }
   | { type: 'learn'; skill: string }
   | { type: 'rest' }

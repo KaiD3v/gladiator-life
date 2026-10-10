@@ -11,3 +11,6 @@ export function rand(s: { seed: number }): number {
 
 /** Sorteia um elemento da lista usando a semente do estado. */
 export const pick = <T>(s: { seed: number }, list: T[]): T => list[Math.floor(rand(s) * list.length)];
+
+/** RNG derivado: sorteia sem avançar a semente de origem (não muda nenhum sorteio que já existia). */
+export const fork = (s: { seed: number }, salt: number) => ({ seed: (s.seed ^ salt) | 0 });

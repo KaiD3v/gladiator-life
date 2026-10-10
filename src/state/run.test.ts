@@ -1,5 +1,5 @@
 ﻿import { describe, expect, it } from 'vitest';
-import { ARENAS, CLASSES, CROWD, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, START_GOLD } from '../data';
+import { ARENAS, CLASSES, CROWD, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SHOP_CONSUMABLES, SHOP_SIZE, SKILLS, START_GOLD } from '../data';
 import {
   defaultSave, freeDays, initialState, learnBlock, levelOf, maxHp, parseSave, playerBuild, reduce, restPrice, trainPrice,
   type GameState, type RunState,
@@ -72,7 +72,7 @@ describe('transições', () => {
     expect(run.attrs).toEqual(CLASSES.mage.attrs);
     expect(run.skills).toEqual(CLASSES.mage.skills);
     expect(run).toMatchObject({ gold: START_GOLD, day: 1, encounter: 0 });
-    expect(run.shop).toHaveLength(4);
+    expect(run.shop).toHaveLength(SHOP_SIZE + SHOP_CONSUMABLES);
     expect(run.enemies.at(-1)).toBe('tauros');
   });
 });
@@ -278,3 +278,68 @@ describe('recompensas da torcida', () => {
   });
 });
 
+
+describe('bolsa e espólio', () => {
+  /** Entra em combate e força o fim com as bolsas indicadas. */
+  function endWith(g: GameState, outcome: 'victory' | 'fled', playerBag: string[], enemyBag: string[], keep?: number[]): GameState {
+    g = skip(reduce(g, { type: 'fight' }));
+    if (g.screen.name !== 'combat') throw new Error('não entrou em combate');
+    const c = structuredClone(g.screen.combat);
+    Object.assign(c, { outcome });
+    c.player.bag = playerBag;
+    c.enemy.bag = enemyBag;
+    return skip(reduce({ ...g, screen: { name: 'combat', combat: c } }, { type: 'continue', keep }));
+  }
+
+  it('a luta começa com a bolsa da run; o inimigo traz o espólio sorteado', () => {
+    const g = skip(reduce(withRun(start(), { bag: ['potion'] }), { type: 'fight' }));
+    if (g.screen.name !== 'combat') throw new Error('não entrou em combate');
+    expect(g.screen.combat.player.bag).toEqual(['potion']);
+    expect(g.screen.combat.enemy.bag.every((id) => ENEMIES[g.run!.enemies[0]].loot?.includes(id))).toBe(true);
+  });
+
+  it('vitória sem escolha: o gasto não volta, o que couber dos itens caídos vem junto e fica marcado como novo', () => {
+    const g = endWith(withRun(start(), { bag: ['potion', 'tonic'] }), 'victory', ['tonic'], ['fireBomb', 'blindPowder', 'potion', 'potion']);
+    expect(g.run!.bag).toEqual(['tonic', 'fireBomb', 'blindPowder', 'potion']);
+    expect(g.screen.name === 'camp' && g.screen.loot).toEqual(['fireBomb', 'blindPowder', 'potion']);
+  });
+
+  it('vitória com escolha: troca item da bolsa por item caído ou deixa tudo na areia', () => {
+    // bolsa + caídos = [tonic, tonic, fireBomb, potion]: solta um Tônico e leva só a Poção
+    const swap = endWith(start(), 'victory', ['tonic', 'tonic'], ['fireBomb', 'potion'], [0, 3]);
+    expect(swap.run!.bag).toEqual(['tonic', 'potion']);
+    expect(swap.screen.name === 'camp' && swap.screen.loot).toEqual(['potion']);
+    expect(endWith(start(), 'victory', ['tonic'], ['potion'], [0]).run!.bag).toEqual(['tonic']);
+  });
+
+  it('escolha inválida (repetida, fora da lista ou acima da capacidade) não fecha o combate', () => {
+    let g = skip(reduce(start(), { type: 'fight' }));
+    if (g.screen.name !== 'combat') throw new Error('não entrou em combate');
+    const c = structuredClone(g.screen.combat);
+    Object.assign(c, { outcome: 'victory' });
+    c.player.bag = ['tonic', 'tonic', 'tonic'];
+    c.enemy.bag = ['potion', 'potion'];
+    g = { ...g, screen: { name: 'combat', combat: c } };
+    for (const keep of [[0, 0], [7], [0, 1, 2, 3, 4], [-1], [0.5]]) expect(reduce(g, { type: 'continue', keep })).toBe(g);
+  });
+
+  it('fuga: guarda o que sobrou, sem espólio', () => {
+    expect(endWith(withRun(start(), { bag: ['potion'] }), 'fled', [], ['fireBomb']).run!.bag).toEqual([]);
+  });
+
+  it('no acampamento a poção cura sem gastar dia; item de luta e vida cheia são recusados', () => {
+    const g = withRun(start(), { bag: ['potion', 'fireBomb'], hp: 10 });
+    const used = reduce(g, { type: 'use', itemId: 'potion' });
+    expect(used.run).toMatchObject({ hp: 40, day: g.run!.day, bag: ['fireBomb'] });
+    expect(reduce(g, { type: 'use', itemId: 'fireBomb' })).toBe(g);
+    const full = withRun(start(), { bag: ['potion'] });
+    expect(reduce(full, { type: 'use', itemId: 'potion' })).toBe(full);
+  });
+
+  it('consumível comprado vai para a bolsa; bolsa cheia recusa sem cobrar', () => {
+    const g = withRun(start(), { gold: 100, shop: ['potion'] });
+    expect(reduce(g, { type: 'buy', itemId: 'potion' }).run).toMatchObject({ gold: 100 - ITEMS.potion.price, bag: ['potion'], items: [] });
+    const full = reduce(withRun(g, { bag: ['tonic', 'tonic', 'tonic', 'tonic'] }), { type: 'buy', itemId: 'potion' });
+    expect(full.run).toMatchObject({ gold: 100, shop: ['potion'] });
+  });
+});

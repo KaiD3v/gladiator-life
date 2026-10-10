@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CLASSES, ITEMS, SHOP_SIZE } from '../data';
+import { CLASSES, ITEMS, SHOP_CONSUMABLES, SHOP_SIZE } from '../data';
 import type { RunState } from '../state/types';
 import { buildPlayer } from './characters';
 import { acquireItem, buyBlock, rollShop, withMaxHpGrowth } from './items';
@@ -37,7 +37,7 @@ describe('itens', () => {
     const r = mk({ items: Object.keys(ITEMS).slice(0, 5) });
     for (let i = 0; i < 20; i++) {
       rollShop(r);
-      expect(r.shop).toHaveLength(SHOP_SIZE);
+      expect(r.shop).toHaveLength(SHOP_SIZE + SHOP_CONSUMABLES);
       expect(r.shop.some((id) => r.items.includes(id))).toBe(false);
     }
   });

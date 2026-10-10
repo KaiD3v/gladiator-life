@@ -1,6 +1,6 @@
 // Regras de combate. Funções puras sobre CombatState: nenhuma dependência de DOM.
 import {
-  ATTR_HEAL_BONUS, ATTR_SKILL_BONUS, CROWD, POSTURE, SKILLS, STATUS_INFO, WEAK_INFO, type Attrs, type EnemyDef, type HazardDef, type Perks, type SkillDef, type Stats, type StatusId, type WeakTag,
+  ATTR_HEAL_BONUS, ATTR_SKILL_BONUS, CROWD, ITEMS, LOOT, POSTURE, SKILLS, STATUS_INFO, WEAK_INFO, type Attrs, type EnemyDef, type HazardDef, type Perks, type SkillDef, type Stats, type StatusId, type WeakTag,
 } from '../data';
 import { rand } from '../core/rng';
 
@@ -17,6 +17,7 @@ export interface Fighter {
   perks: Perks;
   attrs: Attrs;
   skills: string[];
+  bag: string[]; // consumíveis (ids de ITEMS); o que sobrar do inimigo cai para o jogador
   pattern: string[]; // ciclo de ações do inimigo (vazio no jogador)
   glory?: string; // Golpe de Glória do jogador (id de habilidade)
   hp: number;
@@ -50,7 +51,7 @@ export interface LogEntry {
 export interface Intent { action: string; prep?: boolean }
 
 export interface IntentView {
-  kind: 'attack' | 'magic' | 'defend' | 'buff' | 'prep';
+  kind: 'attack' | 'magic' | 'defend' | 'buff' | 'prep' | 'item';
   skill: string; // id da habilidade pretendida
   label: string;
   dmg?: [number, number]; // dano esperado POR GOLPE no jogador (sem crítico), já com armadura, enfraquecer e guarda atual; em 'prep', é o golpe da rodada seguinte
@@ -90,11 +91,11 @@ export const NO_PERKS: Perks = { counter: 0, lifesteal: 0, thorns: 0, poisonOnHi
 
 export function makeFighter(
   name: string, side: Side, stats: Stats, perks: Perks, attrs: Attrs, skills: string[], hp = stats.maxHp, pattern: string[] = [],
-  extra: Partial<Pick<Fighter, 'maxPosture' | 'weak' | 'phase2' | 'barks'>> = {},
+  extra: Partial<Pick<Fighter, 'maxPosture' | 'weak' | 'phase2' | 'barks' | 'bag'>> = {},
 ): Fighter {
   const maxPosture = extra.maxPosture ?? 0;
   return {
-    name, side, stats, perks, attrs, skills, pattern, hp: Math.min(hp, stats.maxHp), energy: stats.maxEnergy, statuses: [], defending: false,
+    name, side, stats, perks, attrs, skills, bag: extra.bag ?? [], pattern, hp: Math.min(hp, stats.maxHp), energy: stats.maxEnergy, statuses: [], defending: false,
     posture: maxPosture, maxPosture, weak: extra.weak ?? [], phase2: extra.phase2, barks: extra.barks,
   };
 }
@@ -119,12 +120,16 @@ export const verdictAvailable = (s: CombatState) =>
   !s.outcome && !s.boss && s.enemy.hp > 0 && s.enemy.hp <= s.enemy.stats.maxHp * CROWD.verdictHp;
 
 /**
- * Ordem ESTÁVEL (atalhos de teclado): ataque, habilidades, Golpe de Glória (se a classe tem), defender, fugir
- * e, com o estado de combate, Executar/Poupar quando o veredito está liberado.
+ * Ordem ESTÁVEL (atalhos de teclado): ataque, habilidades, Golpe de Glória (se a classe tem), defender, fugir, consumíveis
+ * da bolsa (um por tipo, na ordem em que entraram) e, com o estado de combate, Executar/Poupar quando o veredito está liberado.
  */
 export const actionsFor = (f: Fighter, s?: CombatState): string[] => [
-  'attack', ...f.skills, ...(f.glory ? [f.glory] : []), 'defend', 'flee', ...(s && verdictAvailable(s) ? ['execute', 'spare'] : []),
+  'attack', ...f.skills, ...(f.glory ? [f.glory] : []), 'defend', 'flee', ...new Set(f.bag), ...(s && verdictAvailable(s) ? ['execute', 'spare'] : []),
 ];
+
+export const isItem = (id: string) => !!ITEMS[id]?.use;
+/** Item de defesa (nenhum efeito no inimigo: cura, guarda, energia...): age primeiro na rodada, como Defender. */
+export const isQuickItem = (id: string) => isItem(id) && !ITEMS[id].use!.effects?.some((e) => e.target === 'foe');
 
 export function canUse(s: CombatState, id: string): boolean {
   if (s.outcome || !actionsFor(s.player, s).includes(id)) return false;
@@ -169,6 +174,7 @@ function judge(state: CombatState, id: string): CombatState {
   }
   s.outcome = 'victory';
   log(s, s.verdict === 'executed' ? `${s.enemy.name} foi derrotado!` : `${s.enemy.name} se rende.`, 'system', { sfx: 'victory' });
+  dropNote(s);
   return s;
 }
 
@@ -194,7 +200,7 @@ export function resolveRound(state: CombatState, playerAction: string): CombatSt
   s.lastAction = playerAction;
   const idleFoe = s.intent.prep || hasStatus(s.enemy, 'broken') || ['defend', 'self'].includes(SKILLS[s.intent.action].type); // inimigo não vai causar dano
 
-  const prio = (id: string) => (id === 'defend' || id === 'flee' ? 1 : 0);
+  const prio = (id: string) => (id === 'defend' || id === 'flee' || isQuickItem(id) ? 1 : 0);
   const turns: [Fighter, string][] = [[s.player, playerAction], [s.enemy, s.intent.prep ? 'prep' : s.intent.action]];
   turns.sort(([a, aId], [b, bId]) => prio(bId) - prio(aId) || b.stats.speed - a.stats.speed); // sort estável: jogador vence empates
 
@@ -244,12 +250,31 @@ export function resolveRound(state: CombatState, playerAction: string): CombatSt
   return s;
 }
 
-/** Próxima ação do padrão (cíclico); sem energia, cai para o ataque básico. Golpes pesados começam por uma rodada de preparo. */
+/**
+ * Próxima ação do padrão (cíclico); sem energia, cai para o ataque básico. Golpes pesados começam por uma rodada de preparo.
+ * Quando a ação seria o ataque básico ou a defesa, a bolsa pode entrar antes dela (ver `enemyItem`; o passo não é consumido).
+ */
 function planIntent(s: CombatState): Intent {
   const e = s.enemy;
   const wanted = e.pattern.length ? e.pattern[Math.max(0, s.step) % e.pattern.length] : 'attack';
   const action = SKILLS[wanted].cost <= e.energy ? wanted : 'attack';
+  const item = (action === 'attack' || action === 'defend') && enemyItem(e, action, wanted);
+  if (item) return { action: item };
   return SKILLS[action].windup ? { action, prep: true } : { action };
+}
+
+/**
+ * Regra fixa (sem rand) do inimigo para a bolsa, só no lugar de ataque básico/defesa (nunca troca uma habilidade forte).
+ * Defesa: com pouca vida, envenenado/queimado ou sem energia para o que queria. Ataque: no lugar do ataque básico.
+ */
+function enemyItem(e: Fighter, action: string, wanted: string): string | undefined {
+  return e.bag.find((id) => {
+    const sk = SKILLS[id];
+    if (sk.cleanse) return e.statuses.some((x) => x.id === 'poison' || x.id === 'burn' || x.id === 'weaken');
+    if (sk.energy) return wanted !== action;
+    if (!isQuickItem(id)) return action === 'attack';
+    return e.hp <= e.stats.maxHp * LOOT.healAt && !sk.effects?.some((x) => hasStatus(e, x.status)); // não repete guarda/regeneração ativas
+  });
 }
 
 /** Depois de uma rodada: o preparo cumprido leva ao golpe (mesmo passo); qualquer outro caso avança o padrão. */
@@ -259,11 +284,12 @@ function advanceIntent(s: CombatState, lostTurn: boolean) {
     s.intent = { action: SKILLS[a].cost <= s.enemy.energy ? a : 'attack' };
     return;
   }
-  s.step++; // após a fase 2, step vale -1 e este incremento cai no passo 0 do padrão novo
+  if (!isItem(s.intent.action) || s.step < 0) s.step++; // após a fase 2, step vale -1 e este incremento cai no passo 0 do padrão novo; item não gasta o passo
   s.intent = planIntent(s);
 }
 
 const EFFECT_TAG: Record<string, string> = { stun: 'Atordoar', poison: 'Veneno', burn: 'Queimadura', weaken: 'Enfraquecer', regen: 'Regenera', guard: 'Guarda' };
+const CLEANSED: StatusId[] = ['poison', 'burn', 'weaken'];
 
 /** O que o inimigo fará, para a UI. Não sorteia nada; dano é o intervalo (0.9x a 1.1x, sem crítico) contra o jogador agora. */
 export function intentView(s: CombatState): IntentView {
@@ -273,8 +299,11 @@ export function intentView(s: CombatState): IntentView {
   const effects = (sk.effects ?? [])
     .filter((x) => !(x.status === 'stun' && hasStatus(p, 'steady')))
     .map((x) => EFFECT_TAG[x.status] + (x.power ? ` ${x.power}` : '') + (x.chance !== undefined && x.chance < 1 ? ` ${Math.round(x.chance * 100)}%` : ''));
+  if (sk.heal) effects.unshift(`Cura ${sk.heal}`);
+  if (sk.energy) effects.unshift(`Energia ${sk.energy}`);
+  if (sk.cleanse) effects.unshift('Purifica');
   const view: IntentView = {
-    kind: prep ? 'prep' : sk.type === 'defend' ? 'defend' : sk.type === 'magic' ? 'magic' : sk.type === 'self' ? 'buff' : 'attack',
+    kind: prep ? 'prep' : isItem(action) ? 'item' : sk.type === 'defend' ? 'defend' : sk.type === 'magic' ? 'magic' : sk.type === 'self' ? 'buff' : 'attack',
     skill: action,
     label: prep ? `Prepara ${sk.name}` : sk.name,
     effects,
@@ -297,6 +326,8 @@ export function intentView(s: CombatState): IntentView {
 
 function act(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef) {
   actor.energy -= skill.cost;
+  const bagged = actor.bag.indexOf(skill.id);
+  if (bagged >= 0) actor.bag.splice(bagged, 1); // consumível: sai da bolsa ao ser usado
   if (skill.type === 'defend') {
     actor.defending = true;
     actor.energy = Math.min(actor.stats.maxEnergy, actor.energy + 2);
@@ -306,6 +337,15 @@ function act(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef) {
   } else if (skill.type === 'self') {
     log(s, `${actor.name} usa ${skill.name}.`, actor.side, { sfx: 'status' });
     if (skill.heal) heal(s, actor, skill.heal + (skill.attr ? actor.attrs[skill.attr] * ATTR_HEAL_BONUS : 0), skill.name);
+    if (skill.energy) {
+      const before = actor.energy;
+      actor.energy = Math.min(actor.stats.maxEnergy, actor.energy + skill.energy);
+      log(s, `${skill.name}: ${actor.name} +${actor.energy - before} de energia`, 'status', { target: actor.side });
+    }
+    if (skill.cleanse && actor.statuses.some((x) => CLEANSED.includes(x.id))) {
+      actor.statuses = actor.statuses.filter((x) => !CLEANSED.includes(x.id));
+      log(s, `${actor.name} está purificado.`, 'status', { target: actor.side, sfx: 'heal' });
+    }
   } else {
     for (let i = 0; i < (skill.hits ?? 1) && foe.hp > 0 && actor.hp > 0; i++) hit(s, actor, foe, skill);
     if (skill.glory && POSTURE.glory && actor === s.player && foe.hp > 0) strain(s, foe.maxPosture); // Golpe de Glória quebra a postura
@@ -555,6 +595,12 @@ function checkEnd(s: CombatState) {
   else return;
   const text = { victory: `${s.enemy.name} foi derrotado!`, defeat: `${s.player.name} caiu na arena.`, draw: 'Os dois caem ao mesmo tempo!' }[s.outcome];
   log(s, text, 'system', { sfx: s.outcome === 'victory' ? 'victory' : 'defeat' });
+  if (s.outcome === 'victory') dropNote(s);
+}
+
+/** Vitória: o registro anuncia o que o inimigo não usou. O que o jogador leva é escolhido depois (state/campaign.ts). */
+function dropNote(s: CombatState) {
+  if (s.enemy.bag.length) log(s, `${s.enemy.name} deixa cair: ${s.enemy.bag.map((id) => ITEMS[id].name).join(', ')}.`, 'system');
 }
 
 const statusName = (id: StatusId) => STATUS_INFO[id].name;

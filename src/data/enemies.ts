@@ -5,7 +5,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
   bandit: {
     id: 'bandit', name: 'Bandido', desc: 'Equilibrado e oportunista.', xp: 20, gold: 16, attrs: { str: 4, dex: 4, wis: 1 },
     stats: base({ maxHp: 55, maxEnergy: 8, atk: 9, def: 3, speed: 5 }), skills: ['attack', 'dirtyCut'],
-    pattern: ['attack', 'dirtyCut', 'attack', 'defend'],
+    pattern: ['attack', 'dirtyCut', 'attack', 'defend'], loot: ['fireBomb', 'blindPowder', 'potion'],
     posture: 4, weak: ['poison', 'magic'], barks: { start: 'Passe o ouro e talvez saia com vida!' },
   },
   wolf: {
@@ -17,20 +17,20 @@ export const ENEMIES: Record<string, EnemyDef> = {
   brute: {
     id: 'brute', name: 'Brutamontes', desc: 'Lento, resistente, pancadas atordoantes.', xp: 25, gold: 20, attrs: { str: 7, dex: 1, wis: 1 },
     stats: base({ maxHp: 85, maxEnergy: 10, atk: 12, def: 7, speed: 2 }), skills: ['attack', 'smash'],
-    pattern: ['attack', 'attack', 'smash'],
+    pattern: ['attack', 'attack', 'smash'], loot: ['potion', 'guardStone'],
     posture: 5, weak: ['magic', 'stun'], barks: { start: 'Vou te esmagar como a um inseto!' },
   },
   sorcerer: {
     id: 'sorcerer', name: 'Feiticeiro Renegado', desc: 'Frágil, mas queima.', xp: 25, gold: 18, attrs: { str: 1, dex: 4, wis: 6 },
     stats: base({ maxHp: 50, maxEnergy: 12, regen: 3, atk: 4, mag: 12, def: 2, speed: 6 }), skills: ['attack', 'darkFlame'],
-    pattern: ['darkFlame', 'attack', 'defend'],
+    pattern: ['darkFlame', 'attack', 'defend'], loot: ['tonic', 'fireBomb', 'antidote'],
     posture: 3, weak: ['physical', 'poison'], barks: { start: 'Sinta a chama negra!' },
   },
   tauros: {
     id: 'tauros', name: 'Tauros, o Campeão', desc: 'Chefe. Investidas brutais e rugido intimidador.', xp: 80, gold: 60, attrs: { str: 8, dex: 3, wis: 2 },
     stats: base({ maxHp: 135, maxEnergy: 12, regen: 3, atk: 11, def: 6, speed: 5 }), perks: { counter: 0.3 },
     skills: ['attack', 'charge', 'roar'],
-    pattern: ['attack', 'charge', 'roar', 'attack'],
+    pattern: ['attack', 'charge', 'roar', 'attack'], loot: ['potion', 'guardStone', 'fireBomb'],
     posture: 6, weak: ['magic', 'poison'],
     phase2: {
       at: 0.5, pattern: ['charge', 'defend', 'attack', 'charge', 'roar'], line: 'Chega de brincar!',
@@ -42,7 +42,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
     id: 'serpent', name: 'Rainha Serpente', desc: 'Chefe. Veloz e venenosa.', xp: 100, gold: 80, attrs: { str: 4, dex: 8, wis: 4 },
     stats: base({ maxHp: 95, maxEnergy: 12, regen: 3, atk: 8, def: 4, speed: 11, crit: 0.1 }), perks: { poisonOnHit: 1 },
     skills: ['attack', 'bite', 'dirtyCut', 'venomMist'],
-    pattern: ['bite', 'dirtyCut', 'attack'],
+    pattern: ['bite', 'dirtyCut', 'attack'], loot: ['venomVial', 'antidote', 'potion'],
     posture: 6, weak: ['burn', 'physical'],
     phase2: { at: 0.5, pattern: ['bite', 'venomMist', 'dirtyCut', 'venomMist'], line: 'Chega de joguinhos. Respire fundo... se puder.' },
     barks: { start: 'Dance para mim. Quero ver você sangrar com elegância.', low: 'Não! A coroa... fique longe da coroa!', playerCrit: 'Ora, ora... tem dentes.' },
@@ -51,7 +51,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
     id: 'emperor', name: 'Imperador Caído', desc: 'Chefe. Magia sombria e vontade de ferro.', xp: 130, gold: 100, attrs: { str: 5, dex: 3, wis: 8 },
     stats: base({ maxHp: 200, maxEnergy: 16, regen: 4, atk: 10, mag: 15, def: 6, speed: 6 }), perks: { hpRegen: 2 },
     skills: ['attack', 'darkFlame', 'roar', 'brazier'],
-    pattern: ['darkFlame', 'attack', 'roar', 'darkFlame'],
+    pattern: ['darkFlame', 'attack', 'roar', 'darkFlame'], loot: ['fireBomb', 'tonic', 'salve', 'potion'],
     posture: 6, weak: ['magic', 'burn', 'stun'],
     phase2: { at: 0.5, pattern: ['darkFlame', 'brazier', 'roar', 'darkFlame', 'brazier'], line: 'Acendam os braseiros! Que a plebe veja um imperador arder.' },
     barks: { start: 'Outra alma para a plebe aplaudir...', low: 'Silêncio... finalmente?', playerCrit: 'Há muito eu não sentia dor.' },

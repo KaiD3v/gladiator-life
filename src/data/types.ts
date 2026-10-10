@@ -45,6 +45,8 @@ export interface SkillDef {
   power?: number; // multiplicador de atk/mag
   hits?: number; // golpes por uso (padrão 1)
   heal?: number; // cura base no próprio usuário (+ATTR_HEAL_BONUS por ponto do atributo)
+  energy?: number; // energia recuperada pelo próprio usuário
+  cleanse?: boolean; // remove veneno, queimadura e enfraquecer do próprio usuário
   critBonus?: number;
   critIfPoisoned?: boolean;
   windup?: boolean; // golpe pesado: quando o inimigo o usa, gasta uma rodada preparando e só acerta na seguinte
@@ -79,6 +81,7 @@ export interface EnemyDef {
   attrs: Attrs;
   xp: number;
   gold: number;
+  loot?: string[]; // consumíveis que pode carregar para a luta (sorteados); o que não usar cai para o vencedor
   posture: number; // pontos de postura: a cada golpe/efeito no ponto fraco perde 1; em 0 o inimigo fica Desequilibrado
   weak: WeakTag[];
   /** Chefe: ao cair a esta fração de vida (uma vez), fala `line`, aplica `effects` em si e troca o padrão. */
@@ -94,6 +97,11 @@ export interface ItemDef {
   price: number;
   mods?: Partial<Stats>;
   perks?: Partial<Perks>;
+  /**
+   * Consumível: vai para a bolsa (não para o equipamento) e vira uma ação de combate de custo 0 com este efeito
+   * (entrada de mesmo id em SKILLS). Sem efeito no inimigo é item de defesa: age primeiro, como Defender.
+   */
+  use?: Pick<SkillDef, 'heal' | 'energy' | 'cleanse' | 'effects'>;
 }
 
 /** Perigo da arena, sempre anunciado uma rodada antes. `first`: rodada em que acontece pela 1ª vez (fim da rodada); `every`: intervalo depois. */
