@@ -67,6 +67,6 @@ function onKey(e: KeyboardEvent) {
     return;
   }
   if (screen.name !== 'combat') return;
-  const id = actionsFor(screen.combat.player)[Number(e.key) - 1];
+  const id = actionsFor(screen.combat.player, screen.combat)[Number(e.key) - 1];
   if (id) dispatch({ type: 'act', action: id });
 }

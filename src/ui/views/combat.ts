@@ -1,5 +1,5 @@
 import { ARENAS, SKILLS, STATUS_INFO } from '../../data';
-import { actionsFor, canUse, fleeChance, hasStatus, intentView, playerActsFirst, type CombatState, type Fighter, type IntentView, type LogEntry } from '../../engine/combat';
+import { actionsFor, canUse, crowdView, fleeChance, hasStatus, intentView, playerActsFirst, type CombatState, type Fighter, type IntentView, type LogEntry } from '../../engine/combat';
 import { arenaById, isBossFight, nextArena, stageOf, type GameState } from '../../state';
 import { art, assetUrl, attrTag, bar, bossTag, esc, itemChip, statusArt } from '../components';
 
@@ -21,8 +21,23 @@ function intentBadge(v: IntentView, stunned: boolean): string {
   </div>`;
 }
 
-function fighterCard(f: Fighter, hp: number, animating: boolean, intent = ''): string {
+function crowdMeter(c: CombatState, value: number, fresh: LogEntry | null): string {
+  const v = crowdView({ ...c, crowd: value });
+  const d = fresh?.crowdDelta;
+  return `<div class="crowd${v.gloryReady ? ' glory' : ''}">
+    <div class="row between"><b>Multidão</b><span>${v.label} · ${value}</span></div>
+    <div class="crowd-track" role="meter" aria-label="Multidão: ${v.label}" aria-valuenow="${value}" aria-valuemin="0" aria-valuemax="100">
+      <i class="crowd-fill" style="width:${value}%"></i>
+      <u class="tick" style="left:50%" title="Ovação"></u><u class="tick" style="left:80%" title="A multidão exige mais"></u><u class="tick" style="left:100%" title="Glória"></u>
+      ${d ? `<span class="float crowd-delta ${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : '−'}${Math.abs(d)}</span>` : ''}
+    </div>
+    <div class="crowd-marks" aria-hidden="true"><span class="m50">Ovação</span><span class="m80">Exige mais</span><span class="m100">Glória</span></div>
+  </div>`;
+}
+
+function fighterCard(f: Fighter, hp: number, animating: boolean, intent = '', crowdChips = ''): string {
   const chips = [
+    crowdChips,
     animating && f.defending ? `<span class="chip defending">${statusArt('defend')}Defendendo</span>` : '',
     ...f.statuses.map((s) => {
       const info = STATUS_INFO[s.id];
@@ -69,7 +84,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null): 
 
   let banner: string;
   if (animating) banner = `<div class="sketch turn-banner wait" aria-live="polite">Resolvendo a rodada ${c.round}…</div>`;
-  else if (c.outcome === 'victory') banner = `<div class="sketch turn-banner win" aria-live="polite">Vitória! ${esc(c.enemy.name)} caiu.</div>`;
+  else if (c.outcome === 'victory') banner = `<div class="sketch turn-banner win" aria-live="polite">${c.verdict === 'executed' ? `Você executou ${esc(c.enemy.name)}.` : c.verdict === 'spared' ? `Você poupou ${esc(c.enemy.name)}.` : `Vitória! ${esc(c.enemy.name)} caiu.`}</div>`;
   else if (c.outcome === 'fled') banner = `<div class="sketch turn-banner mine" aria-live="polite">Você escapou da arena!${isBoss ? ' O chefe vai esperar.' : ''}</div>`;
   else if (c.outcome) banner = `<div class="sketch turn-banner lose" aria-live="polite">${c.outcome === 'draw' ? 'Ambos caíram: a arena não aceita empates.' : 'Você foi derrotado.'}</div>`;
   else {
@@ -84,17 +99,25 @@ export function combatView(g: GameState, c: CombatState, shown: number | null): 
   const enemyStunned = hasStatus(c.enemy, 'stun');
   const heavy = !!iv && iv.kind !== 'prep' && !!SKILLS[iv.skill].windup && !enemyStunned;
 
+  const cv = crowdView(c);
+  const button = (id: string, i: number) => {
+    const s = SKILLS[id];
+    const extra = id === 'flee' ? ` · chance ${Math.round(fleeChance(c.player, c.enemy) * 100)}%` : '';
+    const suggest = heavy && id === 'defend';
+    const cost = s.glory && c.crowd < 100 ? 'Requer multidão 100' : s.cost ? `${s.cost} energia` : 'sem custo';
+    const cls = `action${id === 'flee' ? ' flee' : ''}${suggest ? ' suggest' : ''}${s.glory ? ` glory-btn${cv.gloryReady ? ' ready' : ''}` : ''}`;
+    return `<button class="${cls}" data-a="act" data-v="${id}" ${animating || !canUse(c, id) ? 'disabled' : ''}>
+      <span>${id === 'flee' ? statusArt('flee') : ''}<b>${s.name}</b> ${attrTag(s.attr)}<kbd>${i + 1}</kbd></span>
+      <span class="cost">${cost}${extra}</span>
+      <small>${s.desc}</small>${suggest ? '<em class="hint">Golpe pesado chegando</em>' : ''}</button>`;
+  };
+  const indexed = actionsFor(c.player, c).map((id, i) => [id, i] as const);
+  const verdict = indexed.filter(([id]) => SKILLS[id].type === 'verdict');
+  const regular = indexed.filter(([id]) => SKILLS[id].type !== 'verdict');
   const controls = c.outcome && !animating
     ? `<button class="primary wide" data-a="continue">${continueLabel(c, isBoss, nextArena(run)?.name)}</button>`
-    : `<div class="actions">${actionsFor(c.player).map((id, i) => {
-        const s = SKILLS[id];
-        const extra = id === 'flee' ? ` · chance ${Math.round(fleeChance(c.player, c.enemy) * 100)}%` : '';
-        const suggest = heavy && id === 'defend';
-        return `<button class="action${id === 'flee' ? ' flee' : ''}${suggest ? ' suggest' : ''}" data-a="act" data-v="${id}" ${animating || !canUse(c, id) ? 'disabled' : ''}>
-          <span>${id === 'flee' ? statusArt('flee') : ''}<b>${s.name}</b> ${attrTag(s.attr)}<kbd>${i + 1}</kbd></span>
-          <span class="cost">${s.cost ? `${s.cost} energia` : 'sem custo'}${extra}</span>
-          <small>${s.desc}</small>${suggest ? '<em class="hint">Golpe pesado chegando</em>' : ''}</button>`;
-      }).join('')}</div>`;
+    : `${verdict.length ? `<div class="sketch verdict"><p class="center"><b>Polegar</b> · A multidão aguarda o seu veredito</p><div class="actions">${verdict.map(([id, i]) => button(id, i)).join('')}</div></div>` : ''}
+      <div class="actions">${regular.map(([id, i]) => button(id, i)).join('')}</div>`;
 
   const items = run.items.length ? run.items.map(itemChip).join('') :'<span class="dim">sem itens</span>';
 
@@ -104,12 +127,13 @@ export function combatView(g: GameState, c: CombatState, shown: number | null): 
     ${banner}
     <div class="combat">
       <div class="stack">
+        ${crowdMeter(c, last.crowd, fresh)}
         <div class="stage" style="background-image:url(${assetUrl(`bg-${arena.id}`)})">
           ${actor(c.player, pHp, fresh, run.classId, run.classId)}
           ${actor(c.enemy, eHp, fresh, run.enemies[run.encounter], isBoss ? 'boss' : 'enemy', isBoss)}
           ${iv ? intentBadge(iv, enemyStunned) : ''}
         </div>
-        <div class="cards">${fighterCard(c.player, pHp, animating)}${fighterCard(c.enemy, eHp, animating, iv ? `<p class="inext">Próxima ação: ${intentText(iv, enemyStunned)}</p>` : '')}</div>
+        <div class="cards">${fighterCard(c.player, pHp, animating, '', `${cv.ovation ? '<span class="chip ovation">Ovação +5% dano</span>' : ''}${cv.lastStandReady ? '<span class="chip exige">A multidão exige mais</span>' : ''}`)}${fighterCard(c.enemy, eHp, animating, iv ? `<p class="inext">Próxima ação: ${intentText(iv, enemyStunned)}</p>` : '')}</div>
         <p class="dim center small">${order} Defender só protege na rodada em que é usado e sempre age antes.</p>
         ${controls}
       </div>
