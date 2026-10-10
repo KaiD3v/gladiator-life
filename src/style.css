@@ -406,3 +406,21 @@ button.poor { border-color: var(--line); color: var(--dim); }
 .verdict { display: grid; gap: 6px; padding: 8px; border: 2px solid var(--gold); }
 .verdict p { margin: 0; color: var(--gold); }
 @media (prefers-reduced-motion: reduce) { .action.glory-btn.ready { animation: none; box-shadow: 0 0 10px 2px var(--gold); } }
+
+/* Postura, balão de fala e chefe enfurecido */
+.posture { margin-top: 4px; }
+.posture .pips { display: flex; gap: 4px; margin: 2px 0; }
+.posture .pips i { flex: 1; max-width: 28px; height: 10px; border: 1.5px solid var(--gold); border-radius: 3px 1px 4px 1px; }
+.posture .pips i.on { background: var(--gold); }
+.posture .broken-tag { color: var(--red); font-weight: bold; letter-spacing: 1px; }
+.posture.broken .pips i { border-color: var(--red); }
+.chip.weak { color: var(--purple); } .chip.weak.unknown { color: var(--dim); }
+.chip.broken { color: var(--red); }
+.inext.lost { opacity: 0.6; }
+.bubble { position: absolute; z-index: 3; right: 32%; bottom: 22%; max-width: 42%; padding: 4px 8px; background: #f3ead2; color: #1a1610; border: 2px solid #1a1610; border-radius: 10px 4px 12px 5px; font-size: 0.85rem; font-style: italic; line-height: 1.15; overflow-wrap: anywhere; animation: fadeIn 0.3s; }
+.bubble b { display: block; font-style: normal; font-size: 0.75rem; color: #7a2a1a; }
+.bubble::after { content: ''; position: absolute; right: -9px; bottom: 6px; border: 5px solid transparent; border-left: 6px solid #1a1610; }
+.log li.bark { font-style: italic; }
+.actor.enraged .sprite { filter: drop-shadow(0 0 6px var(--red)) saturate(1.4) hue-rotate(-15deg); }
+.actor.enraged:not(.down) .sprite { animation: bob 0.7s steps(2) infinite; }
+@media (prefers-reduced-motion: reduce) { .actor.enraged:not(.down) .sprite { animation: none; } }
