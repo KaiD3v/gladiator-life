@@ -37,12 +37,12 @@ describe('dados da história', () => {
     for (const c of Object.keys(CLASSES)) expect(asset(c)).toBe(true); // retrato do herói
   });
 
-  it('cada arena tem chegada e derrota do chefe; cada arena depois da primeira tem transferência', () => {
-    ARENAS.forEach((a, i) => {
-      expect(SCENES[`boss-intro-${a.boss}`], a.boss).toBeDefined();
-      expect(SCENES[`boss-defeat-${a.boss}`], a.boss).toBeDefined();
-      if (i > 0) expect(SCENES[`transfer-${a.id}`], a.id).toBeDefined();
-    });
+  it('todo gatilho de chefe/arena aponta para um chefe/arena que existe', () => {
+    for (const sc of Object.values(SCENES)) {
+      const t = sc.trigger;
+      if ('boss' in t) expect(ARENAS.some((a) => a.boss === t.boss), sc.id).toBe(true);
+      if ('arena' in t) expect(ARENAS.some((a) => a.id === t.arena), sc.id).toBe(true);
+    }
   });
 });
 

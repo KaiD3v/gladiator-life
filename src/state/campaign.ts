@@ -1,5 +1,6 @@
 // Fluxo da campanha: criar o gladiador, entrar em luta, resolver o resultado, transferir de arena e encerrar.
 import { resolveRound } from '../engine/combat';
+import { scenesFor } from '../engine/scenes';
 import { ARENAS, CLASSES, ENEMIES, GOLD_PER_LEVEL, START_GOLD, WIN_BONUS_XP } from '../data';
 import { arenaById, enterArena, freeDays, isBossFight, maxHp, nextArena, rollShop, stageOf, startFight } from './run';
 import { levelOf, type SaveData } from './save';
@@ -21,7 +22,7 @@ function finish(g: GameState, run: RunState, result: Summary['result']): GameSta
 }
 
 export const newGame = (g: GameState): GameState =>
-  g.screen.name === 'title' ? { ...g, screen: scene(['prologue-village'], { name: 'create' }), notice: undefined } : g;
+  g.screen.name === 'title' ? { ...g, screen: scene(scenesFor({ on: 'campaign-start' }), { name: 'create' }), notice: undefined } : g;
 
 export const toTitle = (g: GameState): GameState =>
   g.screen.name === 'summary' || g.screen.name === 'create' ? { ...g, screen: { name: 'title' }, run: null } : g;
@@ -40,7 +41,7 @@ export function startRun(g: GameState, a: ActionOf<'startRun'>): GameState {
   run.hp = maxHp(run);
   enterArena(run);
   const news = `Bem-vindo ao ludus de ${arena.name}, fase 1 de ${ARENAS.length}. ${ENEMIES[arena.boss].name} precisa cair até o dia ${arena.days}.`;
-  return { ...g, run, screen: scene(['prologue-ludus'], { name: 'camp', npc: null, line: '', news }) };
+  return { ...g, run, screen: scene(scenesFor({ on: 'run-start' }), { name: 'camp', npc: null, line: '', news }) };
 }
 
 export function act(g: GameState, a: ActionOf<'act'>): GameState {
@@ -54,9 +55,10 @@ export function fight(g: GameState): GameState {
   const run = structuredClone(g.run);
   const combat: Screen = { name: 'combat', combat: startFight(run) };
   const boss = run.enemies[run.encounter];
-  if (!isBossFight(run) || run.seen.includes(boss)) return { ...g, run, screen: combat };
-  run.seen.push(boss);
-  return { ...g, run, screen: scene([`boss-intro-${boss}`], combat) };
+  const intro = isBossFight(run) ? scenesFor({ on: 'boss-intro', boss }, run.seen) : [];
+  if (!intro.length) return { ...g, run, screen: combat };
+  run.seen.push(...intro);
+  return { ...g, run, screen: scene(intro, combat) };
 }
 
 /** Depois do combate: aplica o resultado e decide a próxima tela (acampamento, transferência, resumo). */
@@ -87,7 +89,7 @@ export function afterCombat(g: GameState): GameState {
       const next = nextArena(run);
       if (!next) {
         const done = finish(g, run, 'victory');
-        return { ...done, screen: scene([`boss-defeat-${enemyId}`, 'epilogue'], done.screen) };
+        return { ...done, screen: scene([...scenesFor({ on: 'boss-defeat', boss: enemyId }), ...scenesFor({ on: 'campaign-won' })], done.screen) };
       }
       // Campeão: transferido para a próxima arena com a build intacta, curado, numa temporada nova.
       run.daysSpent += run.day - 1;
@@ -96,7 +98,7 @@ export function afterCombat(g: GameState): GameState {
       run.hp = maxHp(run);
       const news = `Campeão de ${arena.name}! +${gold} de ouro. Você foi transferido para ${next.name} (fase ${stageOf(run) + 1} de ${ARENAS.length}): ${ENEMIES[next.boss].name} precisa cair até o dia ${next.days}.`;
       const camp: Screen = { name: 'camp', npc: null, line: '', news };
-      return { ...g, run, screen: scene([`boss-defeat-${enemyId}`, `transfer-${next.id}`], camp) };
+      return { ...g, run, screen: scene([...scenesFor({ on: 'boss-defeat', boss: enemyId }), ...scenesFor({ on: 'arena-enter', arena: next.id })], camp) };
     }
     run.encounter++;
     news = `Vitória sobre ${ENEMIES[enemyId].name}! +${gold} de ouro.`;
