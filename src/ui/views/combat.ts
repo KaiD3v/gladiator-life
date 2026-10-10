@@ -1,9 +1,27 @@
 import { ARENAS, SKILLS, STATUS_INFO } from '../../data';
-import { actionsFor, canUse, fleeChance, hasStatus, playerActsFirst, type CombatState, type Fighter, type LogEntry } from '../../engine/combat';
+import { actionsFor, canUse, fleeChance, hasStatus, intentView, playerActsFirst, type CombatState, type Fighter, type IntentView, type LogEntry } from '../../engine/combat';
 import { arenaById, isBossFight, nextArena, stageOf, type GameState } from '../../state';
 import { art, assetUrl, attrTag, bar, bossTag, esc, itemChip, statusArt } from '../components';
 
-function fighterCard(f: Fighter, hp: number, animating: boolean): string {
+const GLYPH: Record<IntentView['kind'], string> = { attack: '⚔', magic: '✦', defend: '◈', buff: '▲', prep: '⚠' };
+
+/** Resumo em texto da intenção: "Pancada 12–15×2 · Atordoar 40%". */
+function intentText(v: IntentView, stunned: boolean): string {
+  const dmg = v.dmg ? ` ${v.dmg[0]}–${v.dmg[1]}${v.hits && v.hits > 1 ? `×${v.hits}` : ''}` : '';
+  const fx = v.effects.length ? ` · ${v.effects.join(', ')}` : '';
+  return `${v.label}${dmg}${fx}${v.kind === 'prep' ? ' (golpe na próxima rodada)' : ''}${stunned ? ' (atordoado: perde a vez)' : ''}`;
+}
+
+function intentBadge(v: IntentView, stunned: boolean): string {
+  const dmg = v.dmg ? `<b class="idmg">${v.dmg[0]}–${v.dmg[1]}${v.hits && v.hits > 1 ? `×${v.hits}` : ''}</b>` : '';
+  const fx = v.effects.map((e) => `<span class="itag">${e}</span>`).join('');
+  const note = stunned ? '<small>Atordoado: perde a vez</small>' : v.kind === 'prep' ? `<small>${v.warning ?? ''} Na próxima rodada.</small>` : '';
+  return `<div class="intent ${v.kind}${stunned ? ' stunned' : ''}" role="status" aria-label="Próxima ação do inimigo: ${intentText(v, stunned)}">
+    <span class="iglyph" aria-hidden="true">${GLYPH[v.kind]}</span><span class="ilabel">${v.label}</span>${dmg}${fx}${note}
+  </div>`;
+}
+
+function fighterCard(f: Fighter, hp: number, animating: boolean, intent = ''): string {
   const chips = [
     animating && f.defending ? `<span class="chip defending">${statusArt('defend')}Defendendo</span>` : '',
     ...f.statuses.map((s) => {
@@ -18,6 +36,7 @@ function fighterCard(f: Fighter, hp: number, animating: boolean): string {
       ${bar('hp', hp, f.stats.maxHp, `Vida ${hp}/${f.stats.maxHp}`)}
       ${bar('en', f.energy, f.stats.maxEnergy, `Energia ${f.energy}/${f.stats.maxEnergy}`)}
       <div class="chips">${chips}</div>
+      ${intent}
     </div>
   </div>`;
 }
@@ -61,15 +80,20 @@ export function combatView(g: GameState, c: CombatState, shown: number | null): 
     ? `Você age primeiro (Vel ${c.player.stats.speed} × ${c.enemy.stats.speed}).`
     : `${esc(c.enemy.name)} age primeiro (Vel ${c.enemy.stats.speed} × ${c.player.stats.speed}).`;
 
+  const iv = animating || c.outcome ? null : intentView(c);
+  const enemyStunned = hasStatus(c.enemy, 'stun');
+  const heavy = !!iv && iv.kind !== 'prep' && !!SKILLS[iv.skill].windup && !enemyStunned;
+
   const controls = c.outcome && !animating
     ? `<button class="primary wide" data-a="continue">${continueLabel(c, isBoss, nextArena(run)?.name)}</button>`
     : `<div class="actions">${actionsFor(c.player).map((id, i) => {
         const s = SKILLS[id];
         const extra = id === 'flee' ? ` · chance ${Math.round(fleeChance(c.player, c.enemy) * 100)}%` : '';
-        return `<button class="action${id === 'flee' ? ' flee' : ''}" data-a="act" data-v="${id}" ${animating || !canUse(c, id) ? 'disabled' : ''}>
+        const suggest = heavy && id === 'defend';
+        return `<button class="action${id === 'flee' ? ' flee' : ''}${suggest ? ' suggest' : ''}" data-a="act" data-v="${id}" ${animating || !canUse(c, id) ? 'disabled' : ''}>
           <span>${id === 'flee' ? statusArt('flee') : ''}<b>${s.name}</b> ${attrTag(s.attr)}<kbd>${i + 1}</kbd></span>
           <span class="cost">${s.cost ? `${s.cost} energia` : 'sem custo'}${extra}</span>
-          <small>${s.desc}</small></button>`;
+          <small>${s.desc}</small>${suggest ? '<em class="hint">Golpe pesado chegando</em>' : ''}</button>`;
       }).join('')}</div>`;
 
   const items = run.items.length ? run.items.map(itemChip).join('') :'<span class="dim">sem itens</span>';
@@ -83,9 +107,10 @@ export function combatView(g: GameState, c: CombatState, shown: number | null): 
         <div class="stage" style="background-image:url(${assetUrl(`bg-${arena.id}`)})">
           ${actor(c.player, pHp, fresh, run.classId, run.classId)}
           ${actor(c.enemy, eHp, fresh, run.enemies[run.encounter], isBoss ? 'boss' : 'enemy', isBoss)}
+          ${iv ? intentBadge(iv, enemyStunned) : ''}
         </div>
-        <div class="cards">${fighterCard(c.player, pHp, animating)}${fighterCard(c.enemy, eHp, animating)}</div>
-        <p class="dim center small">${order} Defender sempre age antes.</p>
+        <div class="cards">${fighterCard(c.player, pHp, animating)}${fighterCard(c.enemy, eHp, animating, iv ? `<p class="inext">Próxima ação: ${intentText(iv, enemyStunned)}</p>` : '')}</div>
+        <p class="dim center small">${order} Defender só protege na rodada em que é usado e sempre age antes.</p>
         ${controls}
       </div>
       <div class="sketch log" aria-label="Registro de combate"><h3>Registro</h3><ol>
