@@ -69,7 +69,7 @@ describe('postura: Desequilibrado', () => {
     expect(s.player.hp).toBe(s.player.stats.maxHp);
     expect(texts(s)).toContain('Alvo perde o equilíbrio!');
     expect(texts(s)).toContain('Alvo está desequilibrado e perde a vez.');
-    expect(texts(s).some((t) => t.startsWith('Herói ataca Alvo')) && texts(s).some((t) => t.startsWith('Alvo ataca'))).toBe(false);
+    expect(texts(s).some((t) => /^Herói (ataca|golpeia|acerta|investe contra) Alvo/.test(t)) && texts(s).some((t) => /^Alvo (ataca|golpeia|acerta|investe contra)/.test(t))).toBe(false);
   });
 
   it('+50% de dano enquanto desequilibrado', () => {
@@ -98,14 +98,14 @@ describe('postura: Desequilibrado', () => {
     expect(hasStatus(s.enemy, 'broken')).toBe(false);
     expect(s.enemy.posture).toBe(s.enemy.maxPosture);
     expect(texts(s)).toContain('Alvo recupera o equilíbrio.');
-    expect(texts(s).filter((t) => t.startsWith('Alvo ataca')).length).toBe(1); // a vez só é tirada uma vez: na rodada 2 ele agiu
+    expect(texts(s).filter((t) => /^Alvo (ataca|golpeia|acerta|investe contra)/.test(t)).length).toBe(1); // a vez só é tirada uma vez: na rodada 2 ele agiu
   });
 
   it('se o inimigo já agiu quando quebra, perde a vez na rodada seguinte', () => {
     const e = foe(['physical'], 1);
     e.stats.speed = 200; // inimigo age antes do herói
     let s = resolveRound(fight(hero(), e), 'attack');
-    expect(texts(s).some((t) => t.startsWith('Alvo ataca'))).toBe(true);
+    expect(texts(s).some((t) => /^Alvo (ataca|golpeia|acerta|investe contra)/.test(t))).toBe(true);
     expect(hasStatus(s.enemy, 'broken')).toBe(true);
     const hp = s.player.hp;
     s = resolveRound(s, 'attack');

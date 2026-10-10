@@ -96,6 +96,18 @@ export interface ItemDef {
   perks?: Partial<Perks>;
 }
 
+/** Perigo da arena, sempre anunciado uma rodada antes. `first`: rodada em que acontece pela 1ª vez (fim da rodada); `every`: intervalo depois. */
+export interface HazardDef {
+  id: string;
+  name: string;
+  every: number;
+  first: number;
+  warn: string;
+  strike: string;
+  effects?: { status: StatusId; turns: number; power?: number }[]; // quem NÃO está defendendo sofre
+  gift?: number; // fração da vida máxima curada no favorito da multidão (jogador se favor >= CROWD.ovationAt, senão o inimigo)
+}
+
 export interface ArenaDef {
   id: string;
   name: string;
@@ -105,6 +117,7 @@ export interface ArenaDef {
   fights: number;
   boss: string;
   days: number; // prazo da temporada: o chefe precisa cair até este dia
+  hazard: HazardDef;
 }
 
 export type NpcId = 'merchant' | 'inn' | Attr;
