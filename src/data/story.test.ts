@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARENAS, CLASSES } from '.';
+import { ARENAS, CLASSES, ENEMIES, SKILLS } from '.';
 import { defaultSave, initialState, reduce, type GameState } from '../state';
 import { SCENES, SPEAKERS } from './story';
 
@@ -49,6 +49,15 @@ describe('dados da história', () => {
     }
     for (const sp of Object.values(SPEAKERS)) if (sp.art) expect(asset(sp.art), sp.art).toBe(true);
     for (const c of Object.keys(CLASSES)) expect(asset(c)).toBe(true); // retrato do herói
+  });
+
+  it('todo inimigo tem sprite, habilidades conhecidas e padrão feito só delas; toda arena só usa inimigos existentes', () => {
+    for (const e of Object.values(ENEMIES)) {
+      expect(asset(e.id), `sprite ${e.id}`).toBe(true);
+      for (const sk of e.skills) expect(SKILLS[sk], `${e.id}: ${sk}`).toBeDefined();
+      for (const a of [...e.pattern, ...(e.phase2?.pattern ?? [])]) expect(a === 'defend' || e.skills.includes(a), `${e.id}: ${a}`).toBe(true);
+    }
+    for (const a of ARENAS) for (const id of [...a.pool, a.boss]) expect(ENEMIES[id], `${a.id}: ${id}`).toBeDefined();
   });
 
   it('todo gatilho de chefe/arena aponta para um chefe/arena que existe', () => {

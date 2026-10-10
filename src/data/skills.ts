@@ -77,6 +77,11 @@ export const SKILLS: Record<string, SkillDef> = {
     id: 'bite', name: 'Mordida', desc: 'Dano físico 0.9x e veneno.', cost: 3, type: 'physical', power: 0.9,
     effects: [{ status: 'poison', target: 'foe', turns: 3, power: 2 }],
   },
+  maul: { id: 'maul', name: 'Dilacerar', desc: 'Duas mordidas seguidas de dano físico 0.7x.', cost: 4, type: 'physical', power: 0.7, hits: 2 },
+  fireBite: {
+    id: 'fireBite', name: 'Mordida Ígnea', desc: 'Dano físico 1x e queimadura.', cost: 4, type: 'physical', power: 1,
+    effects: [{ status: 'burn', target: 'foe', turns: 2, power: 3 }],
+  },
   smash: {
     id: 'smash', name: 'Pancada', desc: 'Golpe pesado: prepara por uma rodada, depois causa dano físico 2.6x com 40% de chance de atordoar.', cost: 5, type: 'physical', power: 2.6, windup: true,
     effects: [{ status: 'stun', target: 'foe', turns: 1, chance: 0.4 }],

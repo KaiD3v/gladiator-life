@@ -71,6 +71,9 @@ Tudo em `engine/combat.ts`, com os números em `data/balance.ts` (`CROWD`, `POST
 **Conteúdo novo (o caso mais frequente, só dados):**
 - Item / inimigo / classe / habilidade: uma entrada em `data/items.ts`, `data/enemies.ts`, `data/classes.ts` ou `data/skills.ts`.
   Efeitos de item são `mods` (stats) e `perks`; o motor de personagens aplica, e item que aumenta vida máxima cura o mesmo tanto.
+  Variante mais forte de um inimigo (as arenas 2 e 3 só usam variantes): espalhe o original em `data/enemies.ts`
+  (`{ ...wolf, id, name, desc, stats: { ...wolf.stats, atk: 9 }, pattern, ... }`) e sobrescreva só o que muda; a escala por
+  `tier` continua por cima. Precisa de sprite `<id>` (prompt em `scripts/asset-prompts/`, tamanho em `SIZES`).
   Consumível: `use` no item (`heal`, `energy`, `cleanse`, `effects`); para um inimigo carregá-lo, ponha o id no `loot` dele.
   Habilidade de treinador precisa de `attr`, `req` e `price`. Inimigo precisa de `pattern`, `posture` e `weak` (chefe:
   `phase2` e `barks`, falas em linguagem neutra sobre o herói). Classe precisa de `glory`.
