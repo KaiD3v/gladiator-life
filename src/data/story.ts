@@ -1,4 +1,4 @@
-// História da campanha. Somente dados: quem fala, onde e o quê. A ordem em que as cenas tocam fica em run.ts.
+// História da campanha. Somente dados: quem fala, onde e o quê. Cada cena declara o gatilho que a faz tocar (engine/scenes.ts).
 // Texto aceita {nome} (nome do gladiador) e {classe}.
 
 export type SpeakerId =
@@ -17,8 +17,19 @@ export interface Beat {
   bg?: string; // troca o fundo a partir desta fala; senão mantém o anterior
 }
 
+/** Evento do jogo que dispara cenas. */
+export type SceneEvent =
+  | { on: 'campaign-start' } // Nova campanha, antes da criação do gladiador
+  | { on: 'run-start' } // gladiador criado, chegada ao ludus
+  | { on: 'boss-intro'; boss: string } // entrando na luta contra o chefe
+  | { on: 'boss-defeat'; boss: string }
+  | { on: 'arena-enter'; arena: string } // transferência para uma nova arena
+  | { on: 'campaign-won' }; // última arena conquistada
+
 export interface SceneDef {
   id: string;
+  trigger: SceneEvent;
+  once?: boolean; // toca no máximo uma vez por campanha (fugir e voltar não repete)
   title: string;
   bg: string;
   music?: 'menu' | 'battle' | 'boss';
@@ -42,7 +53,7 @@ export const SPEAKERS: Record<SpeakerId, Speaker> = {
 
 const scenes: SceneDef[] = [
   {
-    id: 'prologue-village', title: 'Vale de Corvara', bg: 'bg-village',
+    id: 'prologue-village', trigger: { on: 'campaign-start' }, title: 'Vale de Corvara', bg: 'bg-village',
     beats: [
       { who: 'narrator', text: 'Vale de Corvara. Uma vila de pastores, longe das guerras do Império. Até aquela noite.' },
       { who: 'father', text: 'Fogo nos celeiros! São soldados... com o estandarte do dragão!' },
@@ -58,7 +69,7 @@ const scenes: SceneDef[] = [
     ],
   },
   {
-    id: 'prologue-ludus', title: 'O ludus do Fosso', bg: 'bg-title',
+    id: 'prologue-ludus', trigger: { on: 'run-start' }, title: 'O ludus do Fosso', bg: 'bg-title',
     beats: [
       { who: 'narrator', text: 'Ludus do Fosso de Areia. O cheiro de sangue e areia nunca sai daqui.' },
       { who: 'general', text: '{nome}. Um nome curto, para uma vida que pode ser curta. Escute bem, porque não repito.' },
@@ -74,7 +85,7 @@ const scenes: SceneDef[] = [
   },
   // ---------- Fosso de Areia ----------
   {
-    id: 'boss-intro-tauros', title: 'O Campeão do Fosso', bg: 'bg-pit', music: 'boss',
+    id: 'boss-intro-tauros', trigger: { on: 'boss-intro', boss: 'tauros' }, once: true, title: 'O Campeão do Fosso', bg: 'bg-pit', music: 'boss',
     beats: [
       { who: 'narrator', text: 'O portão de ferro range. A multidão do Fosso se levanta de uma vez.' },
       { who: 'tauros', text: 'Mais um filhote do Varro. Já perdi a conta de quantos ele me mandou.' },
@@ -84,7 +95,7 @@ const scenes: SceneDef[] = [
     ],
   },
   {
-    id: 'boss-defeat-tauros', title: 'A queda do touro', bg: 'bg-pit',
+    id: 'boss-defeat-tauros', trigger: { on: 'boss-defeat', boss: 'tauros' }, title: 'A queda do touro', bg: 'bg-pit',
     beats: [
       { who: 'narrator', text: 'Tauros cai de joelhos. O machado escorrega das mãos enormes.' },
       { who: 'tauros', text: 'Bom golpe... Faz tempo que ninguém me derrubava.' },
@@ -95,7 +106,7 @@ const scenes: SceneDef[] = [
     ],
   },
   {
-    id: 'transfer-colosseum', title: 'Rumo ao Coliseu', bg: 'bg-road',
+    id: 'transfer-colosseum', trigger: { on: 'arena-enter', arena: 'colosseum' }, title: 'Rumo ao Coliseu', bg: 'bg-road',
     beats: [
       { who: 'narrator', text: 'Na manhã seguinte, uma carruagem com o brasão do dragão espera no portão do ludus.' },
       { who: 'general', text: 'Campeão do Fosso! Os apostadores choraram e eu lucrei. Ótimo trabalho, {nome}.' },
@@ -107,7 +118,7 @@ const scenes: SceneDef[] = [
   },
   // ---------- Coliseu de Pedra ----------
   {
-    id: 'boss-intro-serpent', title: 'A Rainha do Coliseu', bg: 'bg-colosseum', music: 'boss',
+    id: 'boss-intro-serpent', trigger: { on: 'boss-intro', boss: 'serpent' }, once: true, title: 'A Rainha do Coliseu', bg: 'bg-colosseum', music: 'boss',
     beats: [
       { who: 'narrator', text: 'Pétalas caem das arquibancadas. O Coliseu inteiro canta um nome: Nerissa.' },
       { who: 'serpent', text: 'Então é você o camponês que derrubou o meu touro favorito. Que adorável.' },
@@ -117,7 +128,7 @@ const scenes: SceneDef[] = [
     ],
   },
   {
-    id: 'boss-defeat-serpent', title: 'A coroa torta', bg: 'bg-colosseum',
+    id: 'boss-defeat-serpent', trigger: { on: 'boss-defeat', boss: 'serpent' }, title: 'A coroa torta', bg: 'bg-colosseum',
     beats: [
       { who: 'narrator', text: 'A Rainha Serpente recua, ofegante, com a coroa torta na cabeça.' },
       { who: 'serpent', text: 'Impressionante... Ninguém me tocou em sete temporadas.' },
@@ -128,7 +139,7 @@ const scenes: SceneDef[] = [
     ],
   },
   {
-    id: 'transfer-crimson', title: 'A estrada vermelha', bg: 'bg-road',
+    id: 'transfer-crimson', trigger: { on: 'arena-enter', arena: 'crimson' }, title: 'A estrada vermelha', bg: 'bg-road',
     beats: [
       { who: 'narrator', text: 'A estrada para a Arena Rubra atravessa campos queimados. Ninguém na carruagem fala por horas.' },
       { who: 'general', text: 'Dois títulos. A plebe já grita o seu nome nas tavernas. Isso me deixa... curioso.' },
@@ -140,7 +151,7 @@ const scenes: SceneDef[] = [
   },
   // ---------- Arena Rubra ----------
   {
-    id: 'boss-intro-emperor', title: 'O trono de ossos', bg: 'bg-crimson', music: 'boss',
+    id: 'boss-intro-emperor', trigger: { on: 'boss-intro', boss: 'emperor' }, once: true, title: 'O trono de ossos', bg: 'bg-crimson', music: 'boss',
     beats: [
       { who: 'narrator', text: 'Os braseiros acendem sozinhos. Uma figura coroada se ergue de um trono de ossos.' },
       { who: 'emperor', text: 'Varro ainda manda crianças morrerem por ele? Eu já fui imperador. Sabe quem me tirou o trono?' },
@@ -150,7 +161,7 @@ const scenes: SceneDef[] = [
     ],
   },
   {
-    id: 'boss-defeat-emperor', title: 'O silêncio', bg: 'bg-crimson',
+    id: 'boss-defeat-emperor', trigger: { on: 'boss-defeat', boss: 'emperor' }, title: 'O silêncio', bg: 'bg-crimson',
     beats: [
       { who: 'narrator', text: 'A chama violeta se apaga. A coroa do Imperador Caído rola pela areia vermelha.' },
       { who: 'emperor', text: 'Ah... silêncio, enfim. Obrigado, {nome}.' },
@@ -160,7 +171,7 @@ const scenes: SceneDef[] = [
     ],
   },
   {
-    id: 'epilogue', title: 'Liberdade', bg: 'bg-crimson',
+    id: 'epilogue', trigger: { on: 'campaign-won' }, title: 'Liberdade', bg: 'bg-crimson',
     beats: [
       { who: 'narrator', text: 'Milhares de vozes gritam o seu nome. Caius Varro desce até a areia, sorrindo para a plateia.' },
       { who: 'general', text: 'Cidadãos! Prometi liberdade ao campeão das três arenas. Caius Varro cumpre a sua palavra!' },

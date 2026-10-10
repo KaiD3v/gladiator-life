@@ -25,7 +25,7 @@ export interface RunState {
   goldEarned: number;
   kills: string[];
   fled: string[];
-  seen: string[]; // chefes cuja cena de chegada já tocou (fugir e voltar não repete)
+  seen: string[]; // cenas `once` já tocadas (ex.: chegada do chefe: fugir e voltar não repete)
   rounds: number;
   dealt: number;
   taken: number;
