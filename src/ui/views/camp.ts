@@ -1,0 +1,102 @@
+// Acampamento (vida fora das batalhas).
+import { ARENAS, ATTR_INFO, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, type NpcId } from '../../data';
+import { arenaById, freeDays, learnBlock, maxHp, playerBuild, restPrice, stageOf, trainPrice, type GameState, type RunState } from '../../state';
+import { ATTRS, art, assetUrl, attrTag, bar, esc, goldPill, statLine } from '../components';
+
+const CAMP_NPCS: NpcId[] = ['merchant', 'str', 'dex', 'wis', 'inn'];
+
+function offerCard(pic: string, title: string, body: string, button: string, opts: { a: string; v?: string; disabled?: boolean; poor?: boolean }): string {
+  return `<div class="sketch offer">
+    ${art(pic, 'offer-art', '')}
+    <div><h3>${title}</h3>${body}</div>
+    <button data-a="${opts.a}" data-v="${opts.v ?? ''}" class="${opts.poor ? 'poor' : ''}" ${opts.disabled ? 'disabled' : ''}>${button}</button>
+  </div>`;
+}
+
+function npcOffers(run: RunState, npc: NpcId): string {
+  const noDays = freeDays(run) <= 0;
+  const dayNote = noDays ? ' · último dia!' : ' · 1 dia';
+  if (npc === 'merchant') {
+    if (!run.shop.length) return '<p class="dim">Estoque esgotado. Volte depois da próxima luta.</p>';
+    return run.shop.map((id) => {
+      const it = ITEMS[id];
+      return offerCard(id, it.name, `<p>${it.desc}</p>`, `Comprar · ${it.price} ouro`, { a: 'buy', v: id, poor: run.gold < it.price });
+    }).join('');
+  }
+  if (npc === 'inn') {
+    const max = maxHp(run);
+    const price = restPrice(run);
+    const paid = run.gold >= price;
+    const gain = Math.min(max - run.hp, Math.round(max * (paid ? REST_PAID : REST_FREE)));
+    const body = `<p>${paid ? `Quarto com ensopado: recupera ${Math.round(REST_PAID * 100)}% da vida.` : `Sem ouro para o quarto (${price}): o estábulo recupera só ${Math.round(REST_FREE * 100)}%.`}</p>
+      <p class="dim">Vida ${run.hp}/${max}${gain > 0 ? ` → +${gain}` : ''}</p>`;
+    return offerCard('rest', paid ? 'Descansar no quarto' : 'Dormir no estábulo', body,
+      `${paid ? `${price} ouro` : 'Grátis'}${dayNote}`, { a: 'rest', disabled: noDays });
+  }
+  const a = npc;
+  const info = ATTR_INFO[a];
+  const price = trainPrice(run, a);
+  const train = offerCard(`attr-${a}`, `Treinar ${info.name}: ${run.attrs[a]} → ${run.attrs[a] + 1}`, `<p>${info.desc}</p>`,
+    `${price} ouro${dayNote}`, { a: 'train', v: a, disabled: noDays, poor: run.gold < price });
+  const skills = Object.values(SKILLS).filter((sk) => sk.attr === a && sk.price).map((sk) => {
+    const block = learnBlock(run, sk.id);
+    const reqOk = run.attrs[a] >= sk.req!;
+    const body = `<p><span class="cost">${sk.cost} energia</span> · ${sk.desc}</p>
+      <p class="${reqOk ? 'dim' : 'warn'}">Requer ${info.short} ${sk.req}${block === 'slots' ? ' · sem espaço livre' : ''}</p>`;
+    const label = block === 'known' ? 'Conhecida' : `Aprender · ${sk.price} ouro${dayNote}`;
+    return offerCard(`attr-${a}`, sk.name, body, label,
+      { a: 'learn', v: sk.id, disabled: block === 'known' || block === 'days', poor: block === 'gold' || block === 'req' || block === 'slots' });
+  }).join('');
+  return train + skills;
+}
+
+export function campView(g: GameState, npc: NpcId | null, line: string, news: string): string {
+  const run = g.run!;
+  const arena = arenaById(run.arenaId);
+  const { stats } = playerBuild(run);
+  const next = ENEMIES[run.enemies[run.encounter]];
+  const isBoss = run.encounter === run.enemies.length - 1;
+  const free = freeDays(run);
+
+  const npcButtons = CAMP_NPCS.map((id) => `<button class="npc${npc === id ? ' selected' : ''}" data-a="talk" data-v="${id}" aria-pressed="${npc === id}">
+      ${art(`npc-${id}`, 'npc-sprite', NPCS[id].name)}<span><b>${NPCS[id].name}</b><small>${NPCS[id].role}</small></span></button>`).join('');
+
+  const panel = npc
+    ? `<div class="sketch npc-panel" aria-live="polite">
+        <div class="dialog">${art(`npc-${npc}`, 'npc-portrait', NPCS[npc].name)}
+          <div class="bubble"><b>${NPCS[npc].name}</b> <span class="dim">· ${NPCS[npc].role}</span><p>“${esc(line)}”</p></div>
+          <button class="close" data-a="talk" data-v="" aria-label="Fechar conversa">✕</button></div>
+        <div class="offers">${npcOffers(run, npc)}</div>
+      </div>`
+    : '<p class="dim center">Clique em alguém do ludus para conversar, comprar, treinar ou descansar.</p>';
+
+  return `<section class="stack">
+    <div class="row" style="justify-content:space-between">
+      <h2 style="margin:0">Acampamento · Fase ${stageOf(run) + 1}/${ARENAS.length} · ${arena.name}</h2>
+      <div class="row pills"><span class="pill">${art('day', 'ico', '')}Dia ${run.day}/${arena.days}</span>${goldPill(run.gold)}</div>
+    </div>
+    ${bar('hp', run.hp, stats.maxHp, `Vida ${run.hp}/${stats.maxHp}`)}
+    ${news ? `<p class="sketch news">${esc(news)}</p>` : ''}
+    <div class="town" style="background-image:url(${assetUrl('bg-town')})">${npcButtons}</div>
+    ${panel}
+    <div class="camp-grid">
+      <div class="sketch">
+        <h3>Ficha de ${esc(run.name)}</h3>
+        ${run.titles.length ? `<p class="titles">${run.titles.map((id) => `<span class="pill gold">${art('victory', 'ico', '')}Campeão de ${arenaById(id).name}</span>`).join(' ')}</p>` : ''}
+        ${ATTRS.map((a) => `<div class="attr-row ${a}">${art(`attr-${a}`, 'attr-ico', '')}<div><b>${ATTR_INFO[a].name} ${run.attrs[a]}</b><small>${ATTR_INFO[a].desc}</small></div></div>`).join('')}
+        <p class="statline">${statLine(stats)}</p>
+        <h3>Habilidades ${run.skills.length}/${MAX_SKILLS}</h3>
+        <ul class="skill-list">${run.skills.map((id) => `<li>${attrTag(SKILLS[id].attr)} <b>${SKILLS[id].name}</b> (${SKILLS[id].cost} en.): ${SKILLS[id].desc}</li>`).join('')}</ul>
+        <h3>Itens</h3>
+        <p>${run.items.length ? run.items.map((id) => `<span class="chip item" title="${ITEMS[id].desc}">${art(id, 'ico', '')}${ITEMS[id].name}</span>`).join(' ') : '<span class="dim">Nenhum item ainda.</span>'}</p>
+      </div>
+      <div class="sketch next-card">
+        <h3>Próxima luta ${run.encounter + 1}/${run.enemies.length}</h3>
+        ${art(next.id, 'foe-preview', next.name, isBoss ? 'boss' : 'enemy')}
+        <p><b>${next.name}</b>${isBoss ? ' <span style="color:var(--red)">(CHEFE)</span>' : ''}<br><span class="dim">${next.desc}</span></p>
+        <p class="${free <= 2 ? 'warn' : 'dim'}">${free <= 0 ? 'Último dia da temporada: hoje só resta lutar!' : `${free} dia(s) livre(s) antes do prazo.`}</p>
+        <button class="primary" data-a="fight" style="width:100%">Ir para a arena · 1 dia</button>
+      </div>
+    </div>
+  </section>`;
+}

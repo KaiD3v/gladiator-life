@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ARENAS, CLASSES } from './data';
-import { defaultSave, initialState, reduce, type GameState } from './run';
+import { ARENAS, CLASSES } from '.';
+import { defaultSave, initialState, reduce, type GameState } from '../state';
 import { SCENES, SPEAKERS } from './story';
 
-const ASSETS = new Set(Object.keys(import.meta.glob('../public/assets/*.webp')).map((p) => p.slice('../public/assets/'.length, -'.webp'.length)));
+const ASSETS = new Set(Object.keys(import.meta.glob('../../public/assets/*.webp')).map((p) => p.slice('../../public/assets/'.length, -'.webp'.length)));
 const asset = (name: string) => ASSETS.has(name);
 
 /** Avança fala a fala até sair da fila de cenas; devolve as cenas vistas na ordem. */

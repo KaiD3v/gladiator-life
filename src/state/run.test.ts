@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ARENAS, CLASSES, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, START_GOLD } from './data';
+import { ARENAS, CLASSES, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, START_GOLD } from '../data';
 import {
   defaultSave, freeDays, initialState, learnBlock, levelOf, maxHp, parseSave, playerBuild, reduce, restPrice, trainPrice,
   type GameState, type RunState,
-} from './run';
+} from '.';
 
 /** Pula a fila de cenas de história, se houver. */
 const skip = (g: GameState) => reduce(g, { type: 'skip' });
