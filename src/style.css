@@ -168,6 +168,30 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; user-select: 
 .ico { width: 22px; height: 22px; vertical-align: -5px; margin-right: 4px; image-rendering: pixelated; }
 .st { width: 18px; height: 18px; vertical-align: -3px; margin-right: 3px; image-rendering: pixelated; }
 .chip.item { color: var(--ink); }
+.chip.carry { color: var(--gold); }
+.action.item-act { border-color: var(--green); }
+.bag-btn { position: relative; min-height: 48px; padding: 2px 12px; box-shadow: none; }
+.bag-btn.new::after { content: ''; position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--red); }
+.chip.new { font-family: var(--hand); font-size: 0.8rem; color: var(--bg); background: var(--gold); border-color: var(--gold); vertical-align: middle; }
+.bag-panel .dialog { justify-content: space-between; align-items: center; }
+.bag-panel .dialog h3 { margin: 0; font-size: 1.4rem; }
+
+/* Itens caídos: janela por cima do fim da luta (escolha do que levar) */
+.modal { position: fixed; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: rgba(10, 9, 7, 0.78); }
+.modal-box { display: grid; gap: 8px; grid-template-rows: auto auto auto minmax(0, 1fr) auto; width: min(560px, 100%); max-height: calc(100dvh - 32px); padding: 14px 16px; border-color: var(--gold); background: var(--bg); }
+.modal-box h2 { margin: 0; font-family: var(--title); color: var(--gold); font-size: 1.8rem; }
+.modal-box p { margin: 0; }
+.loot-list { display: grid; gap: 6px; align-content: start; }
+.loot-list h3 { margin: 4px 0 0; font-size: 1.15rem; }
+.loot-grid { display: grid; gap: 6px; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); }
+.loot-item { display: grid; gap: 2px; text-align: left; padding: 6px 10px; box-shadow: none; }
+.loot-item small { font-size: 0.8rem; color: var(--dim); line-height: 1.2; }
+.loot-item.on { border-color: var(--green); background: #26301c; }
+.loot-item.on b { color: var(--green); }
+.modal-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
+.modal-actions .primary { padding: 10px 12px; }
+@media (max-width: 520px) { .bag-word { display: none; } }
+@media (max-height: 520px) { .loot-intro { display: none; } .modal-box { gap: 4px; padding: 8px 12px; } }
 
 .hero {
   position: relative;
@@ -377,7 +401,7 @@ button.poor { border-color: var(--line); color: var(--dim); }
 .intent .idmg { font-weight: normal; color: var(--red); font-size: 1.1rem; }
 .intent .itag { font-size: 0.8rem; padding: 0 5px; border: 1px solid currentColor; border-radius: 6px; color: var(--purple); }
 .intent small { flex-basis: 100%; font-size: 0.8rem; color: var(--dim); }
-.intent.magic { border-color: var(--purple); } .intent.defend { border-color: var(--blue); } .intent.buff { border-color: var(--green); }
+.intent.magic { border-color: var(--purple); } .intent.defend { border-color: var(--blue); } .intent.buff { border-color: var(--green); } .intent.item { border-color: var(--gold); }
 .intent.prep { border-color: var(--red); animation: intentPulse 1s steps(2) infinite; }
 .intent.prep .iglyph { color: var(--red); }
 .intent.stunned { opacity: 0.6; filter: grayscale(0.6); animation: none; }
@@ -470,18 +494,20 @@ button.poor { border-color: var(--line); color: var(--dim); }
 .inext { display: none; }
 .side-log { display: none; }
 .tray { display: grid; gap: 6px; }
-.tray-tabs { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.tray-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .tab { position: relative; padding: 4px; font-size: 1rem; box-shadow: none; }
 .tab.on { border-color: var(--gold); color: var(--gold); background: #3a3020; }
 .tab.alert::after { content: ''; position: absolute; top: 6px; right: 8px; width: 9px; height: 9px; border-radius: 50%; background: var(--red); }
 .tray-pages > .tpage { display: none; align-content: start; }
-.tray-pages[data-page='skills'] > .skills, .tray-pages[data-page='basic'] > .basic { display: grid; }
+.tray-pages[data-page='skills'] > .skills, .tray-pages[data-page='basic'] > .basic, .tray-pages[data-page='items'] > .items { display: grid; }
+.tpage.items > p { grid-column: 1 / -1; margin: 8px 0; text-align: center; }
 .tray-pages[data-page='log'] > .log { display: block; }
 .tpage.log { height: clamp(110px, 26dvh, 200px); padding: 4px 8px; border: 2px solid var(--line); border-radius: 10px 4px 12px 5px; }
 
 /* Telas baixas (celulares pequenos): a descrição da ação vira dica (title) e o HUD perde a linha de stats */
 @media (max-height: 720px) {
   .action small { display: none; }
+  .tpage.items .action small { display: -webkit-box; } /* item: a descrição é o que diferencia */
   .hud .statline { display: none; }
 }
 
@@ -520,6 +546,8 @@ button.poor { border-color: var(--line); color: var(--dim); }
   .tray-tabs { display: none; }
   .tray-pages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
   .tray-pages > .tpage.skills, .tray-pages > .tpage.basic { display: grid; }
+  .tray-pages > .tpage.items { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .tray-pages > .tpage.items.empty { display: none; }
   .tray-pages > .tpage.log { display: none; }
 }
 

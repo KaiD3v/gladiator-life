@@ -1,6 +1,7 @@
 // Eventos da página: tabela `data-a` → ação, mais entrada de texto, envio do formulário e atalhos de teclado.
-import type { Attr, ClassId, NpcId } from '../data';
+import { BAG_SIZE, type Attr, type ClassId, type NpcId } from '../data';
 import { actionsFor } from '../engine/combat';
+import { defaultKeep } from '../engine/items';
 import type { GameAction } from '../state';
 import { icon } from './components';
 import { TRAY_PAGES, type TrayPage } from './views/combat';
@@ -14,11 +15,28 @@ const ACTIONS: Record<string, (v: string) => GameAction | GameAction[] | void> =
   class: (v) => { form.classId = v as ClassId; render(); },
   act: (v) => ({ type: 'act', action: v }),
   tray: (v) => { ui.tray = v as TrayPage; render(); },
-  continue: () => ({ type: 'continue' }),
+  continue: () => ({ type: 'continue', keep: ui.keep ?? undefined }),
+  leave: () => {
+    const s = state().screen;
+    if (s.name === 'combat') return { type: 'continue', keep: s.combat.player.bag.map((_, i) => i) }; // só a própria bolsa
+  },
+  keep: (v) => {
+    const s = state().screen;
+    if (s.name !== 'combat') return;
+    const c = s.combat, i = Number(v);
+    const sel = ui.keep ?? defaultKeep(c.player.bag.length + c.enemy.bag.length);
+    ui.keep = sel.includes(i) ? sel.filter((x) => x !== i) : sel.length < BAG_SIZE ? [...sel, i] : sel;
+    render();
+  },
+  bag: () => { ui.bag = !ui.bag; render(); },
   next: () => ({ type: 'next' }),
   skip: () => ({ type: 'skip' }),
-  talk: (v) => ({ type: 'talk', npc: (v || null) as NpcId | null }),
+  talk: (v) => {
+    ui.bag = false;
+    return { type: 'talk', npc: (v || null) as NpcId | null };
+  },
   buy: (v) => ({ type: 'buy', itemId: v }),
+  use: (v) => ({ type: 'use', itemId: v }),
   train: (v) => ({ type: 'train', attr: v as Attr }),
   learn: (v) => ({ type: 'learn', skill: v }),
   rest: () => ({ type: 'rest' }),

@@ -1,6 +1,8 @@
 // Acampamento (vida fora das batalhas).
-import { ARENAS, ATTR_INFO, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, type NpcId } from '../../data';
-import { arenaById, freeDays, isBossFight, learnBlock, maxHp, playerBuild, restPrice, stageOf, trainPrice, type GameState, type RunState } from '../../state';
+import { ARENAS, ATTR_INFO, BAG_SIZE, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, type NpcId } from '../../data';
+import { isQuickItem } from '../../engine/combat';
+import { buyBlock } from '../../engine/items';
+import { arenaById, freeDays, isBossFight, learnBlock, maxHp, playerBuild, restPrice, stageOf, trainPrice, useBlock, type GameState, type RunState } from '../../state';
 import { ATTRS, art, assetUrl, bar, bossTag, esc, goldPill, itemChip, skillList, statLine } from '../components';
 
 const CAMP_NPCS: NpcId[] = ['merchant', 'str', 'dex', 'wis', 'inn'];
@@ -20,7 +22,9 @@ function npcOffers(run: RunState, npc: NpcId): string {
     if (!run.shop.length) return '<p class="dim">Estoque esgotado. Volte depois da próxima luta.</p>';
     return run.shop.map((id) => {
       const it = ITEMS[id];
-      return offerCard(id, it.name, `<p>${it.desc}</p>`, `Comprar · ${it.price} ouro`, { a: 'buy', v: id, poor: run.gold < it.price });
+      const full = buyBlock(run, id) === 'bag';
+      const body = `<p>${it.use ? `<span class="cost">Consumível</span> · ` : ''}${it.desc}</p>`;
+      return offerCard(id, it.name, body, full ? `Bolsa cheia (${BAG_SIZE})` : `Comprar · ${it.price} ouro`, { a: 'buy', v: id, disabled: full, poor: run.gold < it.price });
     }).join('');
   }
   if (npc === 'inn') {
@@ -50,7 +54,24 @@ function npcOffers(run: RunState, npc: NpcId): string {
   return train + skills;
 }
 
-export function campView(g: GameState, npc: NpcId | null, line: string, news: string): string {
+/** Bolsa aberta pelo botão do topo: cada consumível com quantidade, tipo, descrição e uso (só cura fora da luta). */
+function bagPanel(run: RunState, loot: string[]): string {
+  const cards = [...new Set(run.bag)].map((id) => {
+    const it = ITEMS[id], heal = SKILLS[id].heal;
+    const n = run.bag.filter((x) => x === id).length;
+    const block = useBlock(run, id);
+    const kind = isQuickItem(id) ? 'Defesa' : 'Ataque';
+    const label = !heal ? 'Só em combate' : block === 'full' ? 'Vida cheia' : `Usar · +${heal} vida`;
+    return offerCard(id, `${it.name} ×${n}${loot.includes(id) ? ' <span class="chip new">Novo</span>' : ''}`,
+      `<p><span class="cost">${kind}</span> · ${it.desc}</p>`, label, { a: 'use', v: id, disabled: !!block });
+  }).join('');
+  return `<div class="sketch npc-panel bag-panel" aria-live="polite">
+    <div class="dialog"><h3>Bolsa ${run.bag.length}/${BAG_SIZE}</h3><button class="close" data-a="bag" aria-label="Fechar bolsa">✕</button></div>
+    <div class="offers">${cards || '<p class="dim">Vazia. Compre consumíveis no mercador ou vença quem os carrega.</p>'}</div>
+  </div>`;
+}
+
+export function campView(g: GameState, npc: NpcId | null, line: string, news: string, loot: string[] = [], bagOpen = false): string {
   const run = g.run!;
   const arena = arenaById(run.arenaId);
   const { stats } = playerBuild(run);
@@ -61,7 +82,8 @@ export function campView(g: GameState, npc: NpcId | null, line: string, news: st
   const npcButtons = CAMP_NPCS.map((id) => `<button class="npc${npc === id ? ' selected' : ''}" data-a="talk" data-v="${id}" aria-pressed="${npc === id}">
       ${art(`npc-${id}`, 'npc-sprite', NPCS[id].name)}<span><b>${NPCS[id].name}</b><small>${NPCS[id].role}</small></span></button>`).join('');
 
-  const panel = npc
+  const panel = bagOpen ? bagPanel(run, loot)
+    : npc
     ? `<div class="sketch npc-panel" aria-live="polite">
         <div class="dialog">${art(`npc-${npc}`, 'npc-portrait', NPCS[npc].name)}
           <div class="bubble"><b>${NPCS[npc].name}</b> <span class="dim">· ${NPCS[npc].role}</span><p>“${esc(line)}”</p></div>
@@ -73,7 +95,8 @@ export function campView(g: GameState, npc: NpcId | null, line: string, news: st
   return `<section class="screen camp-screen">
     <header class="topbar">
       <h2>Acampamento <span class="dim tb-sub">Fase ${stageOf(run) + 1}/${ARENAS.length} · ${arena.name}</span></h2>
-      <div class="row pills"><span class="pill">${art('day', 'ico', '')}Dia ${run.day}/${arena.days}</span>${goldPill(run.gold)}</div>
+      <div class="row pills"><span class="pill">${art('day', 'ico', '')}Dia ${run.day}/${arena.days}</span>${goldPill(run.gold)}
+        <button class="pill bag-btn${bagOpen ? ' selected' : ''}${loot.length ? ' new' : ''}" data-a="bag" aria-pressed="${bagOpen}" aria-label="Bolsa ${run.bag.length} de ${BAG_SIZE}${loot.length ? ', itens novos' : ''}">⚗ <span class="bag-word">Bolsa </span>${run.bag.length}/${BAG_SIZE}</button></div>
     </header>
     ${bar('hp', run.hp, stats.maxHp, `Vida ${run.hp}/${stats.maxHp}`)}
     ${news ? `<p class="sketch news" title="${esc(news)}">${esc(news)}</p>` : ''}
@@ -87,8 +110,10 @@ export function campView(g: GameState, npc: NpcId | null, line: string, news: st
         <p class="statline">${statLine(stats)}</p>
         <h3>Habilidades ${run.skills.length}/${MAX_SKILLS}</h3>
         ${skillList(run.skills)}
-        <h3>Itens</h3>
+        <h3>Equipamento</h3>
         <p>${run.items.length ? run.items.map(itemChip).join(' ') : '<span class="dim">Nenhum item ainda.</span>'}</p>
+        <h3>Bolsa ${run.bag.length}/${BAG_SIZE}</h3>
+        <p>${run.bag.length ? run.bag.map(itemChip).join(' ') : '<span class="dim">Vazia. Compre consumíveis no mercador ou vença quem os carrega.</span>'}</p>
       </div>
     </div>
     <div class="sketch next-card">

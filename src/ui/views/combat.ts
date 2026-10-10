@@ -1,9 +1,10 @@
-import { ARENAS, CROWD, SKILLS, STATUS_INFO, WEAK_INFO } from '../../data';
-import { actionsFor, canUse, crowdView, fleeChance, hasStatus, hazardView, intentView, playerActsFirst, postureView, type CombatState, type Fighter, type IntentView, type LogEntry } from '../../engine/combat';
+import { ARENAS, BAG_SIZE, CROWD, ITEMS, SKILLS, STATUS_INFO, WEAK_INFO } from '../../data';
+import { defaultKeep } from '../../engine/items';
+import { actionsFor, canUse, crowdView, fleeChance, hasStatus, hazardView, intentView, isItem, isQuickItem, playerActsFirst, postureView, type CombatState, type Fighter, type IntentView, type LogEntry } from '../../engine/combat';
 import { arenaById, isBossFight, nextArena, stageOf, type GameState } from '../../state';
 import { art, assetUrl, attrTag, bar, bossTag, esc, itemChip, statusArt } from '../components';
 
-const GLYPH: Record<IntentView['kind'], string> = { attack: '⚔', magic: '✦', defend: '◈', buff: '▲', prep: '⚠' };
+const GLYPH: Record<IntentView['kind'], string> = { attack: '⚔', magic: '✦', defend: '◈', buff: '▲', prep: '⚠', item: '⚗' };
 
 /** Resumo em texto da intenção: "Pancada 12–15×2 · Atordoar 40%". */
 function intentText(v: IntentView, stunned: boolean): string {
@@ -103,12 +104,40 @@ function continueLabel(c: CombatState, isBoss: boolean, nextArena?: string): str
   return 'Ver resumo da campanha';
 }
 
-/** Páginas da bandeja de ações no celular (no desktop habilidades e básico aparecem juntas e o registro fica ao lado). */
-export const TRAY_PAGES = ['skills', 'basic', 'log'] as const;
+/** Páginas da bandeja de ações no celular (no desktop habilidades, básico e itens aparecem juntos e o registro fica ao lado). */
+export const TRAY_PAGES = ['skills', 'basic', 'items', 'log'] as const;
 export type TrayPage = typeof TRAY_PAGES[number];
-const TRAY_LABEL: Record<TrayPage, string> = { skills: 'Habilidades', basic: 'Básico', log: 'Registro' };
+const TRAY_LABEL: Record<TrayPage, string> = { skills: 'Habilidades', basic: 'Básico', items: 'Itens', log: 'Registro' };
 
-export function combatView(g: GameState, c: CombatState, shown: number | null, tray: TrayPage = 'skills'): string {
+/**
+ * Fim da luta vencida com itens no chão: o jogador escolhe o que leva entre os caídos e a própria bolsa (no máximo BAG_SIZE).
+ * Índices em `bolsa + caídos`, os mesmos da ação `continue`.
+ */
+function lootModal(c: CombatState, keep: number[]): string {
+  const pool = [...c.player.bag, ...c.enemy.bag];
+  const own = c.player.bag.length;
+  const full = keep.length >= BAG_SIZE;
+  const card = (i: number) => {
+    const it = ITEMS[pool[i]], on = keep.includes(i);
+    return `<button class="loot-item${on ? ' on' : ''}" data-a="keep" data-v="${i}" aria-pressed="${on}" ${!on && full ? 'disabled' : ''}>
+      <b>${on ? '✓ ' : ''}${it.name}</b><small>${isQuickItem(it.id) ? 'Defesa' : 'Ataque'} · ${it.desc}</small></button>`;
+  };
+  const range = (a: number, b: number) => Array.from({ length: b - a }, (_, k) => card(a + k)).join('');
+  return `<div class="modal" role="dialog" aria-modal="true" aria-labelledby="loot-title">
+    <div class="sketch modal-box">
+      <h2 id="loot-title">Itens caídos</h2>
+      <p class="dim loot-intro">${esc(c.enemy.name)} deixou isto na areia. Toque para escolher o que levar.</p>
+      <p class="${full ? 'warn' : 'dim'} loot-count">Bolsa ${keep.length}/${BAG_SIZE}${full ? ' · cheia: solte um item para pegar outro' : ''}</p>
+      <div class="loot-list scroll">
+        <h3>No chão</h3><div class="loot-grid">${range(own, pool.length)}</div>
+        ${own ? `<h3>Sua bolsa</h3><div class="loot-grid">${range(0, own)}</div>` : ''}
+      </div>
+      <div class="modal-actions"><button data-a="leave">Deixar no chão</button><button class="primary" data-a="continue">Levar e seguir</button></div>
+    </div>
+  </div>`;
+}
+
+export function combatView(g: GameState, c: CombatState, shown: number | null, tray: TrayPage = 'skills', keep: number[] | null = null): string {
   const run = g.run!;
   const arena = arenaById(run.arenaId);
   const isBoss = isBossFight(run);
@@ -142,8 +171,10 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
     const extra = id === 'flee' ? ` · ${Math.round(fleeChance(c.player, c.enemy) * 100)}%` : '';
     const suggest = (heavy || statusHazard) && id === 'defend';
     const hintText = heavy && statusHazard ? 'Golpe pesado e perigo da arena' : heavy ? 'Golpe pesado chegando' : 'Perigo da arena: Defender protege';
-    const cost = s.glory && c.crowd < 100 ? 'Requer multidão 100' : s.cost ? `${s.cost} energia` : 'sem custo';
-    const cls = `action${id === 'flee' ? ' flee' : ''}${suggest ? ' suggest' : ''}${s.glory ? ` glory-btn${cv.gloryReady ? ' ready' : ''}` : ''}`;
+    const item = isItem(id);
+    const cost = item ? `Item ×${c.player.bag.filter((x) => x === id).length} · ${isQuickItem(id) ? 'age primeiro' : 'segue a velocidade'}`
+      : s.glory && c.crowd < 100 ? 'Requer multidão 100' : s.cost ? `${s.cost} energia` : 'sem custo';
+    const cls = `action${id === 'flee' ? ' flee' : ''}${item ? ' item-act' : ''}${suggest ? ' suggest' : ''}${s.glory ? ` glory-btn${cv.gloryReady ? ' ready' : ''}` : ''}`;
     return `<button class="${cls}" data-a="act" data-v="${id}" title="${s.desc}" ${animating || !canUse(c, id) ? 'disabled' : ''}>
       <span class="a-top">${id === 'flee' ? statusArt('flee') : ''}<b>${s.name}</b> ${attrTag(s.attr)}<kbd>${i + 1}</kbd></span>
       <span class="cost">${cost}${extra}</span>
@@ -152,11 +183,14 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
   const indexed = actionsFor(c.player, c).map((id, i) => [id, i] as const);
   const verdict = indexed.filter(([id]) => SKILLS[id].type === 'verdict');
   const skills = indexed.filter(([id]) => c.player.skills.includes(id));
-  const basic = indexed.filter(([id]) => SKILLS[id].type !== 'verdict' && !c.player.skills.includes(id));
+  const basic = indexed.filter(([id]) => SKILLS[id].type !== 'verdict' && !c.player.skills.includes(id) && !isItem(id));
+  const bag = indexed.filter(([id]) => isItem(id));
   const logList = `<ol>${visible.map((l, i) => `<li class="${l.kind}${l.bark ? ' bark' : ''}${animating && i === visible.length - 1 ? ' fresh' : ''}"><span class="rd">R${l.round}</span>${l.bark ? `${esc(c.enemy.name)}: “${esc(l.text)}”` : esc(l.text)}</li>`).join('')}</ol>`;
   // Aba com aviso: Básico quando Defender é sugerido ou a Glória está pronta.
-  const alert: Partial<Record<TrayPage, boolean>> = { basic: (heavy || statusHazard || cv.gloryReady) && !animating };
-  const tabs = TRAY_PAGES.map((p) => `<button class="tab${p === tray ? ' on' : ''}${alert[p] ? ' alert' : ''}" data-a="tray" data-v="${p}" role="tab" aria-selected="${p === tray}">${TRAY_LABEL[p]}</button>`).join('');
+  // Itens: quando a vida está baixa e há cura na bolsa.
+  const lowHeal = c.player.hp <= c.player.stats.maxHp * 0.35 && bag.some(([id]) => SKILLS[id].heal);
+  const alert: Partial<Record<TrayPage, boolean>> = { basic: (heavy || statusHazard || cv.gloryReady) && !animating, items: lowHeal && !animating };
+  const tabs = TRAY_PAGES.map((p) => `<button class="tab${p === tray ? ' on' : ''}${alert[p] ? ' alert' : ''}" data-a="tray" data-v="${p}" role="tab" aria-selected="${p === tray}">${TRAY_LABEL[p]}${p === 'items' ? ` ${c.player.bag.length}` : ''}</button>`).join('');
   const controls = c.outcome && !animating
     ? `<div class="tray"><button class="primary wide" data-a="continue">${continueLabel(c, isBoss, nextArena(run)?.name)}</button></div>`
     : `<div class="tray">
@@ -165,6 +199,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
         <div class="tray-pages" data-page="${tray}">
           <div class="tpage skills actions" role="tabpanel" aria-label="Habilidades">${skills.map(([id, i]) => button(id, i)).join('')}</div>
           <div class="tpage basic actions" role="tabpanel" aria-label="Básico">${basic.map(([id, i]) => button(id, i)).join('')}</div>
+          <div class="tpage items actions${bag.length ? '' : ' empty'}" role="tabpanel" aria-label="Itens">${bag.length ? bag.map(([id, i]) => button(id, i)).join('') : '<p class="dim">Bolsa vazia. Compre no mercador ou vença quem carrega itens.</p>'}</div>
           <div class="tpage log" role="tabpanel" aria-label="Registro de combate">${logList}</div>
         </div>
       </div>`;
@@ -172,6 +207,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
   const items = run.items.map(itemChip).join('');
   const crowdChips = `${cv.ovation ? `<span class="chip ovation">Ovação +${Math.round(CROWD.ovationBonus * 100)}%</span>` : ''}${cv.lastStandReady ? '<span class="chip exige">Exige mais</span>' : ''}`;
   const pFirst = playerActsFirst(c);
+  const carry = c.enemy.bag.map((id) => `<span class="chip carry" title="Na bolsa de ${esc(c.enemy.name)}: ${esc(ITEMS[id].desc)}">⚗ ${ITEMS[id].name}</span>`).join('');
 
   return `<section class="screen combat-screen">
     <header class="topbar">
@@ -188,9 +224,10 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
     </div>
     <div class="huds">
       ${fighterHud(c.player, pHp, animating, pFirst && !c.outcome, crowdChips)}
-      ${fighterHud(c.enemy, eHp, animating, !pFirst && !c.outcome, '', `${postureRow(c)}${iv ? `<p class="inext${iv.lost ? ' lost' : ''}">Próxima: ${intentText(iv, enemyStunned)}</p>` : ''}`)}
+      ${fighterHud(c.enemy, eHp, animating, !pFirst && !c.outcome, carry, `${postureRow(c)}${iv ? `<p class="inext${iv.lost ? ' lost' : ''}">Próxima: ${intentText(iv, enemyStunned)}</p>` : ''}`)}
     </div>
     ${controls}
     <aside class="sketch log side-log" aria-label="Registro de combate"><h3>Registro</h3>${logList}</aside>
+    ${c.outcome === 'victory' && !animating && c.enemy.bag.length ? lootModal(c, keep ?? defaultKeep(c.player.bag.length + c.enemy.bag.length)) : ''}
   </section>`;
 }

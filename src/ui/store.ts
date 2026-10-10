@@ -10,8 +10,11 @@ import { preloadScenes, sceneAmbience, sceneTrack, sceneView } from './views/sce
 
 export const app = document.getElementById('app')!;
 export const form: CreateForm = { name: '', classId: 'warrior' };
-/** Página da bandeja de ações no celular (só interface; volta para as habilidades a cada luta nova). */
-export const ui: { tray: TrayPage } = { tray: 'skills' };
+/**
+ * Estado só da interface: página da bandeja no celular (volta para as habilidades a cada luta nova), painel da bolsa
+ * aberto no acampamento e a escolha dos itens caídos no fim da luta (null = escolha padrão).
+ */
+export const ui: { tray: TrayPage; bag: boolean; keep: number[] | null } = { tray: 'skills', bag: false, keep: null };
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const STEP_MS = REDUCED ? 120 : 520;
 const CRIT_EXTRA_MS = REDUCED ? 0 : 250; // pausa no golpe crítico (hit-stop)
@@ -40,8 +43,11 @@ export function dispatch(a: GameAction) {
   g = reduce(g, a);
   if (g === prev) return;
   if (g.save !== prev.save) persist(g.save);
-  if (g.screen.name !== prev.screen.name) scrollTo(0, 0);
-  if (g.screen.name === 'combat' && prev.screen.name !== 'combat') ui.tray = 'skills';
+  if (g.screen.name !== prev.screen.name) {
+    scrollTo(0, 0);
+    ui.bag = false;
+  }
+  if (g.screen.name === 'combat' && prev.screen.name !== 'combat') Object.assign(ui, { tray: 'skills', keep: null });
   if (a.type === 'act' && prev.screen.name === 'combat') animateFrom(prev.screen.combat.log.length);
   else render();
 }
@@ -68,8 +74,8 @@ export function render() {
   app.innerHTML =
     s.name === 'title' ? titleView(g)
     : s.name === 'create' ? createView(form)
-    : s.name === 'combat' ? combatView(g, s.combat, shown, ui.tray)
-    : s.name === 'camp' ? campView(g, s.npc, s.line, s.news)
+    : s.name === 'combat' ? combatView(g, s.combat, shown, ui.tray, ui.keep)
+    : s.name === 'camp' ? campView(g, s.npc, s.line, s.news, s.loot, ui.bag)
     : s.name === 'scene' ? sceneView(g, s)
     : summaryView(s.summary);
   setTrack(trackFor(g));
