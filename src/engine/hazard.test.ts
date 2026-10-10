@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARENAS, CLASSES, CROWD, ENEMIES, type HazardDef } from '../data';
+import { ARENAS, CLASSES, ENEMIES, type HazardDef } from '../data';
 import { NO_PERKS, createCombat, hasStatus, hazardView, makeFighter, resolveRound, type CombatState } from './combat';
 
 const hero = () => {
