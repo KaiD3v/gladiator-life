@@ -77,7 +77,7 @@ function switchTo(ch: Channel, name: string | null) {
 }
 
 export const setTrack = (t: Track | null) => switchTo(music, t);
-/** Som ambiente por baixo da música (só nas cenas); null silencia. */
+/** Som ambiente por baixo da música (cenas e torcida no combate); null silencia. */
 export const setAmbience = (n: Ambience | null) => switchTo(ambience, n);
 
 /** Escala o volume do ambiente (0..1) com fade; vale também para o próximo loop. Mudo continua mudo. */
