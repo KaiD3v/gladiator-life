@@ -80,6 +80,17 @@ export const setTrack = (t: Track | null) => switchTo(music, t);
 /** Som ambiente por baixo da música (só nas cenas); null silencia. */
 export const setAmbience = (n: Ambience | null) => switchTo(ambience, n);
 
+/** Escala o volume do ambiente (0..1) com fade; vale também para o próximo loop. Mudo continua mudo. */
+export function setAmbienceLevel(k: number) {
+  const v = AMB_VOLUME * Math.max(0, Math.min(1, k));
+  if (Math.abs(v - ambience.volume) < 0.005) return;
+  ambience.volume = v;
+  if (ambience.current && !muted) {
+    const a = player(ambience.dir + ambience.current);
+    if (!a.paused) fade(a, v);
+  }
+}
+
 export const isMuted = () => muted;
 
 export function toggleMute(): boolean {
