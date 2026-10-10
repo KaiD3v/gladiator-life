@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#14120e" />
+    <title>Arena dos Gladiadores</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 64 64%22%3E%3Cpath d=%22M10 54 L42 16 L50 12 L47 20 L16 58 M12 46 l10 10%22 stroke=%22%23e3b350%22 stroke-width=%225%22 fill=%22none%22 stroke-linecap=%22round%22/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=Patrick+Hand&family=Caveat:wght@700&display=swap" rel="stylesheet" />
+  </head>
+  <body>
+    <!-- Filtro que deixa traços "tremidos", como desenhados à mão -->
+    <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+      <filter id="rough"><feTurbulence type="fractalNoise" baseFrequency="0.03" numOctaves="2" seed="3" /><feDisplacementMap in="SourceGraphic" scale="3" /></filter>
+    </svg>
+    <main id="app"></main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

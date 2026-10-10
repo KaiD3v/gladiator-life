@@ -1,0 +1,11 @@
+STYLE (apply to every image): medieval/ancient-Roman gladiator fantasy, 16-bit SNES-era pixel art, crisp hard-edged pixels, no anti-aliasing, no blur, limited warm palette (bronze, rust red, bone, dark brown) with dark outlines, dramatic lighting.
+Each subject is a single sprite, centered, full subject visible with margin, on a plain solid pure magenta #FF00FF background (no shadow on the background, no ground, no text, no frame).
+These are small UI icons: one bold simple symbol each, very readable when shown at 24x24 pixels, thick shapes, few details.
+Files:
+- attr-str.png: a clenched muscular fist in red-bronze tones (strength).
+- attr-dex.png: a green-teal feathered winged sandal (dexterity).
+- attr-wis.png: a blue glowing open eye inside a triangle (wisdom).
+- gold.png: a small stack of shiny gold coins.
+- day.png: a bronze hourglass with golden sand.
+- st-flee.png: a running figure silhouette with motion lines (escape), in amber.
+Use your image generation tool once per file. After each generation copy the generated PNG into the current directory with the EXACT filename given. Do not post-process, resize or edit the images. Do not create any other files. At the end list the files you saved.

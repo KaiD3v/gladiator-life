@@ -1,0 +1,12 @@
+STYLE (apply to every image): medieval/ancient-Roman gladiator fantasy, 16-bit SNES-era pixel art, crisp hard-edged pixels, no anti-aliasing, no blur, limited warm palette (bronze, rust red, bone, dark brown) with dark outlines, dramatic lighting.
+Each subject is a single sprite, centered, full subject visible with margin, on a plain solid pure magenta #FF00FF background (no shadow on the background, no ground, no text, no frame).
+These are NPC portraits for dialogue boxes: half-body (waist up), facing slightly left toward the viewer, friendly but rugged, expressive face.
+Files:
+- npc-merchant.png: Cassius the merchant, plump smiling man with a rich red-and-gold tunic, coin purse, holding a small brass scale.
+- npc-str.png: Brutus, a retired gladiator strength trainer, massive bearded bald man with scars, leather harness, holding a heavy training weight stone.
+- npc-dex.png: Lyra, an agile dexterity trainer, lean woman with short dark braided hair, light leather armor, spinning a throwing knife.
+- npc-wis.png: Master Oren, an old wise scholar-mage, long white beard, grey hooded robe, holding an open glowing tome.
+- npc-inn.png: Marta the innkeeper, sturdy middle-aged woman with an apron and headscarf, holding a steaming bowl of stew.
+Then a wide 16:9 landscape scene background (no magenta, full scene, no characters in the foreground, calm darker lower-center area):
+- bg-town.png: the courtyard of a gladiator school (ludus) at early evening: training dummies, weapon racks, a small market stall with awnings, an inn door with a lantern, the arena walls visible in the distance.
+Use your image generation tool once per file. After each generation copy the generated PNG into the current directory with the EXACT filename given. Do not post-process, resize or edit the images. Do not create any other files. At the end list the files you saved.

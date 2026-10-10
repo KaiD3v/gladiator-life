@@ -1,0 +1,17 @@
+Trilha sonora (ElevenLabs Music). Instrumental, sem vocais com letra, feita para loop sem emenda audível.
+Salvar como MP3 em public/audio/<nome>.mp3.
+
+menu.mp3 (~90 s)
+Medieval ancient-Roman ambient theme for a gladiator RPG menu and training camp. Slow tempo (~70 BPM), warm and mysterious.
+Plucked lute and lyre melody, soft frame drum, low sustained strings, a distant arena crowd murmur and wind.
+Calm but anticipating danger. Instrumental only, no vocals. Seamless loop: ending flows back into the beginning.
+
+battle.mp3 (~90 s)
+Epic medieval battle theme for a turn-based gladiator arena fight. Driving tempo (~130 BPM).
+Pounding war drums and frame drums, staccato low brass, urgent string ostinato, a bold horn melody, occasional crowd roars.
+Tense and energetic but not overwhelming, suitable to loop under gameplay. Instrumental only, no vocals. Seamless loop.
+
+boss.mp3 (~90 s)
+Intense boss fight theme against an arena champion. Fast tempo (~150 BPM), dark and heroic.
+Heavy taiko and timpani hits, aggressive low brass and distorted-sounding cellos, choir chanting wordless "ah/oh" syllables,
+rising tension with a climactic brass motif. Instrumental with wordless choir only, no lyrics. Seamless loop.

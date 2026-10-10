@@ -1,0 +1,15 @@
+STYLE (apply to every image): medieval/ancient-Roman gladiator fantasy, 16-bit SNES-era pixel art, crisp hard-edged pixels, no anti-aliasing, no blur, limited warm palette (bronze, rust red, bone, dark brown) with dark outlines, dramatic lighting.
+Each subject is a single sprite, centered, full subject visible with margin, on a plain solid pure magenta #FF00FF background (no shadow on the background, no ground, no text, no frame).
+Characters face right (three-quarter view), enemies face left (three-quarter view), full body.
+Files:
+- warrior.png: gladiator warrior with bronze crested helmet, bronze cuirass, red cape and skirt, round bronze shield and short gladius.
+- mage.png: young battle mage in hooded deep-blue robe with bronze trims, holding a wooden staff topped with a glowing orange flame orb.
+- assassin.png: lean hooded assassin in dark leather with a crimson scarf over the mouth, two curved daggers, one dripping green poison.
+- bandit.png: scruffy bandit with a leather vest, bandana, a rusty notched sword.
+- wolf.png: large grey arena wolf with scars, bared fangs, greenish drool, iron spiked collar (four-legged, side view).
+- brute.png: huge bald brute with chains, iron knuckle bands, a big wooden club, scarred belly.
+- sorcerer.png: gaunt renegade sorcerer in tattered black-purple robes, casting dark violet-black flames from one hand.
+- tauros.png: BOSS Tauros the Champion, a massive minotaur gladiator in bronze armor plates with a huge double-headed axe, glowing red eyes.
+- serpent.png: BOSS Serpent Queen, a naga with a crowned woman torso and long green scaled snake tail, golden jewelry, poison dagger.
+- emperor.png: BOSS Fallen Emperor, an undead emperor in rotten purple toga and tarnished golden laurel crown, holding a sceptre with a dark violet flame.
+Use your image generation tool once per file. After each generation copy the generated PNG into the current directory with the EXACT filename given. Do not post-process, resize or edit the images. Do not create any other files. At the end list the files you saved.

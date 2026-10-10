@@ -1,0 +1,12 @@
+STYLE (apply to every image): medieval/ancient-Roman gladiator fantasy, 16-bit SNES-era pixel art, crisp hard-edged pixels, no anti-aliasing, no blur, limited warm palette (bronze, rust red, bone, dark brown) with dark outlines, dramatic lighting.
+These are wide landscape scene backgrounds (16:9), empty of characters, with a calm darker lower-center area so UI can sit on top. No text.
+Files:
+- bg-pit.png: a sandy fighting pit dug into the ground, wooden palisade walls, torches, a few spectators on top at dusk.
+- bg-colosseum.png: the floor of a grand stone colosseum arena by day, tall arched tiers full of crowd silhouettes, banners.
+- bg-crimson.png: a hellish crimson arena at night, blood-red sand, black stone tiers, braziers with red fire, a blood moon.
+- bg-title.png: dramatic view from inside a dark arena tunnel gate (portcullis raised) looking out to a sunlit colosseum floor, crossed swords and shield on the wall.
+Then, with a plain solid pure magenta #FF00FF background (single centered object, no text):
+- victory.png: a golden laurel wreath around a raised gladius sword.
+- defeat.png: a broken, dented gladiator helmet lying on sand with a cracked shield (sand only directly under the objects).
+- chest.png: an open wooden treasure chest with bronze bands, glowing with gold coins.
+Use your image generation tool once per file. After each generation copy the generated PNG into the current directory with the EXACT filename given. Do not post-process, resize or edit the images. Do not create any other files. At the end list the files you saved.

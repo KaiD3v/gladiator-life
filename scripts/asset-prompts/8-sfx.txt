@@ -1,0 +1,13 @@
+Efeitos sonoros (ElevenLabs Sound Effects, eleven_text_to_sound_v2). Salvar como MP3 em public/audio/sfx/<nome>.mp3.
+O nome bate com o campo `sfx` do LogEntry em src/combat.ts.
+
+hit.mp3      Short sword slash hitting flesh and leather armor, crisp metallic swish with a meaty impact, close-mic
+crit.mp3     Brutal critical sword strike, heavy bone-crunching impact with a sharp metallic ring, punchy
+magic.mp3    Fire magic spell cast, quick arcane whoosh into a fiery burst explosion, short
+block.mp3    Bronze shield raised and braced, solid metallic clank with a short resonant ring
+heal.mp3     Gentle healing spell, soft rising shimmer of chimes and warm magical sparkle, short
+status.mp3   Short mystical curse effect, low dark magical pulse with a descending tone
+dot.mp3      Short acidic sizzle and hiss, poison burning, quick bubbling crackle
+flee.mp3     Quick running footsteps on sand fading away, fast cloth whoosh
+victory.mp3  Roman arena crowd erupting in cheers with a short triumphant brass horn fanfare
+defeat.mp3   Armored body collapsing onto sand with a heavy thud, sword dropping, crowd groaning in disappointment

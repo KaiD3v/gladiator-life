@@ -1,0 +1,12 @@
+STYLE (apply to every image): medieval/ancient-Roman gladiator fantasy, 16-bit SNES-era pixel art, crisp hard-edged pixels, no anti-aliasing, no blur, limited warm palette (bronze, rust red, bone, dark brown) with dark outlines, dramatic lighting.
+Each subject is a single sprite, centered, full subject visible with margin, on a plain solid pure magenta #FF00FF background (no shadow on the background, no ground, no text, no frame).
+These are small status-effect icons: one bold simple symbol each, very readable when shown at 24x24 pixels, thick shapes, few details.
+Files:
+- st-poison.png: a green poison droplet with a tiny skull.
+- st-burn.png: an orange-red flame.
+- st-stun.png: yellow stars spiraling (dizzy).
+- st-guard.png: a blue kite shield.
+- st-weaken.png: a purple broken sword.
+- st-regen.png: a teal-green heart with a plus sign.
+- st-defend.png: a steel round shield with a bronze rim.
+Use your image generation tool once per file. After each generation copy the generated PNG into the current directory with the EXACT filename given. Do not post-process, resize or edit the images. Do not create any other files. At the end list the files you saved.

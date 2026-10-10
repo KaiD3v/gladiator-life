@@ -1,0 +1,18 @@
+STYLE (apply to every image): medieval/ancient-Roman gladiator fantasy, 16-bit SNES-era pixel art, crisp hard-edged pixels, no anti-aliasing, no blur, limited warm palette (bronze, rust red, bone, dark brown) with dark outlines, dramatic lighting.
+Each subject is a single sprite, centered, full subject visible with margin, on a plain solid pure magenta #FF00FF background (no shadow on the background, no ground, no text, no frame).
+These are inventory item icons: each a single object, large and centered, slightly tilted, readable at small size.
+Files:
+- chippedSword.png: a chipped, notched short gladius sword.
+- bronzeShield.png: a round bronze shield with a boss and engraved rim.
+- emberAmulet.png: an amulet with a glowing ember-orange gem on a bronze chain.
+- swiftBoots.png: leather boots with small bronze wings at the ankles.
+- serratedDagger.png: a serrated steel dagger with a leather grip.
+- titanHeart.png: a giant glowing red crystalline heart wrapped in stone.
+- manaCrystal.png: a floating blue mana crystal shard with sparkles.
+- vampireChalice.png: an ornate golden chalice overflowing with dark red blood.
+- thornCloak.png: a folded dark green cloak covered with sharp thorns.
+- venomFlask.png: a glass flask of bubbling green venom with a skull cork.
+- ritualBandage.png: a roll of linen bandage with glowing red ritual runes.
+- warHorn.png: a curved bronze-banded war horn made of an animal horn.
+- rest.png: a small campfire with logs and a cooking pot (rest and heal).
+Use your image generation tool once per file. After each generation copy the generated PNG into the current directory with the EXACT filename given. Do not post-process, resize or edit the images. Do not create any other files. At the end list the files you saved.
