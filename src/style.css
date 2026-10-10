@@ -369,3 +369,19 @@ button.poor { border-color: var(--line); color: var(--dim); }
 .legacy { max-width: 440px; margin: 24px auto; text-align: left; }
 .howto { max-width: 600px; margin: 28px auto 0; text-align: left; }
 .report { max-width: 560px; margin: 0 auto; text-align: left; }
+
+/* Intenção do inimigo */
+.intent { position: absolute; z-index: 3; top: 6px; right: 6px; max-width: 62%; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; padding: 4px 8px; background: rgba(16, 13, 9, 0.88); border: 2px solid var(--gold); border-radius: 10px 4px 12px 5px; color: var(--ink); font-size: 0.95rem; line-height: 1.15; min-width: 0; }
+.intent .iglyph { color: var(--gold); }
+.intent .idmg { font-weight: normal; color: var(--red); font-size: 1.1rem; }
+.intent .itag { font-size: 0.8rem; padding: 0 5px; border: 1px solid currentColor; border-radius: 6px; color: var(--purple); }
+.intent small { flex-basis: 100%; font-size: 0.8rem; color: var(--dim); }
+.intent.magic { border-color: var(--purple); } .intent.defend { border-color: var(--blue); } .intent.buff { border-color: var(--green); }
+.intent.prep { border-color: var(--red); animation: intentPulse 1s steps(2) infinite; }
+.intent.prep .iglyph { color: var(--red); }
+.intent.stunned { opacity: 0.6; filter: grayscale(0.6); animation: none; }
+@keyframes intentPulse { 50% { box-shadow: 0 0 0 3px rgba(200, 60, 50, 0.55); } }
+.inext { margin: 0; font-size: 0.85rem; color: var(--dim); overflow-wrap: anywhere; }
+.action.suggest { border-color: var(--blue); box-shadow: 0 0 0 2px rgba(80, 140, 220, 0.45); }
+.action .hint { font-style: normal; font-size: 0.8rem; color: var(--blue); }
+.chip.steady { color: #c9b27a; }
