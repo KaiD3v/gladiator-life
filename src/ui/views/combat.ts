@@ -1,4 +1,4 @@
-import { ARENAS, SKILLS, STATUS_INFO } from '../../data';
+import { ARENAS, CROWD, SKILLS, STATUS_INFO } from '../../data';
 import { actionsFor, canUse, crowdView, fleeChance, hasStatus, intentView, playerActsFirst, type CombatState, type Fighter, type IntentView, type LogEntry } from '../../engine/combat';
 import { arenaById, isBossFight, nextArena, stageOf, type GameState } from '../../state';
 import { art, assetUrl, attrTag, bar, bossTag, esc, itemChip, statusArt } from '../components';
@@ -28,7 +28,7 @@ function crowdMeter(c: CombatState, value: number, fresh: LogEntry | null): stri
     <div class="row between"><b>Multidão</b><span>${v.label} · ${value}</span></div>
     <div class="crowd-track" role="meter" aria-label="Multidão: ${v.label}" aria-valuenow="${value}" aria-valuemin="0" aria-valuemax="100">
       <i class="crowd-fill" style="width:${value}%"></i>
-      <u class="tick" style="left:50%" title="Ovação"></u><u class="tick" style="left:80%" title="A multidão exige mais"></u><u class="tick" style="left:100%" title="Glória"></u>
+      <u class="tick t50" title="Ovação"></u><u class="tick t80" title="A multidão exige mais"></u><u class="tick t100" title="Glória"></u>
       ${d ? `<span class="float crowd-delta ${d > 0 ? 'up' : 'down'}">${d > 0 ? '+' : '−'}${Math.abs(d)}</span>` : ''}
     </div>
     <div class="crowd-marks" aria-hidden="true"><span class="m50">Ovação</span><span class="m80">Exige mais</span><span class="m100">Glória</span></div>
@@ -133,7 +133,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null): 
           ${actor(c.enemy, eHp, fresh, run.enemies[run.encounter], isBoss ? 'boss' : 'enemy', isBoss)}
           ${iv ? intentBadge(iv, enemyStunned) : ''}
         </div>
-        <div class="cards">${fighterCard(c.player, pHp, animating, '', `${cv.ovation ? '<span class="chip ovation">Ovação +5% dano</span>' : ''}${cv.lastStandReady ? '<span class="chip exige">A multidão exige mais</span>' : ''}`)}${fighterCard(c.enemy, eHp, animating, iv ? `<p class="inext">Próxima ação: ${intentText(iv, enemyStunned)}</p>` : '')}</div>
+        <div class="cards">${fighterCard(c.player, pHp, animating, '', `${cv.ovation ? `<span class="chip ovation">Ovação +${Math.round(CROWD.ovationBonus * 100)}% dano</span>` : ''}${cv.lastStandReady ? '<span class="chip exige">A multidão exige mais</span>' : ''}`)}${fighterCard(c.enemy, eHp, animating, iv ? `<p class="inext">Próxima ação: ${intentText(iv, enemyStunned)}</p>` : '')}</div>
         <p class="dim center small">${order} Defender só protege na rodada em que é usado e sempre age antes.</p>
         ${controls}
       </div>
