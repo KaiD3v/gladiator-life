@@ -1,5 +1,5 @@
-import { ARENAS, CLASSES, ENEMIES, SKILLS, type ClassId } from '../../data';
-import { art, assetUrl, attrLine, attrTag, esc, statLine } from '../components';
+import { ARENAS, CLASSES, ENEMIES, type ClassId } from '../../data';
+import { art, assetUrl, attrLine, esc, skillList, statLine } from '../components';
 
 export interface CreateForm { name: string; classId: ClassId }
 
@@ -11,7 +11,7 @@ export function createView(form: CreateForm): string {
       <p class="attrs">${attrLine(c.attrs)}</p>
       <p class="statline">${statLine(c.stats)}</p>
       <p>${c.passive}</p>
-      <ul class="skill-list">${c.skills.map((id) => `<li>${attrTag(SKILLS[id].attr)} <b>${SKILLS[id].name}</b> (${SKILLS[id].cost} en.): ${SKILLS[id].desc}</li>`).join('')}</ul>
+      ${skillList(c.skills)}
     </button>`;
   }).join('');
   const arenas = ARENAS.map((a, i) => `<div class="sketch arena-card"

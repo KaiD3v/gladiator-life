@@ -1,7 +1,7 @@
 // Acampamento (vida fora das batalhas).
 import { ARENAS, ATTR_INFO, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, type NpcId } from '../../data';
 import { arenaById, freeDays, isBossFight, learnBlock, maxHp, playerBuild, restPrice, stageOf, trainPrice, type GameState, type RunState } from '../../state';
-import { ATTRS, art, assetUrl, attrTag, bar, esc, goldPill, statLine } from '../components';
+import { ATTRS, art, assetUrl, bar, bossTag, esc, goldPill, itemChip, skillList, statLine } from '../components';
 
 const CAMP_NPCS: NpcId[] = ['merchant', 'str', 'dex', 'wis', 'inn'];
 
@@ -71,8 +71,8 @@ export function campView(g: GameState, npc: NpcId | null, line: string, news: st
     : '<p class="dim center">Clique em alguém do ludus para conversar, comprar, treinar ou descansar.</p>';
 
   return `<section class="stack">
-    <div class="row" style="justify-content:space-between">
-      <h2 style="margin:0">Acampamento · Fase ${stageOf(run) + 1}/${ARENAS.length} · ${arena.name}</h2>
+    <div class="row between">
+      <h2 class="flush">Acampamento · Fase ${stageOf(run) + 1}/${ARENAS.length} · ${arena.name}</h2>
       <div class="row pills"><span class="pill">${art('day', 'ico', '')}Dia ${run.day}/${arena.days}</span>${goldPill(run.gold)}</div>
     </div>
     ${bar('hp', run.hp, stats.maxHp, `Vida ${run.hp}/${stats.maxHp}`)}
@@ -86,16 +86,16 @@ export function campView(g: GameState, npc: NpcId | null, line: string, news: st
         ${ATTRS.map((a) => `<div class="attr-row ${a}">${art(`attr-${a}`, 'attr-ico', '')}<div><b>${ATTR_INFO[a].name} ${run.attrs[a]}</b><small>${ATTR_INFO[a].desc}</small></div></div>`).join('')}
         <p class="statline">${statLine(stats)}</p>
         <h3>Habilidades ${run.skills.length}/${MAX_SKILLS}</h3>
-        <ul class="skill-list">${run.skills.map((id) => `<li>${attrTag(SKILLS[id].attr)} <b>${SKILLS[id].name}</b> (${SKILLS[id].cost} en.): ${SKILLS[id].desc}</li>`).join('')}</ul>
+        ${skillList(run.skills)}
         <h3>Itens</h3>
-        <p>${run.items.length ? run.items.map((id) => `<span class="chip item" title="${ITEMS[id].desc}">${art(id, 'ico', '')}${ITEMS[id].name}</span>`).join(' ') : '<span class="dim">Nenhum item ainda.</span>'}</p>
+        <p>${run.items.length ? run.items.map(itemChip).join(' ') : '<span class="dim">Nenhum item ainda.</span>'}</p>
       </div>
       <div class="sketch next-card">
         <h3>Próxima luta ${run.encounter + 1}/${run.enemies.length}</h3>
         ${art(next.id, 'foe-preview', next.name, isBoss ? 'boss' : 'enemy')}
-        <p><b>${next.name}</b>${isBoss ? ' <span style="color:var(--red)">(CHEFE)</span>' : ''}<br><span class="dim">${next.desc}</span></p>
+        <p><b>${next.name}</b>${isBoss ? ` ${bossTag('(CHEFE)')}` : ''}<br><span class="dim">${next.desc}</span></p>
         <p class="${free <= 2 ? 'warn' : 'dim'}">${free <= 0 ? 'Último dia da temporada: hoje só resta lutar!' : `${free} dia(s) livre(s) antes do prazo.`}</p>
-        <button class="primary" data-a="fight" style="width:100%">Ir para a arena · 1 dia</button>
+        <button class="primary wide" data-a="fight">Ir para a arena · 1 dia</button>
       </div>
     </div>
   </section>`;
