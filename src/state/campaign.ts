@@ -36,7 +36,7 @@ export function startRun(g: GameState, a: ActionOf<'startRun'>): GameState {
   const run: RunState = {
     name, classId: a.classId, arenaId: arena.id, titles: [], daysSpent: 0, level, attrs: { ...cls.attrs }, trained: { str: 0, dex: 0, wis: 0 },
     skills: [...cls.skills], items: [], gold: START_GOLD + GOLD_PER_LEVEL * (level - 1), day: 1, hp: 0, shop: [],
-    encounter: 0, enemies: [], seed: a.seed, xp: 0, goldEarned: 0, kills: [], fled: [], seen: [], rounds: 0, dealt: 0, taken: 0,
+    encounter: 0, enemies: [], seed: a.seed, xp: 0, goldEarned: 0, kills: [], fled: [], bestiary: {}, seen: [], rounds: 0, dealt: 0, taken: 0,
   };
   run.hp = maxHp(run);
   enterArena(run);
@@ -73,6 +73,7 @@ export function afterCombat(g: GameState): GameState {
   run.rounds += c.round;
   run.dealt += c.dealt;
   run.taken += c.taken;
+  run.bestiary[enemyId] = [...new Set([...(run.bestiary[enemyId] ?? []), ...c.revealed])];
   run.day++;
   if (c.outcome === 'defeat' || c.outcome === 'draw') return finish(g, run, c.outcome);
   let news: string;

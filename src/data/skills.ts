@@ -88,6 +88,14 @@ export const SKILLS: Record<string, SkillDef> = {
     id: 'charge', name: 'Investida', desc: 'Golpe pesado: prepara por uma rodada, depois causa dano físico 3x com 40% de chance de atordoar.', cost: 6, type: 'physical', power: 3, windup: true,
     effects: [{ status: 'stun', target: 'foe', turns: 1, chance: 0.4 }],
   },
+  venomMist: {
+    id: 'venomMist', name: 'Névoa Peçonhenta', desc: 'Dano mágico 1x, veneno e enfraquece o alvo.', cost: 5, type: 'magic', power: 1,
+    effects: [{ status: 'poison', target: 'foe', turns: 3, power: 2 }, { status: 'weaken', target: 'foe', turns: 2 }],
+  },
+  brazier: {
+    id: 'brazier', name: 'Braseiros', desc: 'Golpe pesado: prepara por uma rodada, depois causa dano mágico 2.8x e queimadura forte.', cost: 8, type: 'magic', power: 2.8, windup: true,
+    effects: [{ status: 'burn', target: 'foe', turns: 3, power: 4 }],
+  },
   roar: {
     id: 'roar', name: 'Rugido', desc: 'Enfraquece o alvo e regenera vida.', cost: 4, type: 'self',
     effects: [{ status: 'weaken', target: 'foe', turns: 2 }, { status: 'regen', target: 'self', turns: 3, power: 5 }],

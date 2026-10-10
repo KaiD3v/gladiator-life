@@ -28,6 +28,7 @@ export const CROWD = {
   perfectBlock: 12, // defender na rodada em que o golpe pesado anunciado acerta
   variety: 3, // ação de ataque/habilidade diferente da rodada anterior
   execute: 15, // veredito: executar
+  broken: 10, // inimigo Desequilibrado (postura zerada)
   // Perdas
   repeatAfter: 3, // a partir da N-ésima repetição seguida da mesma ação...
   repeat: -6, // ...cada repetição custa isto
@@ -48,3 +49,12 @@ export const CROWD = {
   spareXp: 1.5, // ...e mais XP
 };
 
+
+// Postura (quebra estilo Octopath): pontos por inimigo em data/enemies.ts.
+export const POSTURE = {
+  weakHit: 1, // golpe (físico/mágico) ou efeito no ponto fraco
+  crit: 1, // crítico do jogador (qualquer tipo)
+  brokenBonus: 0.5, // dano extra contra Desequilibrado
+  brokenTurns: 2, // duração em rodadas; a postura volta cheia ao fim
+  glory: true, // Golpe de Glória zera a postura
+};
