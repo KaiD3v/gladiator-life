@@ -8,7 +8,7 @@ function mountMuteButton() {
   const btn = document.createElement('button');
   btn.className = 'mute';
   const paint = () => {
-    btn.textContent = isMuted() ? '🔇 Som' : '🔊 Som';
+    btn.textContent = isMuted() ? '🔇' : '🔊';
     btn.setAttribute('aria-pressed', String(!isMuted()));
     btn.setAttribute('aria-label', isMuted() ? 'Ligar som' : 'Desligar som');
   };

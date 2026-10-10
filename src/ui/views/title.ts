@@ -7,7 +7,7 @@ export function titleView(g: GameState): string {
   const lvl = levelOf(save.xp);
   const into = save.xp - xpForLevel(lvl);
   const span = xpForLevel(lvl + 1) - xpForLevel(lvl);
-  return `<section class="stack center">
+  return `<section class="screen title-screen center">
     <div class="hero" style="background-image:url(${assetUrl('bg-title')})">
       <h1>Arena dos Gladiadores</h1>
       <div class="cast">${(['warrior', 'mage', 'assassin'] as const).map((id) => art(id, 'cast-sprite', CLASSES[id].name)).join('')}</div>
@@ -21,12 +21,12 @@ export function titleView(g: GameState): string {
       <p class="dim gap-top">Campanhas: ${save.runs} · Completas: ${save.wins} · Recorde: ${save.best}/${ARENAS.length} títulos</p>
     </div>
     <button class="primary" data-a="new">Nova campanha</button>
-    <div class="sketch howto">
-      <h3>Como jogar</h3>
+    <details class="sketch howto">
+      <summary>Como jogar</summary>
       <p>Cada rodada você escolhe <b>uma</b> ação; quem tem mais velocidade age primeiro, mas <b>Defender</b> sempre vem antes.
       Habilidades gastam energia e ficam mais fortes com o atributo ligado a elas (Força, Destreza ou Sabedoria).
       Entre as lutas, no acampamento, gaste ouro com itens, treino e descanso, mas cuidado: o chefe precisa cair antes do fim da temporada.
       Dá para fugir de uma luta numa disputa de Destreza. XP e arenas ficam salvos neste navegador.</p>
-    </div>
+    </details>
   </section>`;
 }

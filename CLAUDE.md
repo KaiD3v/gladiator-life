@@ -87,6 +87,13 @@ Tudo em `engine/combat.ts`, com os números em `data/balance.ts` (`CROWD`, `POST
 Sem `style=""` estático (só valores dinâmicos, como `background-image` e largura de barra): crie classe em `src/style.css`.
 Preserve classes/atributos usados por automação: valores de `data-a`, `#name`, `#start`, `#next`, `.turn-banner`, `.town`,
 `.scene`, `.summary-title`, `.bar.hp` (com `aria-valuenow/max`). Botões ≥ 48px de altura; nada de rolagem horizontal no celular.
+**Toda tela cabe na janela, sem rolar a página** (de 360×640 a 1920×1080, inclusive celular deitado): cada view é um
+`.screen` (coluna flex com a altura de `#app` = `100dvh`); só a parte flexível cresce/encolhe (palco, miolo do
+acampamento, detalhes da classe, arte do título, relatório) e listas longas rolam por dentro (`.scroll`). Ações
+principais ficam embaixo, sempre visíveis. Desktop (≥900px) e celular deitado usam `grid-template-areas` (não dependa
+da contagem de filhos). No combate, abaixo de 900px as ações ficam numa bandeja com abas deslizáveis
+(Habilidades | Básico | Registro, página em `ui.tray` no `store.ts`); acima disso tudo aparece junto e o registro vai
+para a coluna lateral. Ao mexer em layout, confira as telas nessas resoluções no navegador.
 
 ## Arte e áudio
 

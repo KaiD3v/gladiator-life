@@ -3,13 +3,15 @@ import { playSfx, setAmbience, setAmbienceLevel, setTrack, type Ambience, type T
 import { SAVE_KEY, initialState, isBossFight, parseSave, reduce, type GameAction, type GameState, type SaveData } from '../state';
 import { titleView } from './views/title';
 import { createView, type CreateForm } from './views/create';
-import { combatView } from './views/combat';
+import { combatView, type TrayPage } from './views/combat';
 import { campView } from './views/camp';
 import { summaryView } from './views/summary';
 import { preloadScenes, sceneAmbience, sceneTrack, sceneView } from './views/scene';
 
 export const app = document.getElementById('app')!;
 export const form: CreateForm = { name: '', classId: 'warrior' };
+/** Página da bandeja de ações no celular (só interface; volta para as habilidades a cada luta nova). */
+export const ui: { tray: TrayPage } = { tray: 'skills' };
 const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const STEP_MS = REDUCED ? 120 : 520;
 const CRIT_EXTRA_MS = REDUCED ? 0 : 250; // pausa no golpe crítico (hit-stop)
@@ -39,6 +41,7 @@ export function dispatch(a: GameAction) {
   if (g === prev) return;
   if (g.save !== prev.save) persist(g.save);
   if (g.screen.name !== prev.screen.name) scrollTo(0, 0);
+  if (g.screen.name === 'combat' && prev.screen.name !== 'combat') ui.tray = 'skills';
   if (a.type === 'act' && prev.screen.name === 'combat') animateFrom(prev.screen.combat.log.length);
   else render();
 }
@@ -65,7 +68,7 @@ export function render() {
   app.innerHTML =
     s.name === 'title' ? titleView(g)
     : s.name === 'create' ? createView(form)
-    : s.name === 'combat' ? combatView(g, s.combat, shown)
+    : s.name === 'combat' ? combatView(g, s.combat, shown, ui.tray)
     : s.name === 'camp' ? campView(g, s.npc, s.line, s.news)
     : s.name === 'scene' ? sceneView(g, s)
     : summaryView(s.summary);

@@ -68,19 +68,19 @@ export function campView(g: GameState, npc: NpcId | null, line: string, news: st
           <button class="close" data-a="talk" data-v="" aria-label="Fechar conversa">✕</button></div>
         <div class="offers">${npcOffers(run, npc)}</div>
       </div>`
-    : '<p class="dim center">Clique em alguém do ludus para conversar, comprar, treinar ou descansar.</p>';
+    : '<p class="dim center small">Toque em alguém do ludus para conversar, comprar, treinar ou descansar.</p>';
 
-  return `<section class="stack">
-    <div class="row between">
-      <h2 class="flush">Acampamento · Fase ${stageOf(run) + 1}/${ARENAS.length} · ${arena.name}</h2>
+  return `<section class="screen camp-screen">
+    <header class="topbar">
+      <h2>Acampamento <span class="dim tb-sub">Fase ${stageOf(run) + 1}/${ARENAS.length} · ${arena.name}</span></h2>
       <div class="row pills"><span class="pill">${art('day', 'ico', '')}Dia ${run.day}/${arena.days}</span>${goldPill(run.gold)}</div>
-    </div>
+    </header>
     ${bar('hp', run.hp, stats.maxHp, `Vida ${run.hp}/${stats.maxHp}`)}
-    ${news ? `<p class="sketch news">${esc(news)}</p>` : ''}
+    ${news ? `<p class="sketch news" title="${esc(news)}">${esc(news)}</p>` : ''}
     <div class="town" style="background-image:url(${assetUrl('bg-town')})">${npcButtons}</div>
-    ${panel}
-    <div class="camp-grid">
-      <div class="sketch">
+    <div class="camp-body scroll">
+      ${panel}
+      <div class="sketch ficha">
         <h3>Ficha de ${esc(run.name)}</h3>
         ${run.titles.length ? `<p class="titles">${run.titles.map((id) => `<span class="pill gold">${art('victory', 'ico', '')}Campeão de ${arenaById(id).name}</span>`).join(' ')}</p>` : ''}
         ${ATTRS.map((a) => `<div class="attr-row ${a}">${art(`attr-${a}`, 'attr-ico', '')}<div><b>${ATTR_INFO[a].name} ${run.attrs[a]}</b><small>${ATTR_INFO[a].desc}</small></div></div>`).join('')}
@@ -90,13 +90,15 @@ export function campView(g: GameState, npc: NpcId | null, line: string, news: st
         <h3>Itens</h3>
         <p>${run.items.length ? run.items.map(itemChip).join(' ') : '<span class="dim">Nenhum item ainda.</span>'}</p>
       </div>
-      <div class="sketch next-card">
+    </div>
+    <div class="sketch next-card">
+      ${art(next.id, 'foe-preview', next.name, isBoss ? 'boss' : 'enemy')}
+      <div class="next-info">
         <h3>Próxima luta ${run.encounter + 1}/${run.enemies.length}</h3>
-        ${art(next.id, 'foe-preview', next.name, isBoss ? 'boss' : 'enemy')}
-        <p><b>${next.name}</b>${isBoss ? ` ${bossTag('(CHEFE)')}` : ''}<br><span class="dim">${next.desc}</span></p>
-        <p class="${free <= 2 ? 'warn' : 'dim'}">${free <= 0 ? 'Último dia da temporada: hoje só resta lutar!' : `${free} dia(s) livre(s) antes do prazo.`}</p>
-        <button class="primary wide" data-a="fight">Ir para a arena · 1 dia</button>
+        <p><b>${next.name}</b>${isBoss ? ` ${bossTag('(CHEFE)')}` : ''}<span class="dim next-desc"> · ${next.desc}</span></p>
+        <p class="${free <= 2 ? 'warn' : 'dim'} small">${free <= 0 ? 'Último dia: hoje só resta lutar!' : `${free} dia(s) livre(s) antes do prazo.`}</p>
       </div>
+      <button class="primary" data-a="fight">Ir para a arena · 1 dia</button>
     </div>
   </section>`;
 }

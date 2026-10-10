@@ -7,14 +7,14 @@ export function summaryView(s: Summary): string {
   const title = { victory: 'Vitória!', defeat: 'Derrota', draw: 'Queda mútua', timeout: 'Fim da temporada' }[s.result];
   const fought = r.kills.length + r.fled.length + (s.result === 'defeat' || s.result === 'draw' ? 1 : 0);
   const total = ARENAS.reduce((n, a) => n + a.fights + 1, 0);
-  return `<section class="stack center">
+  return `<section class="screen summary-screen center">
     ${art(s.result === 'victory' ? 'victory' : 'defeat', 'summary-art', '')}
     <h1 class="summary-title ${s.result === 'victory' ? 'win' : 'lose'}">${title}</h1>
     <div class="row centered">${art(r.classId, `portrait${s.result === 'victory' ? '' : ' fallen'}`, CLASSES[r.classId].name, r.classId)}<p class="hero-line">${esc(r.name)}, ${CLASSES[r.classId].name}<br><span class="dim">${s.result === 'victory'
       ? `conquistou todas as ${ARENAS.length} arenas!` : `caiu em ${arenaById(r.arenaId).name} (fase ${stageOf(r) + 1}/${ARENAS.length})`}</span></p></div>
     ${r.titles.length ? `<p class="sketch unlock">${r.titles.map((id) => `Campeão de <b>${arenaById(id).name}</b>`).join(' · ')}</p>` : ''}
     ${s.result !== 'victory' ? '<p class="dim">O próximo gladiador recomeça do Fosso de Areia. Só o XP (nível) é mantido.</p>' : ''}
-    <div class="sketch report">
+    <div class="sketch report scroll">
       <dl class="kv">
         <dt>Lutas</dt><dd>${r.kills.length} vencidas de ${fought} disputadas (a campanha tem ${total})</dd>
         <dt>Derrotados</dt><dd>${r.kills.map((id) => ENEMIES[id].name).join(', ') || 'ninguém'}</dd>

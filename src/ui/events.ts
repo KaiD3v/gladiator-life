@@ -3,7 +3,8 @@ import type { Attr, ClassId, NpcId } from '../data';
 import { actionsFor } from '../engine/combat';
 import type { GameAction } from '../state';
 import { icon } from './components';
-import { app, dispatch, form, render, state } from './store';
+import { TRAY_PAGES, type TrayPage } from './views/combat';
+import { app, dispatch, form, render, state, ui } from './store';
 
 /** Cada `data-a` vira uma ou mais ações do jogo (`v` = `data-v` do botão); void = tratada na própria página. */
 const ACTIONS: Record<string, (v: string) => GameAction | GameAction[] | void> = {
@@ -12,6 +13,7 @@ const ACTIONS: Record<string, (v: string) => GameAction | GameAction[] | void> =
   again: () => [{ type: 'toTitle' }, { type: 'newGame' }],
   class: (v) => { form.classId = v as ClassId; render(); },
   act: (v) => ({ type: 'act', action: v }),
+  tray: (v) => { ui.tray = v as TrayPage; render(); },
   continue: () => ({ type: 'continue' }),
   next: () => ({ type: 'next' }),
   skip: () => ({ type: 'skip' }),
@@ -49,6 +51,24 @@ export function bindEvents() {
   app.addEventListener('submit', (e) => {
     e.preventDefault();
     dispatch({ type: 'startRun', name: form.name, classId: form.classId, seed: (Math.random() * 2 ** 32) | 0 });
+  });
+
+  // Deslizar a bandeja de ações para os lados troca de página (celular).
+  let touch: { x: number; y: number } | null = null;
+  app.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    touch = (e.target as Element).closest('.tray-pages') ? { x: t.clientX, y: t.clientY } : null;
+  }, { passive: true });
+  app.addEventListener('touchend', (e) => {
+    if (!touch) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touch.x, dy = t.clientY - touch.y;
+    touch = null;
+    if (Math.abs(dx) < 50 || Math.abs(dy) > Math.abs(dx)) return;
+    const i = TRAY_PAGES.indexOf(ui.tray) + (dx < 0 ? 1 : -1);
+    if (i < 0 || i >= TRAY_PAGES.length) return;
+    ui.tray = TRAY_PAGES[i];
+    render();
   });
 
   document.addEventListener('keydown', onKey);

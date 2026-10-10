@@ -10,7 +10,7 @@ export function sceneView(g: GameState, s: ScreenOf<'scene'>): string {
   const v = beatView(s.queue, s.beat, run);
   const name = esc(v.speaker);
   const text = esc(v.text);
-  return `<section class="stack scene-wrap">
+  return `<section class="screen scene-wrap">
     <div class="scene" style="background-image:url(${assetUrl(v.bg)})">
       <span class="scene-title">${v.title}</span>
       ${v.portrait ? art(v.portrait, `scene-portrait ${v.side}`, name) : ''}
