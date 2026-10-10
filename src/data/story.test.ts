@@ -24,6 +24,20 @@ function forceFight(g: GameState, outcome: 'victory' | 'fled') {
 }
 
 describe('dados da história', () => {
+  it('toda faixa de música usada por cena existe em public/audio; o prólogo usa first-scene', () => {
+    const tracks = new Set(Object.keys(import.meta.glob('../../public/audio/*.mp3')).map((p) => p.slice('../../public/audio/'.length, -'.mp3'.length)));
+    for (const sc of Object.values(SCENES)) if (sc.music) expect(tracks.has(sc.music), `${sc.id}: ${sc.music}`).toBe(true);
+    expect(SCENES['prologue-village'].music).toBe('first-scene');
+    expect(SCENES['prologue-ludus'].music).toBe('first-scene');
+  });
+
+  it('todo som ambiente usado por cena existe em public/audio/amb', () => {
+    const amb = new Set(Object.keys(import.meta.glob('../../public/audio/amb/*.mp3')).map((p) => p.slice('../../public/audio/amb/'.length, -'.mp3'.length)));
+    for (const sc of Object.values(SCENES)) {
+      for (const a of [sc.ambience, ...sc.beats.map((b) => b.ambience)]) if (a) expect(amb.has(a), `${sc.id}: ${a}`).toBe(true);
+    }
+  });
+
   it('toda fala tem personagem conhecido e todo fundo/retrato existe em public/assets', () => {
     for (const sc of Object.values(SCENES)) {
       expect(sc.beats.length, sc.id).toBeGreaterThan(0);

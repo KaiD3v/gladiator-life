@@ -1,31 +1,39 @@
 // Trilha sonora: uma faixa em loop por contexto, com fade entre elas e botão de mudo. Só interface, nenhuma regra de jogo.
-// Arquivos em public/audio/<faixa>.mp3 e efeitos em public/audio/sfx/<efeito>.mp3; o mudo vale para os dois. Se um arquivo faltar ou o navegador bloquear o áudio, o jogo segue em silêncio.
+// Arquivos em public/audio/<faixa>.mp3, ambientes de cena em public/audio/amb/<nome>.mp3 e efeitos em public/audio/sfx/<efeito>.mp3; o mudo vale para todos. Se um arquivo faltar ou o navegador bloquear o áudio, o jogo segue em silêncio.
 
-export type Track = 'menu' | 'battle' | 'boss';
+import type { Ambience, MusicTrack } from '../data';
+
+export type Track = MusicTrack;
+export type { Ambience };
 
 const BASE = `${import.meta.env.BASE_URL}audio/`;
 const VOLUME = 0.45;
+const AMB_VOLUME = 0.2; // os loops de ambiente são mais altos que as músicas: ficam por baixo
 const SFX_VOLUME = 0.7;
 const FADE_MS = 700;
 const MUTE_KEY = 'arena-dos-gladiadores:muted';
 
-const players = new Map<Track, HTMLAudioElement>();
+/** Um loop por vez com fade na troca: um canal para a música e outro para o ambiente das cenas, tocando juntos. */
+interface Channel { dir: string; volume: number; current: string | null }
+const music: Channel = { dir: '', volume: VOLUME, current: null };
+const ambience: Channel = { dir: 'amb/', volume: AMB_VOLUME, current: null };
+
+const players = new Map<string, HTMLAudioElement>();
 const fades = new Map<HTMLAudioElement, number>();
-let current: Track | null = null;
 let muted = readMuted();
 
 function readMuted(): boolean {
   try { return localStorage.getItem(MUTE_KEY) === '1'; } catch { return false; }
 }
 
-function player(t: Track): HTMLAudioElement {
-  let a = players.get(t);
+function player(path: string): HTMLAudioElement {
+  let a = players.get(path);
   if (!a) {
-    a = new Audio(`${BASE}${t}.mp3`);
+    a = new Audio(`${BASE}${path}.mp3`);
     a.loop = true;
     a.preload = 'auto';
     a.volume = 0;
-    players.set(t, a);
+    players.set(path, a);
   }
   return a;
 }
@@ -44,37 +52,44 @@ function fade(a: HTMLAudioElement, to: number, done?: () => void) {
   }, 40));
 }
 
-function start(t: Track, restart: boolean) {
-  const a = player(t);
+function start(ch: Channel, restart: boolean) {
+  const a = player(ch.dir + ch.current);
   if (restart) a.currentTime = 0;
   // play() rejeita antes do primeiro gesto do usuário (política de autoplay) ou sem arquivo: tenta de novo no próximo clique.
-  a.play().then(() => fade(a, VOLUME)).catch(() => {});
+  a.play().then(() => fade(a, ch.volume)).catch(() => {});
 }
 
-/** Troca a faixa tocando. Chamar a cada render: repetir a mesma faixa não reinicia nada. */
-export function setTrack(t: Track | null) {
-  if (t === current) {
-    if (t && !muted && player(t).paused) start(t, false);
+function stop(ch: Channel) {
+  if (!ch.current) return;
+  const a = player(ch.dir + ch.current);
+  fade(a, 0, () => a.pause());
+}
+
+/** Troca o loop do canal. Chamar a cada render: repetir o mesmo nome não reinicia nada. */
+function switchTo(ch: Channel, name: string | null) {
+  if (name === ch.current) {
+    if (name && !muted && player(ch.dir + name).paused) start(ch, false);
     return;
   }
-  const old = current;
-  current = t;
-  if (old) {
-    const a = player(old);
-    fade(a, 0, () => a.pause());
-  }
-  if (t && !muted) start(t, true);
+  stop(ch);
+  ch.current = name;
+  if (name && !muted) start(ch, true);
 }
+
+export const setTrack = (t: Track | null) => switchTo(music, t);
+/** Som ambiente por baixo da música (só nas cenas); null silencia. */
+export const setAmbience = (n: Ambience | null) => switchTo(ambience, n);
 
 export const isMuted = () => muted;
 
 export function toggleMute(): boolean {
   muted = !muted;
   try { localStorage.setItem(MUTE_KEY, muted ? '1' : '0'); } catch { /* preferência só nesta sessão */ }
-  if (!current) return muted;
-  const a = player(current);
-  if (muted) fade(a, 0, () => a.pause());
-  else start(current, false);
+  for (const ch of [music, ambience]) {
+    if (!ch.current) continue;
+    if (muted) stop(ch);
+    else start(ch, false);
+  }
   return muted;
 }
 

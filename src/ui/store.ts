@@ -1,12 +1,12 @@
 // Estado da página: jogo (`g`), formulário de criação, persistência, animação do log e render.
-import { playSfx, setTrack, type Track } from './audio';
+import { playSfx, setAmbience, setTrack, type Ambience, type Track } from './audio';
 import { SAVE_KEY, initialState, isBossFight, parseSave, reduce, type GameAction, type GameState, type SaveData } from '../state';
 import { titleView } from './views/title';
 import { createView, type CreateForm } from './views/create';
 import { combatView } from './views/combat';
 import { campView } from './views/camp';
 import { summaryView } from './views/summary';
-import { preloadScenes, sceneTrack, sceneView } from './views/scene';
+import { preloadScenes, sceneAmbience, sceneTrack, sceneView } from './views/scene';
 
 export const app = document.getElementById('app')!;
 export const form: CreateForm = { name: '', classId: 'warrior' };
@@ -67,15 +67,21 @@ export function render() {
     : s.name === 'scene' ? sceneView(g, s)
     : summaryView(s.summary);
   setTrack(trackFor(g));
+  setAmbience(ambienceFor(g));
   if (s.name === 'scene') {
     preloadScenes(s.queue);
     document.getElementById('next')?.focus({ preventScroll: true });
   }
 }
 
+/** Som ambiente só toca em cena; fora dela, silêncio. */
+export const ambienceFor = (state: GameState): Ambience | null =>
+  state.screen.name === 'scene' ? sceneAmbience(state.screen.queue, state.screen.beat) : null;
+
 /** Combate comum, chefe ou ambiente (menus, acampamento e resumo). */
 export function trackFor(state: GameState): Track {
   if (state.screen.name === 'scene') return sceneTrack(state.screen.queue);
+  if (state.screen.name === 'create') return 'first-scene'; // o registro fica entre as duas cenas do prólogo: a música continua
   if (state.screen.name !== 'combat' || !state.run) return 'menu';
   return isBossFight(state.run) ? 'boss' : 'battle';
 }

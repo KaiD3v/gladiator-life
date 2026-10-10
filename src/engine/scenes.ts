@@ -1,5 +1,5 @@
 // Motor de cenas (puro): decide quais cenas tocam em cada evento e resolve cada fala para a UI.
-import { CLASSES, SCENES, SPEAKERS, type ClassId, type SceneEvent } from '../data';
+import { CLASSES, SCENES, SPEAKERS, type Ambience, type ClassId, type SceneEvent } from '../data';
 
 /** Gatilho e evento são o mesmo: mesmos campos com os mesmos valores (a ordem das chaves não importa). */
 export function sameEvent(a: SceneEvent, b: SceneEvent): boolean {
@@ -54,3 +54,9 @@ export function sceneAssets(queue: string[]): string[] {
 
 /** Faixa de música da cena atual da fila. */
 export const sceneTrack = (queue: string[]) => SCENES[queue[0]].music ?? 'menu';
+
+/** Som ambiente na fala `beat` da cena atual: o da cena, trocado ou cortado (null) pelas falas, como o fundo. */
+export function sceneAmbience(queue: string[], beat: number): Ambience | null {
+  const sc = SCENES[queue[0]];
+  return sc.beats.slice(0, beat + 1).reduce<Ambience | null>((cur, x) => (x.ambience === undefined ? cur : x.ambience), sc.ambience ?? null);
+}

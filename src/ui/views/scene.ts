@@ -2,7 +2,7 @@ import { beatView, sceneAssets } from '../../engine/scenes';
 import type { GameState, ScreenOf } from '../../state';
 import { art, assetUrl, esc } from '../components';
 
-export { sceneTrack } from '../../engine/scenes';
+export { sceneAmbience, sceneTrack } from '../../engine/scenes';
 
 export function sceneView(g: GameState, s: ScreenOf<'scene'>): string {
   // No epílogo a campanha já foi encerrada: o herói vem do resumo que espera depois da cena.

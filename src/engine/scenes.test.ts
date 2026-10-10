@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ARENAS, SCENES, type SceneEvent } from '../data';
-import { beatView, sameEvent, sceneAssets, sceneTrack, scenesFor } from './scenes';
+import { beatView, sameEvent, sceneAmbience, sceneAssets, sceneTrack, scenesFor } from './scenes';
 
 describe('scenesFor', () => {
   it('cada gatilho resolve para a cena esperada', () => {
@@ -76,6 +76,15 @@ describe('assets e música', () => {
   it('sceneTrack usa a música da cena ou menu', () => {
     expect(sceneTrack(['boss-intro-tauros'])).toBe('boss');
     expect(sceneTrack(['epilogue'])).toBe('menu');
+  });
+
+  it('sceneAmbience segue a cena e as trocas por fala; cena sem ambiente fica em silêncio', () => {
+    const last = SCENES['prologue-village'].beats.length - 1;
+    expect(sceneAmbience(['prologue-village'], 0)).toBe('village-raid');
+    expect(sceneAmbience(['prologue-village'], last)).toBeNull(); // estrada: o ataque ficou para trás
+    expect(sceneAmbience(['boss-intro-tauros'], 2)).toBe('arena-crowd');
+    expect(sceneAmbience(['prologue-ludus'], 0)).toBeNull();
+    expect(sceneAmbience(['boss-defeat-emperor'], 0)).toBeNull(); // a Arena Rubra fica em silêncio
   });
 });
 

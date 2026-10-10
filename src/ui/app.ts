@@ -1,7 +1,7 @@
 // Monta a interface: botão de som, eventos e primeiro render. Nenhuma regra de jogo aqui.
-import { isMuted, setTrack, toggleMute } from './audio';
+import { isMuted, setAmbience, setTrack, toggleMute } from './audio';
 import { bindEvents } from './events';
-import { render, state, trackFor } from './store';
+import { ambienceFor, render, state, trackFor } from './store';
 
 // Botão de som (música e efeitos) fora do #app: sobrevive aos re-renders.
 function mountMuteButton() {
@@ -18,7 +18,9 @@ function mountMuteButton() {
 }
 
 mountMuteButton();
-// O navegador só libera áudio após um gesto: o primeiro clique/tecla retoma a faixa atual.
-for (const ev of ['pointerdown', 'keydown'] as const) document.addEventListener(ev, () => setTrack(trackFor(state())), { once: true });
+// O navegador só libera áudio após um gesto: o primeiro clique/tecla retoma a faixa e o ambiente atuais.
+for (const ev of ['pointerdown', 'keydown'] as const) {
+  document.addEventListener(ev, () => { setTrack(trackFor(state())); setAmbience(ambienceFor(state())); }, { once: true });
+}
 bindEvents();
 render();
