@@ -24,16 +24,23 @@ O conteúdo de `dist/` é estático e pode ser publicado em qualquer hospedagem 
 
 ## Estrutura
 
-| Arquivo | Papel |
+Camadas com dependência em um só sentido: `ui → state → engine → data/core`. Nada abaixo de `ui/` toca o DOM.
+
+| Pasta | Papel |
 | --- | --- |
-| `src/data.ts` | Dados: classes, habilidades, inimigos, itens, arenas, status. Sem lógica. |
-| `src/combat.ts` | Regras de combate puras (`resolveRound`), RNG determinístico no estado. |
-| `src/run.ts` | Estado do jogo, telas e transições (`reduce`), campanha, acampamento, XP e validação do save. |
-| `src/story.ts` | História: personagens que falam e as cenas (falas, fundos). Só dados. |
-| `src/main.ts` | Interface: renderiza o estado e despacha ações. Nenhuma regra de jogo. |
-| `src/*.test.ts` | Testes de combate e progressão. |
-| `public/assets/` | Pixel art (WebP) de personagens, inimigos, arenas, itens e status. |
+| `src/data/` | Conteúdo puro, um arquivo por domínio: classes, inimigos, itens, habilidades, arenas, NPCs, status, atributos, balanceamento e história (`story.ts`). |
+| `src/core/` | Utilitários sem regra de jogo (RNG determinístico com semente no estado). |
+| `src/engine/` | Motores puros: `combat` (rodadas), `characters` (pipeline de modificadores, fábrica de jogador/inimigo), `items` (aquisição, loja, validação de compra), `scenes` (gatilhos, fala pronta para exibir, assets). |
+| `src/state/` | Estado do jogo: tipos, save, regras da run, ações do acampamento, fluxo da campanha, fila de cenas e o `reduce` que delega por domínio. |
+| `src/ui/` | Interface: `store` (estado da página, render, animação), `events` (tabela `data-a` → ação, teclado), `components` (peças HTML) e uma view por tela em `views/`. |
+| `src/**/*.test.ts` | Testes ao lado do módulo que testam. |
+| `public/assets/`, `public/audio/` | Pixel art (WebP), música e efeitos. |
 | `scripts/` | Prompts usados no Codex e o script que converte as imagens geradas. |
+
+### Como adicionar conteúdo
+
+- **Item, inimigo ou classe**: uma entrada em `data/items.ts`, `data/enemies.ts` ou `data/classes.ts`. O motor de personagens aplica bônus e escala; item que aumenta vida máxima já cura o mesmo tanto na compra.
+- **Cena**: uma entrada em `data/story.ts` com `trigger` (`campaign-start`, `run-start`, `boss-intro`, `boss-defeat`, `arena-enter`, `campaign-won`) e `once` se só deve tocar uma vez. Nenhuma mudança no reducer.
 
 ## Arte (pixel art)
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CLASSES, ENEMIES } from './data';
+import { CLASSES, ENEMIES } from '../data';
 import { NO_PERKS, addStatus, createCombat, makeFighter, resolveRound, type CombatState } from './combat';
 
 const hero = (cls: keyof typeof CLASSES = 'warrior') => {
