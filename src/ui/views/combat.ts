@@ -15,7 +15,7 @@ function intentText(v: IntentView, stunned: boolean): string {
 function intentBadge(v: IntentView, stunned: boolean): string {
   const dmg = v.dmg ? `<b class="idmg">${v.dmg[0]}–${v.dmg[1]}${v.hits && v.hits > 1 ? `×${v.hits}` : ''}</b>` : '';
   const fx = v.effects.map((e) => `<span class="itag">${e}</span>`).join('');
-  const note = stunned ? '<small>Atordoado: perde a vez</small>' : v.kind === 'prep' ? `<small>${v.warning ?? ''} Na próxima rodada.</small>` : '';
+  const note = stunned ? '<small>Atordoado: perde a vez</small>' : v.kind === 'prep' ? `<small>${v.warning ?? ''}</small>` : '';
   return `<div class="intent ${v.kind}${stunned ? ' stunned' : ''}" role="status" aria-label="Próxima ação do inimigo: ${intentText(v, stunned)}">
     <span class="iglyph" aria-hidden="true">${GLYPH[v.kind]}</span><span class="ilabel">${v.label}</span>${dmg}${fx}${note}
   </div>`;
