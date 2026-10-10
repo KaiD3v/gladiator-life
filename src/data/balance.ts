@@ -1,4 +1,4 @@
-﻿// Números de balanceamento da economia e da progressão.
+// Números de balanceamento da economia e da progressão.
 
 export const START_GOLD = 30;
 export const GOLD_PER_LEVEL = 10; // ouro inicial extra por nível permanente

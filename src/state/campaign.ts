@@ -77,7 +77,7 @@ export function afterCombat(g: GameState): GameState {
   if (c.outcome === 'defeat' || c.outcome === 'draw') return finish(g, run, c.outcome);
   let news: string;
   if (c.outcome === 'victory') {
-    // A torcida paga: ouro × (1 + favor/200); executar rende mais ouro, poupar rende menos ouro e mais XP.
+    // A torcida paga: ouro × (1 + favor/CROWD.goldDivisor); executar rende mais ouro, poupar rende menos ouro e mais XP.
     const verdictGold = c.verdict === 'executed' ? CROWD.executeGold : c.verdict === 'spared' ? CROWD.spareGold : 1;
     const gold = Math.round(ENEMIES[enemyId].gold * tier * (1 + c.crowd / CROWD.goldDivisor) * verdictGold);
     run.kills.push(enemyId);
