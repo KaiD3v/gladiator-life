@@ -53,5 +53,5 @@ export function createEnemyFighter(enemyId: string, tier: number): Fighter {
   const scale = (n: number) => Math.round(n * (1 + ENEMY_SCALE_PER_TIER * t));
   const stats = { ...def.stats, maxHp: scale(def.stats.maxHp), atk: scale(def.stats.atk), mag: scale(def.stats.mag), def: def.stats.def + ENEMY_DEF_PER_TIER * t };
   const attrs = { ...def.attrs, dex: def.attrs.dex + ENEMY_DEX_PER_TIER * t };
-  return makeFighter(def.name, 'enemy', stats, { ...NO_PERKS, ...def.perks }, attrs, [...def.skills]);
+  return makeFighter(def.name, 'enemy', stats, { ...NO_PERKS, ...def.perks }, attrs, [...def.skills], undefined, [...def.pattern]);
 }

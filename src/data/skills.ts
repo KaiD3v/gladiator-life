@@ -2,7 +2,7 @@ import type { SkillDef } from './types';
 
 export const SKILLS: Record<string, SkillDef> = {
   attack: { id: 'attack', name: 'Ataque', desc: 'Golpe básico. Sem custo.', cost: 0, type: 'physical', power: 1 },
-  defend: { id: 'defend', name: 'Defender', desc: 'Age primeiro, reduz o dano da rodada e recupera +2 de energia.', cost: 0, type: 'defend' },
+  defend: { id: 'defend', name: 'Defender', desc: 'Age primeiro, reduz o dano da rodada e recupera +2 de energia. Ideal contra golpes pesados anunciados.', cost: 0, type: 'defend' },
   flee: { id: 'flee', name: 'Fugir', desc: 'Age primeiro. Disputa de Destreza: se falhar, sofre um golpe de oportunidade.', cost: 0, type: 'flee' },
   // Força
   shieldBash: {
@@ -62,7 +62,7 @@ export const SKILLS: Record<string, SkillDef> = {
     effects: [{ status: 'poison', target: 'foe', turns: 3, power: 2 }],
   },
   smash: {
-    id: 'smash', name: 'Pancada', desc: 'Dano físico 1.2x, 40% de chance de atordoar.', cost: 5, type: 'physical', power: 1.2,
+    id: 'smash', name: 'Pancada', desc: 'Golpe pesado: prepara por uma rodada, depois causa dano físico 2.6x com 40% de chance de atordoar.', cost: 5, type: 'physical', power: 2.6, windup: true,
     effects: [{ status: 'stun', target: 'foe', turns: 1, chance: 0.4 }],
   },
   darkFlame: {
@@ -70,7 +70,7 @@ export const SKILLS: Record<string, SkillDef> = {
     effects: [{ status: 'burn', target: 'foe', turns: 2, power: 3 }],
   },
   charge: {
-    id: 'charge', name: 'Investida', desc: 'Dano físico 1.6x, 40% de chance de atordoar.', cost: 6, type: 'physical', power: 1.6,
+    id: 'charge', name: 'Investida', desc: 'Golpe pesado: prepara por uma rodada, depois causa dano físico 3x com 40% de chance de atordoar.', cost: 6, type: 'physical', power: 3, windup: true,
     effects: [{ status: 'stun', target: 'foe', turns: 1, chance: 0.4 }],
   },
   roar: {
