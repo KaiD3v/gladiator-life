@@ -417,9 +417,9 @@ button.poor { border-color: var(--line); color: var(--dim); }
 .chip.weak { color: var(--purple); } .chip.weak.unknown { color: var(--dim); }
 .chip.broken { color: var(--red); }
 .inext.lost { opacity: 0.6; }
-.bubble { position: absolute; z-index: 3; right: 32%; bottom: 22%; max-width: 42%; padding: 4px 8px; background: #f3ead2; color: #1a1610; border: 2px solid #1a1610; border-radius: 10px 4px 12px 5px; font-size: 0.85rem; font-style: italic; line-height: 1.15; overflow-wrap: anywhere; animation: fadeIn 0.3s; }
-.bubble b { display: block; font-style: normal; font-size: 0.75rem; color: #7a2a1a; }
-.bubble::after { content: ''; position: absolute; right: -9px; bottom: 6px; border: 5px solid transparent; border-left: 6px solid #1a1610; }
+.say { position: absolute; z-index: 3; right: 30%; bottom: 20%; max-width: 46%; padding: 5px 10px; background: #f3ead2; color: #1a1610; border: 2px solid #1a1610; border-radius: 10px 4px 12px 5px; font-size: 1rem; font-style: italic; line-height: 1.2; overflow-wrap: anywhere; animation: fadeIn 0.3s; }
+.say b { display: block; font-style: normal; font-size: 0.85rem; color: #7a2a1a; }
+.say::after { content: ''; position: absolute; right: -9px; bottom: 6px; border: 5px solid transparent; border-left: 6px solid #1a1610; }
 .log li.bark { font-style: italic; }
 .actor.enraged .sprite { filter: drop-shadow(0 0 6px var(--red)) saturate(1.4) hue-rotate(-15deg); }
 .actor.enraged:not(.down) .sprite { animation: bob 0.7s steps(2) infinite; }

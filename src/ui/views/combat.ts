@@ -83,7 +83,7 @@ function actor(f: Fighter, hp: number, fresh: LogEntry | null, sprite: string, f
 /** Balão de fala: a fala nova durante a animação; parado, a última da rodada anterior. */
 function bubble(c: CombatState, fresh: LogEntry | null, animating: boolean): string {
   const b = animating ? (fresh?.bark ? fresh : null) : c.log.filter((l) => l.bark && (l.round === c.round - 1 || (c.round === 1 && l.round === 1))).pop();
-  return b ? `<div class="bubble" role="status"><b>${esc(c.enemy.name)}</b>“${esc(b.text)}”</div>` : '';
+  return b ? `<div class="say" role="status"><b>${esc(c.enemy.name)}</b>“${esc(b.text)}”</div>` : '';
 }
 
 function continueLabel(c: CombatState, isBoss: boolean, nextArena?: string): string {
