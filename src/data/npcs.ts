@@ -13,7 +13,7 @@ export const NPCS: Record<NpcId, NpcDef> = {
     greet: ['Cama quente e ensopado, por um punhado de moedas.', 'Você parece um saco de pancadas. Descanse um pouco.'],
     deal: ['Durma bem. A arena não vai a lugar nenhum.', 'Coma tudo, está magro demais para morrer amanhã.'],
     poor: ['Sem moedas? O estábulo está livre... e os cavalos quase não roncam.'],
-    denied: ['Você já está inteiro. Vá lutar!'],
+    denied: ['Você já está em plena forma. Vá lutar!'],
   },
   str: {
     id: 'str', name: 'Brutus', role: 'Treinador de Força',

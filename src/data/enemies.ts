@@ -6,13 +6,13 @@ export const ENEMIES: Record<string, EnemyDef> = {
     id: 'bandit', name: 'Bandido', desc: 'Equilibrado e oportunista.', xp: 20, gold: 16, attrs: { str: 4, dex: 4, wis: 1 },
     stats: base({ maxHp: 55, maxEnergy: 8, atk: 9, def: 3, speed: 5 }), skills: ['attack', 'dirtyCut'],
     pattern: ['attack', 'dirtyCut', 'attack', 'defend'],
-    posture: 4, weak: ['poison', 'magic'], barks: { start: 'Passe o ouro e talvez saia inteiro!' },
+    posture: 4, weak: ['poison', 'magic'], barks: { start: 'Passe o ouro e talvez saia com vida!' },
   },
   wolf: {
     id: 'wolf', name: 'Lobo da Arena', desc: 'Rápido, morde com veneno.', xp: 20, gold: 12, attrs: { str: 3, dex: 7, wis: 1 },
     stats: base({ maxHp: 45, maxEnergy: 8, atk: 8, def: 2, speed: 10, crit: 0.15 }), skills: ['attack', 'bite'],
     pattern: ['bite', 'attack', 'attack'],
-    posture: 3, weak: ['burn', 'stun'], barks: { start: 'O lobo rosna, babando de fome.' },
+    posture: 3, weak: ['burn', 'stun'], barks: { start: 'Grrrr...!' },
   },
   brute: {
     id: 'brute', name: 'Brutamontes', desc: 'Lento, resistente, pancadas atordoantes.', xp: 25, gold: 20, attrs: { str: 7, dex: 1, wis: 1 },
@@ -45,7 +45,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
     pattern: ['bite', 'dirtyCut', 'attack'],
     posture: 6, weak: ['burn', 'physical'],
     phase2: { at: 0.5, pattern: ['bite', 'venomMist', 'dirtyCut', 'venomMist'], line: 'Chega de joguinhos. Respire fundo... se puder.' },
-    barks: { start: 'Dance para mim, florzinha.', low: 'Não! A coroa... fique longe da coroa!', playerCrit: 'Ora, ora... tem dentes.' },
+    barks: { start: 'Dance para mim. Quero ver você sangrar com elegância.', low: 'Não! A coroa... fique longe da coroa!', playerCrit: 'Ora, ora... tem dentes.' },
   },
   emperor: {
     id: 'emperor', name: 'Imperador Caído', desc: 'Chefe. Magia sombria e vontade de ferro.', xp: 130, gold: 100, attrs: { str: 5, dex: 3, wis: 8 },
@@ -54,6 +54,6 @@ export const ENEMIES: Record<string, EnemyDef> = {
     pattern: ['darkFlame', 'attack', 'roar', 'darkFlame'],
     posture: 6, weak: ['magic', 'burn', 'stun'],
     phase2: { at: 0.5, pattern: ['darkFlame', 'brazier', 'roar', 'darkFlame', 'brazier'], line: 'Acendam os braseiros! Que a plebe veja um imperador arder.' },
-    barks: { start: 'Mais um para a plebe aplaudir...', low: 'Silêncio... finalmente?', playerCrit: 'Há muito eu não sentia dor.' },
+    barks: { start: 'Outra alma para a plebe aplaudir...', low: 'Silêncio... finalmente?', playerCrit: 'Há muito eu não sentia dor.' },
   },
 };
