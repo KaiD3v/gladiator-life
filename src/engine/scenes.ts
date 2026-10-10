@@ -1,10 +1,16 @@
 // Motor de cenas (puro): decide quais cenas tocam em cada evento e resolve cada fala para a UI.
 import { CLASSES, SCENES, SPEAKERS, type ClassId, type SceneEvent } from '../data';
 
+/** Gatilho e evento são o mesmo: mesmos campos com os mesmos valores (a ordem das chaves não importa). */
+export function sameEvent(a: SceneEvent, b: SceneEvent): boolean {
+  const ka = Object.keys(a) as (keyof SceneEvent)[];
+  return ka.length === Object.keys(b).length && ka.every((k) => a[k] === b[k]);
+}
+
 /** Cenas que casam com o evento, na ordem dos dados; cenas `once` já vistas ficam de fora. */
 export function scenesFor(event: SceneEvent, seen: readonly string[] = []): string[] {
   return Object.values(SCENES)
-    .filter((s) => JSON.stringify(s.trigger) === JSON.stringify(event) && !(s.once && seen.includes(s.id)))
+    .filter((s) => sameEvent(s.trigger, event) && !(s.once && seen.includes(s.id)))
     .map((s) => s.id);
 }
 

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ARENAS, SCENES, type SceneEvent } from '../data';
-import { beatView, sceneAssets, sceneTrack, scenesFor } from './scenes';
+import { beatView, sameEvent, sceneAssets, sceneTrack, scenesFor } from './scenes';
 
 describe('scenesFor', () => {
   it('cada gatilho resolve para a cena esperada', () => {
@@ -76,5 +76,15 @@ describe('assets e música', () => {
   it('sceneTrack usa a música da cena ou menu', () => {
     expect(sceneTrack(['boss-intro-tauros'])).toBe('boss');
     expect(sceneTrack(['epilogue'])).toBe('menu');
+  });
+});
+
+describe('sameEvent', () => {
+  it('compara campo a campo: a ordem das chaves nos dados não importa', () => {
+    const reordered = { boss: 'tauros', on: 'boss-intro' } as SceneEvent;
+    expect(sameEvent(reordered, { on: 'boss-intro', boss: 'tauros' })).toBe(true);
+    expect(sameEvent({ on: 'boss-intro', boss: 'tauros' }, { on: 'boss-intro', boss: 'serpent' })).toBe(false);
+    expect(sameEvent({ on: 'boss-defeat', boss: 'tauros' }, { on: 'boss-intro', boss: 'tauros' })).toBe(false);
+    expect(sameEvent({ on: 'campaign-won' }, { on: 'campaign-start' })).toBe(false);
   });
 });
