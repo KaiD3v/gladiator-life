@@ -38,7 +38,7 @@ export function learnBlock(run: RunState, id: string): LearnBlock {
 
 export function startFight(run: RunState): CombatState {
   const enemy = createEnemyFighter(run.enemies[run.encounter], arenaById(run.arenaId).tier);
-  return createCombat(createPlayerFighter(run), enemy, Math.floor(rand(run) * 2 ** 32), { boss: isBossFight(run), known: run.bestiary[run.enemies[run.encounter]] });
+  return createCombat(createPlayerFighter(run), enemy, Math.floor(rand(run) * 2 ** 32), { boss: isBossFight(run), hazard: arenaById(run.arenaId).hazard, known: run.bestiary[run.enemies[run.encounter]] });
 }
 
 /** Prepara a temporada da arena atual: adversários sorteados + chefe, dia 1, loja nova. */
