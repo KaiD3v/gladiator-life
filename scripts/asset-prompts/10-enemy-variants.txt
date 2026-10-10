@@ -1,0 +1,12 @@
+STYLE (apply to every image): medieval/ancient-Roman gladiator fantasy, 16-bit SNES-era pixel art, crisp hard-edged pixels, no anti-aliasing, no blur, limited warm palette (bronze, rust red, bone, dark brown) with dark outlines, dramatic lighting.
+Each subject is a single sprite, centered, full subject visible with margin, on a plain solid pure magenta #FF00FF background (no shadow on the background, no ground, no text, no frame).
+Enemies face left (three-quarter view), full body. These are stronger variants of the base enemies (bandit, wolf, brute, sorcerer): keep the same silhouette family, but make them visibly bigger, better equipped and more menacing.
+Files:
+- banditLeader.png: bandit leader, older and broader than a common bandit, red bandana with a gold earring, studded leather armor with a fur-trimmed cloak, a scarred face with an eyepatch, a heavy curved falchion in one hand and a coiled whip on the belt.
+- direWolf.png: dire wolf, much larger and bulkier than an arena wolf, dark charcoal-black fur with a bristling mane, glowing yellow eyes, huge fangs, torn ears, broken iron chains hanging from a spiked collar (four-legged, side view).
+- bruteWarrior.png: brute warrior, a huge bald brute now wearing a dented iron pauldron, chainmail over the belly, a big rectangular wooden tower shield bound in iron and a spiked iron-banded club.
+- elderSorcerer.png: elder sorcerer, very old and gaunt with a long white beard, tall hood, deep violet robes embroidered with bronze runes, a gnarled bone staff, purple flames and a pale-blue frost wisp floating around the hands.
+- hellhound.png: hellhound, a wolf-like beast with charred black skin and cracks of glowing molten orange, a mane of flames, smoking jaws dripping embers, iron spiked collar (four-legged, side view).
+- executioner.png: crimson executioner, a towering brute in a blood-red pointed executioner hood, bare muscular scarred torso with a heavy leather apron and iron bracers, wielding a huge two-handed executioner axe.
+- necromancer.png: necromancer, skeletal robed figure in black and sickly green robes with a horned bone crown, holding a skull-topped staff, green poison mist and violet lightning crackling around it.
+Use your image generation tool once per file. After each generation copy the generated PNG into the current directory with the EXACT filename given. Do not post-process, resize or edit the images. Do not create any other files. At the end list the files you saved.

@@ -13,7 +13,8 @@ OUT = Path(__file__).resolve().parent.parent / 'public' / 'assets'
 
 # nome -> maior dimensão final (px). Fundos tratados à parte.
 SIZES = {
-    **{k: 160 for k in ['warrior', 'mage', 'assassin', 'bandit', 'wolf', 'brute', 'sorcerer']},
+    **{k: 160 for k in ['warrior', 'mage', 'assassin', 'bandit', 'wolf', 'brute', 'sorcerer',
+                        'banditLeader', 'direWolf', 'bruteWarrior', 'elderSorcerer', 'hellhound', 'executioner', 'necromancer']},
     **{k: 200 for k in ['tauros', 'serpent', 'emperor']},
     **{k: 64 for k in ['chippedSword', 'bronzeShield', 'emberAmulet', 'swiftBoots', 'serratedDagger', 'titanHeart',
                        'manaCrystal', 'vampireChalice', 'thornCloak', 'venomFlask', 'ritualBandage', 'warHorn', 'rest']},
