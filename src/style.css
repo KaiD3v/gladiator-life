@@ -1,3 +1,7 @@
+/* Fontes locais (OFL, subset latin do Google Fonts): o jogo funciona offline e sem depender de terceiros */
+@font-face { font-family: 'Patrick Hand'; font-style: normal; font-weight: 400; font-display: swap; src: url(/fonts/patrick-hand-latin.woff2) format('woff2'); }
+@font-face { font-family: 'Caveat'; font-style: normal; font-weight: 700; font-display: swap; src: url(/fonts/caveat-700-latin.woff2) format('woff2'); }
+
 :root {
   --bg: #14120e;
   --paper: #1d1a15;
@@ -26,7 +30,7 @@ body {
     repeating-linear-gradient(0deg, transparent 0 27px, rgba(236, 228, 208, 0.025) 27px 28px),
     var(--bg);
 }
-#app { max-width: 1280px; height: 100vh; height: 100dvh; margin: 0 auto; padding: 10px 12px; }
+#app { max-width: 1280px; height: 100vh; height: 100dvh; height: var(--app-h, 100dvh); margin: 0 auto; padding: 10px 12px; }
 
 h1, h2, h3 { font-family: var(--title); font-weight: 700; margin: 0 0 8px; line-height: 1.05; }
 h1 { font-size: clamp(2.2rem, min(11vw, 9dvh), 5.2rem); text-align: center; letter-spacing: 1px; }
@@ -73,7 +77,8 @@ button {
   transition: transform 0.08s, background 0.15s;
   touch-action: manipulation;
 }
-button:hover:not(:disabled) { background: #332d23; transform: rotate(-0.6deg) translateY(-1px); }
+/* Só com mouse: no toque o :hover "gruda" depois do clique */
+@media (hover: hover) { button:hover:not(:disabled) { background: #332d23; transform: rotate(-0.6deg) translateY(-1px); } }
 button:active:not(:disabled) { transform: translate(2px, 2px); box-shadow: 1px 1px 0 rgba(0, 0, 0, 0.6); }
 button:focus-visible, input:focus-visible { outline: 3px dashed var(--gold); outline-offset: 3px; }
 button:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -137,7 +142,9 @@ input[type='text'] {
 .action b { font-weight: normal; font-size: 1.08rem; line-height: 1.1; }
 .action small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; font-size: 0.78rem; color: var(--dim); line-height: 1.15; }
 .action .cost { color: var(--blue); font-size: 0.85rem; }
-.action kbd { margin-left: auto; font: inherit; font-size: 0.75rem; color: var(--dim); }
+.action .cost.short { color: var(--red); }
+.action kbd { margin-left: auto; font: inherit; font-size: 0.85rem; color: var(--dim); }
+@media (hover: none) { .action kbd { display: none; } } /* atalhos de teclado não servem no toque */
 
 .log { overflow-y: auto; font-size: 0.95rem; }
 .log ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column-reverse; }
@@ -170,7 +177,7 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; user-select: 
 .chip.item { color: var(--ink); }
 .chip.carry { color: var(--gold); }
 .action.item-act { border-color: var(--green); }
-.bag-btn { position: relative; min-height: 48px; padding: 2px 12px; box-shadow: none; }
+.bag-btn { position: relative; min-height: 48px; min-width: 48px; padding: 2px 10px; box-shadow: none; }
 .bag-btn.new::after { content: ''; position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; border-radius: 50%; background: var(--red); }
 .chip.new { font-family: var(--hand); font-size: 0.8rem; color: var(--bg); background: var(--gold); border-color: var(--gold); vertical-align: middle; }
 .bag-panel .dialog { justify-content: space-between; align-items: center; }
@@ -191,6 +198,7 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; user-select: 
 .modal-actions { display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; }
 .modal-actions .primary { padding: 10px 12px; }
 @media (max-width: 520px) { .bag-word { display: none; } }
+@media (max-width: 400px) { .pill, .bag-btn { padding-inline: 6px; } }
 @media (max-height: 520px) { .loot-intro { display: none; } .modal-box { gap: 4px; padding: 8px 12px; } }
 
 .hero {
@@ -256,10 +264,10 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; user-select: 
 @keyframes hurt { 25%, 75% { filter: brightness(1.6) sepia(1) hue-rotate(-35deg) saturate(6); transform: translateX(-6px); } 50% { transform: translateX(6px); } }
 
 /* ---------- Acampamento ---------- */
-.pills { gap: 8px; }
-.pill { display: inline-flex; align-items: center; gap: 2px; padding: 2px 10px; border: 1.5px solid var(--line); border-radius: 12px 5px 14px 6px; font-size: 1.05rem; }
+.pills { gap: 8px; flex-wrap: nowrap; }
+.pill { display: inline-flex; align-items: center; gap: 2px; white-space: nowrap; padding: 2px 10px; border: 1.5px solid var(--line); border-radius: 12px 5px 14px 6px; font-size: 1.05rem; }
 .pill.gold { color: var(--gold); border-color: var(--gold); }
-.tag { font-size: 0.75rem; padding: 0 5px; border: 1.5px solid currentColor; border-radius: 6px 3px 7px 3px; vertical-align: 2px; }
+.tag { font-size: 0.82rem; padding: 0 5px; border: 1.5px solid currentColor; border-radius: 6px 3px 7px 3px; vertical-align: 2px; }
 .tag.str, .attr.str { color: #f08a6a; } .tag.dex, .attr.dex { color: #6fd6b4; } .tag.wis, .attr.wis { color: var(--blue); }
 .attr { white-space: nowrap; margin-right: 6px; }
 .news { border-color: var(--gold); color: var(--gold); text-align: center; }
@@ -280,7 +288,7 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; user-select: 
   overflow: hidden;
 }
 .town::before { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 30%, rgba(20, 18, 14, 0.8)); }
-.npc { position: relative; display: grid; justify-items: center; gap: 2px; padding: 4px 2px; min-width: 0; min-height: 0; background: transparent; border: 2px solid transparent; box-shadow: none; }
+.npc { position: relative; display: grid; justify-items: center; gap: 2px; padding: 4px 2px; min-width: 0; min-height: 48px; background: transparent; border: 2px solid transparent; box-shadow: none; }
 .npc:hover:not(:disabled) { background: rgba(236, 228, 208, 0.08); }
 .npc.selected { border-color: var(--gold); background: rgba(227, 179, 80, 0.12); box-shadow: none; }
 .npc-sprite { height: clamp(40px, 13dvh, 130px); width: auto; filter: drop-shadow(2px 4px 0 rgba(0, 0, 0, 0.7)); animation: bob 1.8s steps(2) infinite; }
@@ -294,12 +302,12 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; user-select: 
 .bubble { position: relative; flex: 1; padding: 10px 14px; background: #2a251c; border: 2px solid var(--ink); border-radius: 18px 8px 20px 6px; }
 .bubble::before { content: ''; position: absolute; left: -14px; bottom: 14px; border: 6px solid transparent; border-right: 8px solid var(--ink); }
 .bubble p { font-size: 1.2rem; margin-top: 4px; }
-.close { align-self: flex-start; min-height: 40px; padding: 4px 12px; }
+.close { align-self: flex-start; min-width: 48px; padding: 4px 12px; }
 .offers { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); }
 .offer { display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; align-items: center; padding: 10px 12px; }
 .offer h3 { font-size: 1.35rem; margin: 0; }
 .offer p { font-size: 0.95rem; }
-.offer > button { grid-column: 1 / -1; min-height: 42px; font-size: 1.05rem; }
+.offer > button { grid-column: 1 / -1; font-size: 1.05rem; }
 .offer-art { width: 48px; height: 48px; object-fit: contain; }
 button.poor { border-color: var(--line); color: var(--dim); }
 
@@ -311,7 +319,7 @@ button.poor { border-color: var(--line); color: var(--dim); }
 .next-card h3 { font-size: 1.2rem; margin: 0; }
 .next-card > button { grid-column: 1 / -1; }
 .next-desc { font-size: 0.9rem; }
-.foe-preview { height: 56px; width: auto; filter: drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.6)); }
+.foe-preview { height: 56px; width: auto; max-width: 100%; object-fit: contain; filter: drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.6)); }
 .action.flee { border-color: var(--gold); }
 
 @media (max-width: 520px) {
@@ -331,8 +339,13 @@ button.poor { border-color: var(--line); color: var(--dim); }
   .stage-arrow { justify-self: center; transform: rotate(90deg); }
 }
 
+/* Balão de dica no toque (ver events.ts) */
+.tip { position: fixed; z-index: 30; max-width: min(320px, calc(100vw - 16px)); padding: 6px 10px; background: #f3ead2; color: #1a1610; border: 2px solid #1a1610; border-radius: 10px 4px 12px 5px; font-size: 1rem; line-height: 1.25; pointer-events: none; box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.6); }
+.tip[hidden] { display: none; }
+
 /* Botão de música */
-.mute { position: fixed; top: 8px; right: 8px; z-index: 10; width: 48px; min-height: 48px; padding: 0; font-size: 1.3rem; background: rgba(38, 34, 27, 0.92); }
+/* Alinhado à coluna do jogo (#app: 1280px + 12px de margem) mesmo em telas largas */
+.mute { position: fixed; top: 8px; right: max(8px, calc((100vw - 1280px) / 2 + 12px)); z-index: 10; width: 48px; min-height: 48px; padding: 0; font-size: 1.3rem; background: rgba(38, 34, 27, 0.92); }
 
 /* ---------- Cenas de história ---------- */
 .scene {
@@ -392,7 +405,12 @@ button.poor { border-color: var(--line); color: var(--dim); }
 .legacy h3 { font-size: 1.3rem; margin: 0; }
 .howto { width: min(600px, 100%); text-align: left; padding: 6px 14px; }
 .howto summary { cursor: pointer; min-height: 36px; font-family: var(--title); font-size: 1.4rem; }
-.howto[open] { max-height: 40dvh; overflow-y: auto; }
+.howto p { max-height: 30dvh; overflow-y: auto; }
+@media (max-height: 520px) { .howto p { max-height: 16dvh; } }
+/* Sketches que rolam: o 2º traço fica dentro, senão cria rolagem falsa */
+.sketch.scroll::after, .side-log::after { inset: 0; }
+/* Contêineres que rolam com cartões .sketch: folga para o 2º traço dos filhos caber */
+.camp-body, .class-pick { padding: 6px; margin: -6px; overflow-x: hidden; }
 .report { max-width: 560px; margin: 0 auto; text-align: left; }
 
 /* Intenção do inimigo */
@@ -434,7 +452,7 @@ button.poor { border-color: var(--line); color: var(--dim); }
 .posture { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font-size: 0.85rem; }
 .posture .pips { display: flex; flex: 1; gap: 3px; min-width: 50px; }
 .posture .weaks { display: flex; flex-wrap: wrap; align-items: center; gap: 3px; }
-.posture .chip { font-size: 0.75rem; padding: 0 5px; }
+.posture .chip { font-size: 0.82rem; padding: 0 5px; }
 .posture .pips i { flex: 1; max-width: 24px; height: 8px; border: 1.5px solid var(--gold); border-radius: 3px 1px 4px 1px; }
 .posture .pips i.on { background: var(--gold); }
 .posture .broken-tag { color: var(--red); font-weight: bold; letter-spacing: 1px; }
@@ -484,19 +502,20 @@ button.poor { border-color: var(--line); color: var(--dim); }
 .hud-top { display: flex; align-items: baseline; gap: 6px; min-width: 0; }
 .hud .name { font-size: 1.1rem; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .hud .statline { margin-left: auto; font-size: 0.78rem; white-space: nowrap; }
-.first { padding: 0 5px; font-size: 0.75rem; color: var(--bg); background: var(--gold); border-radius: 6px 2px 6px 2px; }
+.first { padding: 0 5px; font-size: 0.82rem; white-space: nowrap; color: var(--bg); background: var(--gold); border-radius: 6px 2px 6px 2px; }
 .hud .bar { height: 18px; }
 .hud .bar > span { font-size: 0.85rem; line-height: 14px; }
-.hud .bar.en { height: 12px; }
-.hud .bar.en > span { font-size: 0.7rem; line-height: 8px; }
+.hud .bar.en { height: 16px; }
+.hud .bar.en > span { font-size: 0.82rem; line-height: 12px; }
 .hud .chips { flex-wrap: nowrap; min-height: 0; overflow-x: auto; scrollbar-width: none; }
-.hud .chip { font-size: 0.78rem; white-space: nowrap; }
+.hud .chip { font-size: 0.82rem; white-space: nowrap; }
 .inext { display: none; }
 .side-log { display: none; }
 .tray { display: grid; gap: 6px; }
 .tray-tabs { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
 .tab { position: relative; padding: 4px; font-size: 1rem; box-shadow: none; }
 .tab.on { border-color: var(--gold); color: var(--gold); background: #3a3020; }
+.tab.empty { color: var(--dim); border-color: var(--line); }
 .tab.alert::after { content: ''; position: absolute; top: 6px; right: 8px; width: 9px; height: 9px; border-radius: 50%; background: var(--red); }
 .tray-pages > .tpage { display: none; align-content: start; }
 .tray-pages[data-page='skills'] > .skills, .tray-pages[data-page='basic'] > .basic, .tray-pages[data-page='items'] > .items { display: grid; }
@@ -504,12 +523,20 @@ button.poor { border-color: var(--line); color: var(--dim); }
 .tray-pages[data-page='log'] > .log { display: block; }
 .tpage.log { height: clamp(110px, 26dvh, 200px); padding: 4px 8px; border: 2px solid var(--line); border-radius: 10px 4px 12px 5px; }
 
-/* Telas baixas (celulares pequenos): a descrição da ação vira dica (title) e o HUD perde a linha de stats */
+/* Telas baixas: a descrição da ação encolhe para 1 linha (o toque não tem tooltip) e o HUD perde a linha de stats;
+   só em telas muito baixas ela some de vez (o title continua no mouse) */
 @media (max-height: 720px) {
-  .action small { display: none; }
-  .tpage.items .action small { display: -webkit-box; } /* item: a descrição é o que diferencia */
+  .action small { -webkit-line-clamp: 1; }
   .hud .statline { display: none; }
 }
+@media (max-height: 560px) {
+  .action small { display: none; }
+  .tpage.items .action small { display: -webkit-box; } /* item: a descrição é o que diferencia */
+}
+
+/* Dica da primeira luta, na base do palco (ocupa o lugar do balão de fala, que segue no registro) */
+.stage:has(.coach) .say { display: none; }
+.coach { position: absolute; z-index: 4; left: 6px; right: 6px; bottom: 6px; margin: 0; padding: 4px 10px; background: rgba(16, 13, 9, 0.9); border: 2px dashed var(--gold); border-radius: 10px 4px 12px 5px; color: var(--gold); font-size: 0.95rem; line-height: 1.2; text-align: center; animation: fadeIn 0.4s; }
 
 /* Celular deitado: palco à esquerda, ações à direita */
 @media (orientation: landscape) and (max-height: 520px) and (max-width: 899px) {
@@ -543,12 +570,20 @@ button.poor { border-color: var(--line); color: var(--dim); }
   .side-log { grid-area: log; display: block; min-height: 0; }
   .tb-items { display: flex; }
   .inext { display: block; }
+}
+/* Desktop e tablet em pé: sem abas; todas as ações numa grade única (habilidades, básico, itens) */
+@media (min-width: 900px), (min-width: 600px) and (min-height: 900px) {
   .tray-tabs { display: none; }
-  .tray-pages { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-  .tray-pages > .tpage.skills, .tray-pages > .tpage.basic { display: grid; }
-  .tray-pages > .tpage.items { display: grid; grid-column: 1 / -1; grid-template-columns: repeat(4, minmax(0, 1fr)); }
-  .tray-pages > .tpage.items.empty { display: none; }
-  .tray-pages > .tpage.log { display: none; }
+  .tray-pages { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+  .tray-pages > .tpage.skills, .tray-pages > .tpage.basic, .tray-pages > .tpage.items { display: contents; }
+  .tray-pages > .tpage.items.empty, .tray-pages > .tpage.log { display: none; }
+}
+/* Tablet em pé: o registro aparece numa faixa acima das ações (que ficam por último, embaixo) */
+@media (min-width: 600px) and (max-width: 899px) and (min-height: 900px) {
+  .side-log { display: block; order: 1; height: 18dvh; padding: 6px 12px; }
+  .side-log h3 { font-size: 1.2rem; margin: 0 0 2px; }
+  .combat-screen > .tray { order: 2; }
+  .inext { display: block; }
 }
 
 /* Acampamento: topo, vida, aviso, ludus, miolo que rola por dentro (conversa + ficha) e a próxima luta sempre à vista */
@@ -570,13 +605,16 @@ button.poor { border-color: var(--line); color: var(--dim); }
   .camp-screen > .news { grid-area: news; }
   .camp-screen > .town { grid-area: town; }
   .camp-screen > .camp-body { grid-area: body; }
-  .camp-screen > .next-card { grid-area: next; grid-template-columns: 1fr; justify-items: center; align-content: start; text-align: center; }
-  .next-card .foe-preview { height: clamp(90px, 22dvh, 180px); }
+  .camp-screen > .next-card { grid-area: next; align-self: start; grid-template-columns: 1fr; justify-items: center; align-content: start; text-align: center; }
+  .next-card .foe-preview { height: clamp(90px, 22dvh, 180px); min-width: 0; }
   .camp-body .ficha { columns: 2; column-gap: 24px; }
   .camp-body .ficha > * { break-inside: avoid; }
 }
 @media (orientation: landscape) and (max-height: 520px) and (max-width: 899px) {
   .camp-screen { grid-template-columns: minmax(0, 1fr) 220px; }
+  /* conversa aberta: a vida sobe para a coluna lateral, ao lado da faixa do ludus, e sobra uma linha para as ofertas */
+  .camp-screen:has(.npc-panel) { grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: 'top top' 'town hp' 'body next'; }
+  .camp-screen:has(.npc-panel) > .bar { align-self: center; }
   .camp-screen .news { -webkit-line-clamp: 1; }
   .camp-screen > .town { padding-top: 4px; }
   .npc-sprite { height: 20dvh; }
@@ -628,4 +666,30 @@ button.poor { border-color: var(--line); color: var(--dim); }
   .npc-panel .bubble { padding: 4px 10px; }
   .npc-panel .bubble p { font-size: 1rem; }
   .offers { gap: 8px; }
+  /* Com a conversa aberta, o NPC escolhido já aparece no diálogo: o ludus vira só uma faixa de rostos */
+  .camp-screen:has(.npc-panel) .npc span { display: none; }
+  .camp-screen:has(.npc-panel) .tb-sub { display: none; } /* topo numa linha só: sobra altura para as ofertas */
+  .camp-body .npc-panel { padding: 8px 10px; }
+  .offer { gap: 2px 10px; padding: 6px 10px; }
+  .offer h3 { font-size: 1.2rem; }
+  .offer p { line-height: 1.2; }
+  .offer-art { width: 40px; height: 40px; }
 }
+
+/* Celular em pé: próxima luta numa faixa curta; com a conversa aberta, só o botão (o resto da tela vai para as ofertas) */
+@media (max-width: 899px) and (orientation: portrait) {
+  .next-card { padding: 6px 10px; }
+  .next-card .foe-preview { height: 44px; }
+  .next-desc { display: none; }
+  .next-info h3, .next-info > p:first-of-type { display: inline; }
+  .next-info h3 { margin-right: 6px; }
+  .camp-screen:has(.npc-panel) .next-card > :not(button) { display: none; }
+}
+
+/* Dica do ludus (some ao abrir uma conversa), ganho previsto na loja/treino e destaque do que mudou */
+.town-hint { position: absolute; z-index: 1; top: 2px; left: 8px; right: 8px; margin: 0; text-align: center; font-size: 0.9rem; line-height: 1.15; text-shadow: 0 0 4px #000, 1px 1px 0 #000; }
+.town:has(.town-hint) { padding-top: 24px; }
+.gain { font-size: 0.95rem; color: var(--green); }
+.gain b { font-weight: normal; }
+.flash { animation: flash 0.9s ease-out; }
+@keyframes flash { from { box-shadow: 0 0 0 3px var(--gold), 0 0 16px 4px var(--gold); } }

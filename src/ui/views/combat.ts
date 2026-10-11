@@ -72,7 +72,7 @@ function fighterHud(f: Fighter, hp: number, en: number, animating: boolean, firs
     }),
   ].join('');
   return `<div class="sketch fighter hud ${f.side}">
-    <div class="hud-top"><span class="name">${esc(f.name)}</span>${first ? '<span class="first" title="Age primeiro nesta rodada (maior velocidade)">1º</span>' : ''}<span class="statline">Vel ${f.stats.speed} · Def ${f.stats.def}</span></div>
+    <div class="hud-top"><span class="name">${esc(f.name)}</span>${first ? '<span class="first" title="Age primeiro nesta rodada (maior velocidade)">Age 1º</span>' : ''}<span class="statline">Vel ${f.stats.speed} · Def ${f.stats.def}</span></div>
     ${bar('hp', hp, f.stats.maxHp, `Vida ${hp}/${f.stats.maxHp}`)}
     ${bar('en', en, f.stats.maxEnergy, `Energia ${en}/${f.stats.maxEnergy} · +${f.stats.regen}/rod.`)}
     ${chips ? `<div class="chips">${chips}</div>` : ''}
@@ -96,6 +96,20 @@ function actor(f: Fighter, hp: number, fresh: LogEntry | null, sprite: string, f
 function bubble(c: CombatState, fresh: LogEntry | null, animating: boolean): string {
   const b = animating ? (fresh?.bark ? fresh : null) : c.log.filter((l) => l.bark && (l.round === c.round - 1 || (c.round === 1 && l.round === 1))).pop();
   return b ? `<div class="say" role="status"><b>${esc(c.enemy.name)}</b>“${esc(b.text)}”</div>` : '';
+}
+
+/** Dicas da primeira luta da primeira campanha, uma por rodada: apresentam as camadas do combate na hora em que importam. */
+const COACH = [
+  'Dica: o quadro no canto direito mostra o próximo golpe do inimigo. Golpe pesado chegando? Defenda.',
+  'Dica: jogadas vistosas animam a multidão; repetir a mesma ação a esfria. Com a multidão em 100, a Glória da sua classe libera.',
+  'Dica: acertar o ponto fraco abala a postura. Sem postura, o inimigo perde a vez e sofre mais dano.',
+  'Dica: a arena também ataca. O aviso no canto esquerdo conta as rodadas, e Defender protege dos efeitos.',
+];
+function coach(g: GameState, c: CombatState, animating: boolean): string {
+  const run = g.run!;
+  const tip = COACH[c.round - 1];
+  if (!tip || animating || c.outcome || g.save.runs > 0 || stageOf(run) > 0 || run.encounter > 0) return '';
+  return `<p class="coach" role="note">${tip}</p>`;
 }
 
 function continueLabel(c: CombatState, isBoss: boolean, nextArena?: string): string {
@@ -174,12 +188,13 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
     const suggest = (heavy || statusHazard) && id === 'defend';
     const hintText = heavy && statusHazard ? 'Golpe pesado e perigo da arena' : heavy ? 'Golpe pesado chegando' : 'Perigo da arena: Defender protege';
     const item = isItem(id);
+    const short = s.cost - c.player.energy; // falta de energia: diz quanto falta em vez de só apagar o botão
     const cost = item ? `Item ×${c.player.bag.filter((x) => x === id).length} · ${isQuickItem(id) ? 'age primeiro' : 'segue a velocidade'}`
-      : s.glory && c.crowd < 100 ? 'Requer multidão 100' : s.cost ? `${s.cost} energia` : 'sem custo';
+      : s.glory && c.crowd < 100 ? 'Requer multidão 100' : short > 0 && !c.outcome ? `${s.cost} energia · faltam ${short}` : s.cost ? `${s.cost} energia` : 'sem custo';
     const cls = `action${id === 'flee' ? ' flee' : ''}${item ? ' item-act' : ''}${suggest ? ' suggest' : ''}${s.glory ? ` glory-btn${cv.gloryReady ? ' ready' : ''}` : ''}`;
     return `<button class="${cls}" data-a="act" data-v="${id}" title="${s.desc}" ${animating || !canUse(c, id) ? 'disabled' : ''}>
       <span class="a-top">${id === 'flee' ? statusArt('flee') : ''}<b>${s.name}</b> ${attrTag(s.attr)}<kbd>${i + 1}</kbd></span>
-      <span class="cost">${cost}${extra}</span>
+      <span class="cost${short > 0 && !item ? ' short' : ''}">${cost}${extra}</span>
       ${suggest ? `<em class="hint">${hintText}</em>` : `<small>${s.desc}</small>`}</button>`;
   };
   const indexed = actionsFor(c.player, c).map((id, i) => [id, i] as const);
@@ -192,7 +207,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
   // Itens: quando a vida está baixa e há cura na bolsa.
   const lowHeal = c.player.hp <= c.player.stats.maxHp * 0.35 && bag.some(([id]) => SKILLS[id].heal);
   const alert: Partial<Record<TrayPage, boolean>> = { basic: (heavy || statusHazard || cv.gloryReady) && !animating, items: lowHeal && !animating };
-  const tabs = TRAY_PAGES.map((p) => `<button class="tab${p === tray ? ' on' : ''}${alert[p] ? ' alert' : ''}" data-a="tray" data-v="${p}" role="tab" aria-selected="${p === tray}">${TRAY_LABEL[p]}${p === 'items' ? ` ${c.player.bag.length}` : ''}</button>`).join('');
+  const tabs = TRAY_PAGES.map((p) => `<button class="tab${p === tray ? ' on' : ''}${alert[p] ? ' alert' : ''}${p === 'items' && !bag.length ? ' empty' : ''}" data-a="tray" data-v="${p}" role="tab" aria-selected="${p === tray}">${TRAY_LABEL[p]}${p === 'items' ? ` ${c.player.bag.length}` : ''}</button>`).join('');
   const controls = c.outcome && !animating
     ? `<div class="tray"><button class="primary wide" data-a="continue">${continueLabel(c, isBoss, nextArena(run)?.name)}</button></div>`
     : `<div class="tray">
@@ -223,6 +238,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
       ${bubble(c, fresh, animating)}
       ${animating ? '' : hazardBadge(c)}
       ${iv ? intentBadge(iv, enemyStunned) : ''}
+      ${coach(g, c, animating)}
     </div>
     <div class="huds">
       ${fighterHud(c.player, pHp, pEn, animating, pFirst && !c.outcome, crowdChips)}

@@ -64,7 +64,7 @@ Tudo em `engine/combat.ts`, com os números em `data/balance.ts` (`CROWD`, `POST
 - **Escape de HTML**: todo texto vindo do jogador (nome do gladiador) passa por `esc()` antes de entrar em HTML.
 - **Save**: só progressão permanente (`SaveData` em `state/save.ts`). Mudou o formato? Suba `version` e escreva a migração em
   `parseSave` mantendo o progresso de quem já joga; save inválido volta ao padrão com aviso, nunca quebra o jogo.
-- **Assets são locais** (`public/assets/*.webp`, `public/audio/`). Imagem que falha cai no ícone SVG (`data-fb`) ou some.
+- **Assets são locais** (`public/assets/*.webp`, `public/audio/`, fontes em `public/fonts/`). Imagem que falha cai no ícone SVG (`data-fb`) ou some.
 
 ## Como fazer mudanças comuns
 
@@ -103,8 +103,10 @@ Preserve classes/atributos usados por automação: valores de `data-a`, `#name`,
 acampamento, detalhes da classe, arte do título, relatório) e listas longas rolam por dentro (`.scroll`). Ações
 principais ficam embaixo, sempre visíveis. Desktop (≥900px) e celular deitado usam `grid-template-areas` (não dependa
 da contagem de filhos). No combate, abaixo de 900px as ações ficam numa bandeja com abas deslizáveis
-(Habilidades | Básico | Itens | Registro, página em `ui.tray` no `store.ts`); acima disso tudo aparece junto e o registro vai
-para a coluna lateral. Ao mexer em layout, confira as telas nessas resoluções no navegador.
+(Habilidades | Básico | Itens | Registro, página em `ui.tray` no `store.ts`); acima disso (e no tablet em pé, ≥600×900)
+todas as ações aparecem numa grade única e o registro vai para a coluna lateral (no tablet, numa faixa acima das ações).
+No toque não há tooltip: um `title` em elemento que não é botão vira balão ao ser tocado (`showTip` em `ui/events.ts`), então
+explicações curtas de chips e status vão no `title`. `render()` devolve o foco ao botão que o tinha (mesmo `data-a`/`data-v`). Ao mexer em layout, confira as telas nessas resoluções no navegador.
 
 ## Arte e áudio
 

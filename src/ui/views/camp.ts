@@ -7,6 +7,20 @@ import { ATTRS, art, assetUrl, bar, bossTag, esc, goldPill, itemChip, skillList,
 
 const CAMP_NPCS: NpcId[] = ['merchant', 'str', 'dex', 'wis', 'inn'];
 
+const STAT_LABEL = { maxHp: 'Vida', maxEnergy: 'Energia', regen: 'Regen.', atk: 'Atq', mag: 'Mag', def: 'Def', speed: 'Vel', crit: 'Crít' };
+type ShownStat = keyof typeof STAT_LABEL;
+const fmt = (k: ShownStat, v: number) => (k === 'crit' ? `${Math.round(v * 100)}%` : `${v}`);
+/** O que muda na build com a compra ou o treino: "Vel 4 → 7 · Atq 12 → 13" (vazio se nada muda nos números). */
+function statDiff(run: RunState, after: RunState): string {
+  const a = playerBuild(run).stats, b = playerBuild(after).stats;
+  const diff = (Object.keys(STAT_LABEL) as ShownStat[]).filter((k) => a[k] !== b[k])
+    .map((k) => `${STAT_LABEL[k]} ${fmt(k, a[k])} → <b>${fmt(k, b[k])}</b>`).join(' · ');
+  return diff ? `<p class="gain">${diff}</p>` : '';
+}
+/** Rótulo do botão quando falta ouro: diz quanto falta. */
+const priceLabel = (run: RunState, verb: string, price: number, note = '') =>
+  run.gold < price ? `Faltam ${price - run.gold} ouro${note}` : `${verb}${price} ouro${note}`;
+
 function offerCard(pic: string, title: string, body: string, button: string, opts: { a: string; v?: string; disabled?: boolean; poor?: boolean }): string {
   return `<div class="sketch offer">
     ${art(pic, 'offer-art', '')}
@@ -23,8 +37,8 @@ function npcOffers(run: RunState, npc: NpcId): string {
     return run.shop.map((id) => {
       const it = ITEMS[id];
       const full = buyBlock(run, id) === 'bag';
-      const body = `<p>${it.use ? `<span class="cost">Consumível</span> · ` : ''}${it.desc}</p>`;
-      return offerCard(id, it.name, body, full ? `Bolsa cheia (${BAG_SIZE})` : `Comprar · ${it.price} ouro`, { a: 'buy', v: id, disabled: full, poor: run.gold < it.price });
+      const body = `<p>${it.use ? `<span class="cost">Consumível</span> · ` : ''}${it.desc}</p>${it.use ? '' : statDiff(run, { ...run, items: [...run.items, id] })}`;
+      return offerCard(id, it.name, body, full ? `Bolsa cheia (${BAG_SIZE})` : priceLabel(run, 'Comprar · ', it.price), { a: 'buy', v: id, disabled: full, poor: run.gold < it.price });
     }).join('');
   }
   if (npc === 'inn') {
@@ -40,14 +54,15 @@ function npcOffers(run: RunState, npc: NpcId): string {
   const a = npc;
   const info = ATTR_INFO[a];
   const price = trainPrice(run, a);
-  const train = offerCard(`attr-${a}`, `Treinar ${info.name}: ${run.attrs[a]} → ${run.attrs[a] + 1}`, `<p>${info.desc}</p>`,
-    `${price} ouro${dayNote}`, { a: 'train', v: a, disabled: noDays, poor: run.gold < price });
+  const train = offerCard(`attr-${a}`, `Treinar ${info.name}: ${run.attrs[a]} → ${run.attrs[a] + 1}`,
+    `<p>${info.desc}</p>${statDiff(run, { ...run, attrs: { ...run.attrs, [a]: run.attrs[a] + 1 } })}`,
+    priceLabel(run, '', price, dayNote), { a: 'train', v: a, disabled: noDays, poor: run.gold < price });
   const skills = Object.values(SKILLS).filter((sk) => sk.attr === a && sk.price).map((sk) => {
     const block = learnBlock(run, sk.id);
     const reqOk = run.attrs[a] >= sk.req!;
     const body = `<p><span class="cost">${sk.cost} energia</span> · ${sk.desc}</p>
       <p class="${reqOk ? 'dim' : 'warn'}">Requer ${info.short} ${sk.req}${block === 'slots' ? ' · sem espaço livre' : ''}</p>`;
-    const label = block === 'known' ? 'Conhecida' : `Aprender · ${sk.price} ouro${dayNote}`;
+    const label = block === 'known' ? 'Conhecida' : priceLabel(run, 'Aprender · ', sk.price!, dayNote);
     return offerCard(`attr-${a}`, sk.name, body, label,
       { a: 'learn', v: sk.id, disabled: block === 'known' || block === 'days', poor: block === 'gold' || block === 'req' || block === 'slots' });
   }).join('');
@@ -90,17 +105,17 @@ export function campView(g: GameState, npc: NpcId | null, line: string, news: st
           <button class="close" data-a="talk" data-v="" aria-label="Fechar conversa">✕</button></div>
         <div class="offers">${npcOffers(run, npc)}</div>
       </div>`
-    : '<p class="dim center small">Toque em alguém do ludus para conversar, comprar, treinar ou descansar.</p>';
+    : '';
 
   return `<section class="screen camp-screen">
     <header class="topbar">
       <h2>Acampamento <span class="dim tb-sub">Fase ${stageOf(run) + 1}/${ARENAS.length} · ${arena.name}</span></h2>
       <div class="row pills"><span class="pill">${art('day', 'ico', '')}Dia ${run.day}/${arena.days}</span>${goldPill(run.gold)}
-        <button class="pill bag-btn${bagOpen ? ' selected' : ''}${loot.length ? ' new' : ''}" data-a="bag" aria-pressed="${bagOpen}" aria-label="Bolsa ${run.bag.length} de ${BAG_SIZE}${loot.length ? ', itens novos' : ''}">⚗ <span class="bag-word">Bolsa </span>${run.bag.length}/${BAG_SIZE}</button></div>
+        <button class="pill bag-btn${bagOpen ? ' selected' : ''}${loot.length ? ' new' : ''}" data-a="bag" aria-pressed="${bagOpen}" aria-label="Bolsa ${run.bag.length} de ${BAG_SIZE}${loot.length ? ', itens novos' : ''}">${art('chest', 'ico', '')}<span class="bag-word">Bolsa </span>${run.bag.length}/${BAG_SIZE}</button></div>
     </header>
     ${bar('hp', run.hp, stats.maxHp, `Vida ${run.hp}/${stats.maxHp}`)}
     ${news ? `<p class="sketch news" title="${esc(news)}">${esc(news)}</p>` : ''}
-    <div class="town" style="background-image:url(${assetUrl('bg-town')})">${npcButtons}</div>
+    <div class="town" style="background-image:url(${assetUrl('bg-town')})">${npc || bagOpen ? '' : '<p class="town-hint">Toque em alguém para conversar, comprar, treinar ou descansar</p>'}${npcButtons}</div>
     <div class="camp-body scroll">
       ${panel}
       <div class="sketch ficha">

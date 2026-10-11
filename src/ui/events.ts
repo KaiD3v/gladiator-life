@@ -43,8 +43,32 @@ const ACTIONS: Record<string, (v: string) => GameAction | GameAction[] | void> =
   fight: () => ({ type: 'fight' }),
 };
 
+/**
+ * No toque não existe tooltip: tocar num elemento com `title` (status, ponto fraco, item, marca da multidão) mostra o texto
+ * num balão perto dele. Fica fora do #app, então sobrevive ao render; some no próximo toque ou sozinho.
+ */
+const NO_HOVER = matchMedia('(hover: none)');
+const tip = document.createElement('div');
+tip.className = 'tip';
+tip.setAttribute('role', 'tooltip');
+tip.hidden = true;
+let tipTimer = 0;
+function showTip(el: HTMLElement) {
+  tip.textContent = el.title;
+  tip.hidden = false;
+  const r = el.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+  tip.style.left = `${Math.max(8, Math.min(innerWidth - w - 8, r.left + r.width / 2 - w / 2))}px`;
+  tip.style.top = `${r.top - h - 8 >= 8 ? r.top - h - 8 : r.bottom + 8}px`;
+  clearTimeout(tipTimer);
+  tipTimer = window.setTimeout(() => { tip.hidden = true; }, 4000);
+}
+
 export function bindEvents() {
+  document.body.append(tip);
+  document.addEventListener('pointerdown', () => { tip.hidden = true; }, true);
   app.addEventListener('click', (e) => {
+    const titled = (e.target as Element).closest<HTMLElement>('[title]');
+    if (NO_HOVER.matches && titled && !titled.closest('button') && titled.title) showTip(titled);
     const btn = (e.target as Element).closest<HTMLButtonElement>('button[data-a]');
     if (!btn || btn.disabled) return;
     const result = ACTIONS[btn.dataset.a!]?.(btn.dataset.v!);
@@ -95,6 +119,11 @@ export function bindEvents() {
 function onKey(e: KeyboardEvent) {
   if (e.target instanceof HTMLInputElement) return;
   const { screen } = state();
+  if (screen.name === 'camp' && e.key === 'Escape') {
+    // Esc fecha a bolsa ou a conversa aberta
+    if (ui.bag) { ui.bag = false; render(); } else if (screen.npc) dispatch({ type: 'talk', npc: null });
+    return;
+  }
   if (screen.name === 'scene') {
     // Enter/Espaço num botão já viram clique; aqui só atalhos fora de botões.
     if (e.key === 'Escape') dispatch({ type: 'skip' });
@@ -105,6 +134,14 @@ function onKey(e: KeyboardEvent) {
     return;
   }
   if (screen.name !== 'combat') return;
+  // Setas trocam de aba quando o foco está na bandeja (padrão de tablist)
+  if ((e.key === 'ArrowLeft' || e.key === 'ArrowRight') && e.target instanceof HTMLElement && e.target.classList.contains('tab')) {
+    const i = TRAY_PAGES.indexOf(ui.tray) + (e.key === 'ArrowRight' ? 1 : -1);
+    ui.tray = TRAY_PAGES[(i + TRAY_PAGES.length) % TRAY_PAGES.length];
+    render();
+    app.querySelector<HTMLElement>(`.tab[data-v="${ui.tray}"]`)?.focus();
+    return;
+  }
   const id = actionsFor(screen.combat.player, screen.combat)[Number(e.key) - 1];
   if (id) dispatch({ type: 'act', action: id });
 }

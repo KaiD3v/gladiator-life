@@ -1,6 +1,7 @@
 // Estado da página: jogo (`g`), formulário de criação, persistência, animação do log e render.
 import { playSfx, setAmbience, setAmbienceLevel, setTrack, type Ambience, type Track } from './audio';
-import { SAVE_KEY, initialState, isBossFight, parseSave, reduce, type GameAction, type GameState, type SaveData } from '../state';
+import { SAVE_KEY, initialState, isBossFight, parseSave, reduce, type GameAction, type GameState, type RunState, type SaveData } from '../state';
+import { ATTRS } from './components';
 import { titleView } from './views/title';
 import { createView, type CreateForm } from './views/create';
 import { combatView, type TrayPage } from './views/combat';
@@ -69,8 +70,32 @@ function animateFrom(start: number) {
   step();
 }
 
+/** Run do render anterior: no acampamento, o que mudou (ouro, vida, atributo, bolsa) pisca para o jogador notar. */
+let lastRun: RunState | null = null;
+
+/**
+ * Botão focado antes do render, para devolver o foco depois (o innerHTML recria a tela inteira). Se o foco caiu no body
+ * (o botão ficou desabilitado durante a animação da rodada), tenta de novo o último alvo.
+ */
+let lastFocus: string | null = null;
+function focusedButton(): string | null {
+  if (document.activeElement === document.body) return lastFocus;
+  const el = document.activeElement;
+  if (!(el instanceof HTMLButtonElement) || !app.contains(el) || !el.dataset.a) return null;
+  return `button[data-a="${CSS.escape(el.dataset.a)}"]${el.dataset.v !== undefined ? `[data-v="${CSS.escape(el.dataset.v)}"]` : ''}`;
+}
+
+function flashChanges(run: RunState, before: RunState) {
+  const flash = (sel: string) => app.querySelector(sel)?.classList.add('flash');
+  if (run.gold !== before.gold) flash('.topbar .pill.gold');
+  if (run.hp !== before.hp) flash('.camp-screen > .bar.hp');
+  if (run.bag.length !== before.bag.length) flash('.bag-btn');
+  for (const a of ATTRS) if (run.attrs[a] !== before.attrs[a]) flash(`.attr-row.${a}`);
+}
+
 export function render() {
   const s = g.screen;
+  const focus = focusedButton();
   app.innerHTML =
     s.name === 'title' ? titleView(g)
     : s.name === 'create' ? createView(form)
@@ -78,6 +103,13 @@ export function render() {
     : s.name === 'camp' ? campView(g, s.npc, s.line, s.news, s.loot, ui.bag)
     : s.name === 'scene' ? sceneView(g, s)
     : summaryView(s.summary);
+  if (focus) app.querySelector<HTMLElement>(focus)?.focus({ preventScroll: true });
+  lastFocus = focus;
+  // Janela de itens caídos: o foco entra nela (quem usa teclado não fica preso atrás do fundo escuro)
+  const modal = app.querySelector('.modal');
+  if (modal && !modal.contains(document.activeElement)) modal.querySelector<HTMLElement>('.primary')?.focus({ preventScroll: true });
+  if (s.name === 'camp' && g.run && lastRun && g.run !== lastRun) flashChanges(g.run, lastRun);
+  lastRun = g.run;
   setTrack(trackFor(g));
   setAmbience(ambienceFor(g));
   const log = s.name === 'combat' ? s.combat.log : null;
