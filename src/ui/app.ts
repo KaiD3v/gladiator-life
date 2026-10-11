@@ -1,7 +1,7 @@
 // Monta a interface: botão de som, eventos e primeiro render. Nenhuma regra de jogo aqui.
 import { isMuted, setAmbience, setTrack, toggleMute } from './audio';
 import { bindEvents } from './events';
-import { ambienceFor, render, state, trackFor } from './store';
+import { ambienceFor, firstRender, state, trackFor } from './store';
 
 // Botão de som (música e efeitos) fora do #app: sobrevive aos re-renders.
 function mountMuteButton() {
@@ -30,4 +30,4 @@ window.addEventListener('resize', syncAppHeight);
 window.addEventListener('orientationchange', syncAppHeight);
 window.visualViewport?.addEventListener('resize', syncAppHeight);
 bindEvents();
-render();
+firstRender();

@@ -1,6 +1,6 @@
 // Estado da página: jogo (`g`), formulário de criação, persistência, animação do log e render.
 import { playSfx, setAmbience, setAmbienceLevel, setTrack, type Ambience, type Track } from './audio';
-import { SAVE_KEY, initialState, isBossFight, parseSave, reduce, type GameAction, type GameState, type RunState, type SaveData } from '../state';
+import { RUN_KEY, SAVE_KEY, initialState, isBossFight, parseResume, parseSave, reduce, resumeSnapshot, resumeState, type GameAction, type GameState, type RunState, type SaveData } from '../state';
 import { ATTRS } from './components';
 import { titleView } from './views/title';
 import { createView, type CreateForm } from './views/create';
@@ -26,16 +26,31 @@ let shown: number | null = null;
 
 export const state = () => g;
 
+// Declarações de função (não const): boot() roda na inicialização do módulo, antes destas linhas.
+function read(key: string): string | null {
+  try { return localStorage.getItem(key); } catch { return null; } // armazenamento bloqueado: segue sem save
+}
+
+/** Progressão permanente + campanha em andamento: recarregar a página continua da mesma tela. */
 function boot(): GameState {
-  let raw: string | null = null;
-  try { raw = localStorage.getItem(SAVE_KEY); } catch { /* armazenamento bloqueado: segue sem save */ }
-  const { save, error } = parseSave(raw);
+  const { save, error } = parseSave(read(SAVE_KEY));
   if (error) persist(save);
-  return initialState(save, error);
+  const { resume, error: runError } = parseResume(read(RUN_KEY));
+  if (runError) persistRun(null);
+  const notice = [error, runError].filter(Boolean).join(' ') || undefined;
+  return resume ? resumeState(save, resume, notice) : initialState(save, notice);
 }
 
 function persist(save: SaveData) {
   try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch { /* sem armazenamento: progresso só nesta sessão */ }
+}
+
+/** Grava a campanha em andamento (null = acabou ou não começou: apaga). */
+function persistRun(snapshot: string | null) {
+  try {
+    if (snapshot) localStorage.setItem(RUN_KEY, snapshot);
+    else localStorage.removeItem(RUN_KEY);
+  } catch { /* sem armazenamento: a campanha vale só nesta sessão */ }
 }
 
 export function dispatch(a: GameAction) {
@@ -44,6 +59,7 @@ export function dispatch(a: GameAction) {
   g = reduce(g, a);
   if (g === prev) return;
   if (g.save !== prev.save) persist(g.save);
+  if (g.run !== prev.run || g.screen !== prev.screen) persistRun(resumeSnapshot(g));
   if (g.screen.name !== prev.screen.name) {
     scrollTo(0, 0);
     ui.bag = false;
@@ -117,6 +133,18 @@ export function render() {
   if (s.name === 'scene') {
     preloadScenes(s.queue);
     document.getElementById('next')?.focus({ preventScroll: true });
+  }
+}
+
+/** Primeiro render. Se a campanha restaurada não renderiza (conteúdo mudou entre versões), descarta e volta ao título. */
+export function firstRender() {
+  try {
+    render();
+  } catch (e) {
+    if (!g.run) throw e;
+    persistRun(null);
+    g = initialState(g.save, 'A campanha salva não pôde ser carregada e foi descartada.');
+    render();
   }
 }
 
