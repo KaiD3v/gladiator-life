@@ -70,6 +70,7 @@ export type GameAction =
   | { type: 'fight' }
   | { type: 'next' } // próxima fala da cena
   | { type: 'skip' } // pula todas as cenas da fila
-  | { type: 'toTitle' };
+  | { type: 'toTitle' }
+  | { type: 'restart' }; // abandona a campanha em andamento e começa outra
 
 export type ActionOf<T extends GameAction['type']> = Extract<GameAction, { type: T }>;

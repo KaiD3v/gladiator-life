@@ -4,6 +4,7 @@ import { actionsFor } from '../engine/combat';
 import { defaultKeep } from '../engine/items';
 import type { GameAction } from '../state';
 import { icon } from './components';
+import { settingsOpen } from './settings';
 import { TRAY_PAGES, type TrayPage } from './views/combat';
 import { app, dispatch, form, render, state, ui } from './store';
 
@@ -117,7 +118,7 @@ export function bindEvents() {
 }
 
 function onKey(e: KeyboardEvent) {
-  if (e.target instanceof HTMLInputElement) return;
+  if (e.target instanceof HTMLInputElement || settingsOpen()) return; // a janela de opções cuida das próprias teclas
   const { screen } = state();
   if (screen.name === 'camp' && e.key === 'Escape') {
     // Esc fecha a bolsa ou a conversa aberta

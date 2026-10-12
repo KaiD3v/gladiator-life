@@ -1,7 +1,7 @@
 // Única porta de entrada para mudar o estado. Cada ação é delegada ao módulo do seu domínio;
 // ação inválida para a tela atual => estado inalterado (mesmo objeto).
 import { buy, learn, rest, talk, train, useItem } from './camp';
-import { act, afterCombat, fight, newGame, startRun, toTitle } from './campaign';
+import { act, afterCombat, fight, newGame, restart, startRun, toTitle } from './campaign';
 import { nextBeat, skipScenes } from './scenes';
 import type { GameAction, GameState } from './types';
 import type { SaveData } from './save';
@@ -12,6 +12,7 @@ export function reduce(g: GameState, a: GameAction): GameState {
   switch (a.type) {
     case 'newGame': return newGame(g);
     case 'toTitle': return toTitle(g);
+    case 'restart': return restart(g);
     case 'startRun': return startRun(g, a);
     case 'act': return act(g, a);
     case 'fight': return fight(g);

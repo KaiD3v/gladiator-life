@@ -28,6 +28,13 @@ export const newGame = (g: GameState): GameState =>
 export const toTitle = (g: GameState): GameState =>
   g.screen.name === 'summary' || g.screen.name === 'create' ? { ...g, screen: { name: 'title' }, run: null } : g;
 
+/** Abandona a campanha em andamento (conta como derrota: o XP já ganho fica) e abre o registro de um novo gladiador. */
+export function restart(g: GameState): GameState {
+  if (!g.run) return g;
+  const done = finish(g, structuredClone(g.run), 'defeat');
+  return { ...done, screen: scene(scenesFor({ on: 'campaign-start' }), { name: 'create' }), notice: undefined };
+}
+
 export function startRun(g: GameState, a: ActionOf<'startRun'>): GameState {
   const name = a.name.trim().slice(0, 16);
   if (g.screen.name !== 'create' || !name || !CLASSES[a.classId]) return g;

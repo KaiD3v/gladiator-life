@@ -59,6 +59,17 @@ describe('transições', () => {
     expect(reduce(fighting, { type: 'rest' })).toBe(fighting); // não se descansa no meio da luta
   });
 
+  it('reiniciar abandona a campanha (vale como derrota) e abre o registro de um novo gladiador', () => {
+    const g = initialState(defaultSave());
+    expect(reduce(g, { type: 'restart' })).toBe(g); // sem campanha em andamento
+    const playing = withRun(reduce(start(), { type: 'fight' }), { xp: 40 }); // até no meio da luta
+    const r = skip(reduce(playing, { type: 'restart' }));
+    expect(r.run).toBeNull();
+    expect(r.screen.name).toBe('create');
+    expect(r.save).toMatchObject({ xp: 40, runs: 1, wins: 0 });
+    expect(start('mage', r).run!.classId).toBe('mage');
+  });
+
   it('não inicia run com nome vazio', () => {
     const create = skip(reduce(initialState(defaultSave()), { type: 'newGame' }));
     expect(reduce(create, { type: 'startRun', name: '   ', classId: 'mage', seed: 1 })).toBe(create);
