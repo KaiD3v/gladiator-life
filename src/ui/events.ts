@@ -12,6 +12,7 @@ import { app, dispatch, form, render, state, ui } from './store';
 const ACTIONS: Record<string, (v: string) => GameAction | GameAction[] | void> = {
   new: () => ({ type: 'newGame' }),
   title: () => ({ type: 'toTitle' }),
+  story: (v) => ({ type: 'startAct', act: Number(v), seed: (Math.random() * 2 ** 32) | 0 }),
   again: () => [{ type: 'toTitle' }, { type: 'newGame' }],
   class: (v) => { form.classId = v as ClassId; render(); },
   act: (v) => ({ type: 'act', action: v }),

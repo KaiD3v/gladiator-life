@@ -58,6 +58,7 @@ export interface GameState { screen: Screen; save: SaveData; run: RunState | nul
 export type GameAction =
   | { type: 'newGame' }
   | { type: 'startRun'; name: string; classId: ClassId; seed: number }
+  | { type: 'startAct'; act: number; seed: number } // ato liberado, a partir do checkpoint do herói (título ou resumo)
   | { type: 'act'; action: string }
   /** `keep`: índices em `bolsa + itens caídos` que o jogador leva (só na vitória; padrão: a bolsa e o que couber). */
   | { type: 'continue'; keep?: number[] }

@@ -1,6 +1,6 @@
 # Arena dos Gladiadores
 
-RPG de gladiadores para navegador: combate por turnos, campanha roguelike em 3 arenas consecutivas, acampamento entre lutas
+RPG de gladiadores para navegador: combate por turnos, história em atos (cada um com 3 arenas consecutivas), acampamento entre lutas
 (loja, treino, descanso, prazo em dias) e cenas de história. Vite + TypeScript estrito, sem framework; a única dependência de
 runtime é `@vercel/analytics` (só em `ui/analytics.ts`). Interface, textos e comentários em **português**; identificadores de código e mensagens de commit em inglês.
 
@@ -24,7 +24,7 @@ Camadas com dependência em um só sentido: **`ui → state → engine → data/
 | `src/data/` | Conteúdo puro, um arquivo por domínio (`classes`, `enemies`, `items`, `skills`, `arenas`, `npcs`, `statuses`, `attributes`, `balance`, `story`) e os tipos em `types.ts`. `index.ts` reexporta tudo. | Só dados. Sem funções com regra. |
 | `src/core/rng.ts` | `rand(s)` (mulberry32 com a semente guardada no próprio estado) e `pick`. | Toda aleatoriedade passa por aqui. |
 | `src/engine/` | Motores puros: `combat` (rodada inteira em `resolveRound`; ver "Combate" abaixo), `characters` (pipeline de modificadores, `buildPlayer`, `createPlayerFighter`, `createEnemyFighter`), `items` (`acquireItem`, `withMaxHpGrowth`, `buyBlock`, `rollShop`, `rollLoot`, `addToBag`), `scenes` (`scenesFor`, `beatView`, `sceneAssets`, `sceneTrack`, `sceneAmbience`). | Funções puras, testadas. |
-| `src/state/` | `types.ts` (`RunState`, `Screen`, `GameAction`), `save.ts` (save + nível), `resume.ts` (campanha em andamento), `run.ts` (regras da run usadas pela UI), `camp.ts`, `campaign.ts`, `scenes.ts` e `reducer.ts`. | `reduce(g, action)` é a **única** forma de mudar o estado do jogo. |
+| `src/state/` | `types.ts` (`RunState`, `Screen`, `GameAction`), `save.ts` (save, nível e checkpoints da história), `resume.ts` (campanha em andamento), `run.ts` (regras da run usadas pela UI), `camp.ts`, `campaign.ts`, `scenes.ts` e `reducer.ts`. | `reduce(g, action)` é a **única** forma de mudar o estado do jogo. |
 | `src/ui/` | `store.ts` (estado da página, `dispatch`, render, animação do log), `events.ts` (tabela `data-a` → ação, teclado), `components.ts` (peças HTML), `views/<tela>.ts`, `audio.ts`, `settings.ts` (engrenagem de opções), `analytics.ts` (Vercel Web Analytics: eventos derivados da diferença de estado em `dispatch`; nunca envie o nome do jogador). | Views são funções `(estado) => string HTML`; não guardam estado. |
 
 ## Combate
@@ -62,6 +62,10 @@ Tudo em `engine/combat.ts`, com os números em `data/balance.ts` (`CROWD`, `POST
 - **Balanceamento é calibrado.** Números em `data/` (stats, preços, prazos, escala de inimigos em `balance.ts`) foram ajustados
   por simulação. Refatoração não muda números; mudança de balanceamento é uma tarefa explícita (ver "Balanceamento").
 - **Escape de HTML**: todo texto vindo do jogador (nome do gladiador) passa por `esc()` antes de entrar em HTML.
+- **Atos e checkpoints**: `ACTS` (`data/arenas.ts`) agrupa as arenas; `ARENAS` é derivado (ids únicos entre atos).
+  `SaveData.story[i]` é o herói (`RunState`) ao entrar no ato i: gravado em `startRun` (ato 0, apaga a história anterior) e
+  ao vencer o último chefe de um ato (`afterCombat`, que segue direto para o próximo). Morrer encerra a run; `startAct`
+  (título/resumo) restaura o checkpoint com vida cheia, nível atual e semente nova. Rejogar um ato substitui só o checkpoint seguinte.
 - **Save**: só progressão permanente (`SaveData` em `state/save.ts`). Mudou o formato? Suba `version` e escreva a migração em
   `parseSave` mantendo o progresso de quem já joga; save inválido volta ao padrão com aviso, nunca quebra o jogo.
 - **Campanha em andamento** (`state/resume.ts`, chave `RUN_KEY`): a run e a tela atual são gravadas a cada transição e
@@ -84,7 +88,8 @@ Tudo em `engine/combat.ts`, com os números em `data/balance.ts` (`CROWD`, `POST
 - Cena: uma entrada em `data/story.ts` com `trigger` (`campaign-start`, `run-start`, `boss-intro`, `boss-defeat`,
   `arena-enter`, `campaign-won`) e `once: true` se só pode tocar uma vez por campanha; `music` e `ambience` opcionais. Falas aceitam `{nome}` e `{classe}`.
   Personagens que falam ficam em `SPEAKERS`. O herói pode ser de qualquer gênero: escreva falas sobre ele em linguagem neutra.
-- Arena nova: entrada em `data/arenas.ts` (ordem do array = ordem da campanha, com `hazard`) + cenas
+- Ato novo: entrada em `ACTS` (`data/arenas.ts`) com `id`, `name` e 3 arenas; nada de motor muda.
+- Arena nova: entrada nas `arenas` do ato em `data/arenas.ts` (ordem = ordem da campanha, com `hazard`) + cenas
   `boss-intro`/`boss-defeat`/`arena-enter` + fundo `bg-<id>`. `data/story.test.ts` falha se faltar cena ou asset.
 
 **Nova mecânica / regra:**

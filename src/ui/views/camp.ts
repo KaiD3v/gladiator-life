@@ -1,9 +1,9 @@
 // Acampamento (vida fora das batalhas).
-import { ARENAS, ATTR_INFO, BAG_SIZE, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, type NpcId } from '../../data';
+import { ATTR_INFO, BAG_SIZE, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, type NpcId } from '../../data';
 import { isQuickItem } from '../../engine/combat';
 import { buyBlock } from '../../engine/items';
-import { arenaById, freeDays, isBossFight, learnBlock, maxHp, playerBuild, restPrice, stageOf, trainPrice, useBlock, type GameState, type RunState } from '../../state';
-import { ATTRS, art, assetUrl, bar, bossTag, esc, goldPill, itemChip, skillList, statLine } from '../components';
+import { arenaById, freeDays, isBossFight, learnBlock, maxHp, playerBuild, restPrice, trainPrice, useBlock, type GameState, type RunState } from '../../state';
+import { ATTRS, art, assetUrl, bar, bossTag, esc, goldPill, itemChip, skillList, stageLabel, statLine } from '../components';
 
 const CAMP_NPCS: NpcId[] = ['merchant', 'str', 'dex', 'wis', 'inn'];
 
@@ -109,7 +109,7 @@ export function campView(g: GameState, npc: NpcId | null, line: string, news: st
 
   return `<section class="screen camp-screen">
     <header class="topbar">
-      <h2>Acampamento <span class="dim tb-sub">Fase ${stageOf(run) + 1}/${ARENAS.length} · ${arena.name}</span></h2>
+      <h2>Acampamento <span class="dim tb-sub">${stageLabel(run.arenaId)} · ${arena.name}</span></h2>
       <div class="row pills"><span class="pill">${art('day', 'ico', '')}Dia ${run.day}/${arena.days}</span>${goldPill(run.gold)}
         <button class="pill bag-btn${bagOpen ? ' selected' : ''}${loot.length ? ' new' : ''}" data-a="bag" aria-pressed="${bagOpen}" aria-label="Bolsa ${run.bag.length} de ${BAG_SIZE}${loot.length ? ', itens novos' : ''}">${art('chest', 'ico', '')}<span class="bag-word">Bolsa </span>${run.bag.length}/${BAG_SIZE}</button></div>
     </header>

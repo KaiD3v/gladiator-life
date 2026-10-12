@@ -18,6 +18,7 @@ function summaryOf(s: Screen) {
 export function gameEvents(prev: GameState, next: GameState, a: GameAction): [string, Props][] {
   const was = prev.run, run = next.run;
   if (a.type === 'startRun' && run) return [['run_start', { class: run.classId, level: run.level }]];
+  if (a.type === 'startAct' && run) return [['act_start', { class: run.classId, act: a.act, level: run.level }]];
   if (a.type === 'restart' && was) return [['run_restart', { class: was.classId, arena: was.arenaId, titles: was.titles.length }]];
   const summary = was ? summaryOf(next.screen) : null;
   if (summary) {

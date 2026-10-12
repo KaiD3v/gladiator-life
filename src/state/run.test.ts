@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { ARENAS, CLASSES, CROWD, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SHOP_CONSUMABLES, SHOP_SIZE, SKILLS, START_GOLD } from '../data';
 import {
   defaultSave, freeDays, initialState, learnBlock, levelOf, maxHp, parseSave, playerBuild, reduce, restPrice, trainPrice,
@@ -25,25 +25,43 @@ describe('save', () => {
     expect(parseSave(null)).toEqual({ save: defaultSave() });
   });
 
-  it.each(['{lixo', '42', 'null', '{"version":3,"xp":0,"runs":0,"wins":0,"best":0}',
+  it.each(['{lixo', '42', 'null', '{"version":4,"xp":0,"runs":0,"wins":0,"best":0,"story":[]}',
     '{"version":2,"xp":-5,"runs":0,"wins":0,"best":0}',
     '{"version":2,"xp":10,"runs":0,"wins":0,"best":9}',
     '{"version":2,"xp":"10","runs":0,"wins":0,"best":0}',
-    '{"version":1,"xp":-1,"unlocked":["pit"],"runs":0,"wins":0}'])('save inválido %s volta ao padrão com aviso', (raw) => {
+    '{"version":1,"xp":-1,"unlocked":["pit"],"runs":0,"wins":0}', '{"version":3,"xp":0,"runs":0,"wins":0,"best":9,"story":[]}'])('save inválido %s volta ao padrão com aviso', (raw) => {
     const r = parseSave(raw);
     expect(r.save).toEqual(defaultSave());
     expect(r.error).toBeTruthy();
   });
 
-  it('save válido é preservado', () => {
-    const save = { version: 2, xp: 250, runs: 3, wins: 1, best: 2 };
+  it('save válido é preservado, inclusive a história', () => {
+    const save = { version: 3, xp: 250, runs: 3, wins: 1, best: 2, story: [] };
     expect(parseSave(JSON.stringify(save))).toEqual({ save });
+    const withStory = start().save;
+    expect(withStory.story).toHaveLength(1);
+    expect(parseSave(JSON.stringify(withStory))).toEqual({ save: withStory });
+  });
+
+  it('save v2 (antes dos atos) migra mantendo tudo, sem história', () => {
+    const r = parseSave(JSON.stringify({ version: 2, xp: 250, runs: 3, wins: 1, best: 2 }));
+    expect(r).toEqual({ save: { version: 3, xp: 250, runs: 3, wins: 1, best: 2, story: [] } });
+  });
+
+  it('história inválida é descartada com aviso, mas o nível fica', () => {
+    const save = { ...start().save, xp: 250 };
+    const broken = [{ ...save.story[0], arenaId: 'colosseum' }]; // checkpoint do ato 1 fora da primeira arena
+    for (const story of [broken, [{ nome: 'x' }], 'lixo']) {
+      const r = parseSave(JSON.stringify({ ...save, story }));
+      expect(r.save).toEqual({ ...save, story: [] });
+      expect(r.error).toBeTruthy();
+    }
   });
 
   it('save v1 (arenas desbloqueáveis) migra mantendo XP e runs', () => {
     const r = parseSave(JSON.stringify({ version: 1, xp: 250, unlocked: ['pit', 'colosseum'], runs: 3, wins: 2 }));
     expect(r.error).toBeUndefined();
-    expect(r.save).toEqual({ version: 2, xp: 250, runs: 3, wins: 0, best: 1 });
+    expect(r.save).toEqual({ version: 3, xp: 250, runs: 3, wins: 0, best: 1, story: [] });
   });
 });
 
@@ -122,16 +140,33 @@ describe('run completa, dias e fuga', () => {
     expect(parseSave(JSON.stringify(g.save)).save).toEqual(g.save);
   });
 
-  it('morrer na arena 2 encerra a campanha; o próximo gladiador recomeça da arena 1', () => {
+  it('morrer na arena 2 volta ao início do ato com o herói como entrou; gladiador novo apaga a história', () => {
     let g = start();
+    const checkpoint = g.save.story[0];
+    expect(checkpoint).toMatchObject({ name: 'Spartacus', classId: 'warrior', arenaId: 'pit', gold: START_GOLD });
+    g = withRun(g, { gold: 500, items: ['chippedSword'] });
     for (let i = 0; i < 4; i++) g = fightAs(g, 'victory');
     expect(g.run!.arenaId).toBe('colosseum');
     g = fightAs(g, 'defeat');
     if (g.screen.name !== 'summary') throw new Error();
     expect(g.screen.summary.result).toBe('defeat');
     expect(g.save).toMatchObject({ runs: 1, wins: 0, best: 1 });
+    expect(g.save.story).toEqual([checkpoint]); // a história continua no ato 1
+
+    const retry = reduce(g, { type: 'startAct', act: 0, seed: 7 });
+    expect(retry.screen.name).toBe('camp');
+    expect(retry.run).toMatchObject({ name: 'Spartacus', classId: 'warrior', arenaId: 'pit', titles: [], items: [], gold: START_GOLD, encounter: 0, day: 1, seed: expect.any(Number) });
+    expect(retry.run!.level).toBe(levelOf(g.save.xp)); // o XP da tentativa conta
+    expect(retry.run!.hp).toBe(maxHp(retry.run!));
+    expect(reduce(g, { type: 'startAct', act: 1, seed: 7 })).toBe(g); // ato não liberado
+    expect(reduce(retry, { type: 'startAct', act: 0, seed: 7 })).toBe(retry); // só do título ou do resumo
+
+    const fromTitle = reduce(reduce(g, { type: 'toTitle' }), { type: 'startAct', act: 0, seed: 7 });
+    expect(fromTitle.run).toEqual(retry.run);
+
     const next = start('mage', reduce(g, { type: 'toTitle' }));
     expect(next.run).toMatchObject({ arenaId: 'pit', titles: [], items: [], gold: START_GOLD + 10 * (levelOf(g.save.xp) - 1) });
+    expect(next.save.story).toEqual([expect.objectContaining({ name: 'Spartacus', classId: 'mage' })]);
   });
 
   it('derrota guarda XP das vitórias; empate conta como derrota', () => {

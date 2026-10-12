@@ -2,8 +2,8 @@
 import { resolveRound } from '../engine/combat';
 import { chooseBag, defaultKeep } from '../engine/items';
 import { scenesFor } from '../engine/scenes';
-import { ARENAS, CLASSES, CROWD, ENEMIES, GOLD_PER_LEVEL, START_GOLD, WIN_BONUS_XP } from '../data';
-import { arenaById, enterArena, freeDays, isBossFight, maxHp, nextArena, rollShop, stageOf, startFight } from './run';
+import { ACTS, CLASSES, CROWD, ENEMIES, GOLD_PER_LEVEL, START_GOLD, WIN_BONUS_XP } from '../data';
+import { actName, actOf, arenaById, enterArena, freeDays, isBossFight, maxHp, nextArena, rollShop, stageInAct, startFight } from './run';
 import { levelOf, type SaveData } from './save';
 import { scene } from './scenes';
 import type { ActionOf, GameState, RunState, Screen, Summary } from './types';
@@ -35,10 +35,11 @@ export function restart(g: GameState): GameState {
   return { ...done, screen: scene(scenesFor({ on: 'campaign-start' }), { name: 'create' }), notice: undefined };
 }
 
+/** Gladiador novo: começa a história do zero (apaga os atos liberados e seus checkpoints). */
 export function startRun(g: GameState, a: ActionOf<'startRun'>): GameState {
   const name = a.name.trim().slice(0, 16);
   if (g.screen.name !== 'create' || !name || !CLASSES[a.classId]) return g;
-  const arena = ARENAS[0]; // todo personagem começa do zero, na primeira fase
+  const arena = ACTS[0].arenas[0]; // todo gladiador novo começa a história do zero
   const cls = CLASSES[a.classId];
   const level = levelOf(g.save.xp);
   const run: RunState = {
@@ -48,8 +49,26 @@ export function startRun(g: GameState, a: ActionOf<'startRun'>): GameState {
   };
   run.hp = maxHp(run);
   enterArena(run);
-  const news = `Bem-vindo ao ludus de ${arena.name}, fase 1 de ${ARENAS.length}. ${ENEMIES[arena.boss].name} precisa cair até o dia ${arena.days}.`;
-  return { ...g, run, screen: scene(scenesFor({ on: 'run-start' }), { name: 'camp', npc: null, line: '', news }) };
+  const save: SaveData = { ...g.save, story: [structuredClone(run)] };
+  const news = `Bem-vindo ao ludus de ${arena.name}, arena 1 de ${ACTS[0].arenas.length}. ${ENEMIES[arena.boss].name} precisa cair até o dia ${arena.days}.`;
+  return { ...g, save, run, screen: scene(scenesFor({ on: 'run-start' }), { name: 'camp', npc: null, line: '', news }) };
+}
+
+/**
+ * Começa (ou recomeça, depois de cair) um ato já liberado a partir do checkpoint do herói: mesma build e ouro,
+ * vida cheia, nível atual do legado e uma temporada nova sorteada pela semente da tentativa. Sem cenas: já foram vistas.
+ */
+export function startAct(g: GameState, a: ActionOf<'startAct'>): GameState {
+  const checkpoint = g.save.story[a.act];
+  if ((g.screen.name !== 'title' && g.screen.name !== 'summary') || !checkpoint) return g;
+  const run = structuredClone(checkpoint);
+  run.seed = a.seed;
+  run.level = levelOf(g.save.xp);
+  enterArena(run);
+  run.hp = maxHp(run);
+  const arena = arenaById(run.arenaId);
+  const news = `${actName(a.act)}: ${ACTS[a.act].name}. De volta a ${arena.name}: ${ENEMIES[arena.boss].name} precisa cair até o dia ${arena.days}.`;
+  return { ...g, run, screen: { name: 'camp', npc: null, line: '', news }, notice: undefined };
 }
 
 export function act(g: GameState, a: ActionOf<'act'>): GameState {
@@ -117,9 +136,13 @@ export function afterCombat(g: GameState, a: ActionOf<'continue'>): GameState {
       run.arenaId = next.id;
       enterArena(run);
       run.hp = maxHp(run);
-      const news = `Campeão de ${arena.name}! +${gold} de ouro. Você foi transferido para ${next.name} (fase ${stageOf(run) + 1} de ${ARENAS.length}): ${ENEMIES[next.boss].name} precisa cair até o dia ${next.days}.`;
+      // Novo ato: o herói como entra nele vira o checkpoint (substitui o de uma passagem anterior; os atos seguintes ficam).
+      const act = actOf(next.id), story = g.save.story;
+      const save = act === actOf(arena.id) ? g.save : { ...g.save, story: [...story.slice(0, act), structuredClone(run), ...story.slice(act + 1)] };
+      const at = stageInAct(next.id);
+      const news = `Campeão de ${arena.name}! +${gold} de ouro. Você foi transferido para ${next.name} (${actName(at.act)}, arena ${at.arena + 1} de ${at.arenas}): ${ENEMIES[next.boss].name} precisa cair até o dia ${next.days}.`;
       const camp: Screen = { name: 'camp', npc: null, line: '', news, loot };
-      return { ...g, run, screen: scene([...scenesFor({ on: 'boss-defeat', boss: enemyId }), ...scenesFor({ on: 'arena-enter', arena: next.id })], camp) };
+      return { ...g, save, run, screen: scene([...scenesFor({ on: 'boss-defeat', boss: enemyId }), ...scenesFor({ on: 'arena-enter', arena: next.id })], camp) };
     }
     run.encounter++;
     const crowdNote = c.verdict === 'executed' ? ' Você o executou: a multidão vibra e os patronos pagam mais.'

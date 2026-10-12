@@ -25,6 +25,11 @@ describe('eventos de analytics', () => {
     expect(JSON.stringify(events)).not.toContain('Tito');
   });
 
+  it('voltar ao início do ato', () => {
+    const dead = fightAs(camp(), 'defeat').next;
+    expect(step(dead, { type: 'startAct', act: 0, seed: 1 }).events).toEqual([['act_start', { class: 'mage', act: 0, level: 1 }]]);
+  });
+
   it('derrota encerra a campanha', () => {
     expect(fightAs(camp(), 'defeat').events).toEqual([['run_end', expect.objectContaining({ result: 'defeat', class: 'mage', titles: 0 })]]);
   });

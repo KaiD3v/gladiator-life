@@ -1,7 +1,7 @@
 // Estado da página: jogo (`g`), formulário de criação, persistência, animação do log e render.
 import { trackTransition } from './analytics';
 import { playSfx, setAmbience, setAmbienceLevel, setTrack, type Ambience, type Track } from './audio';
-import { RUN_KEY, SAVE_KEY, initialState, isBossFight, parseResume, parseSave, reduce, resumeSnapshot, resumeState, type GameAction, type GameState, type RunState, type SaveData } from '../state';
+import { RUN_KEY, SAVE_KEY, actOf, initialState, isBossFight, parseResume, parseSave, reduce, resumeSnapshot, resumeState, type GameAction, type GameState, type RunState, type SaveData } from '../state';
 import { ATTRS } from './components';
 import { titleView } from './views/title';
 import { createView, type CreateForm } from './views/create';
@@ -116,11 +116,11 @@ export function render() {
   const focus = focusedButton();
   app.innerHTML =
     s.name === 'title' ? titleView(g)
-    : s.name === 'create' ? createView(form)
+    : s.name === 'create' ? createView(form, g.save.story.length > 0)
     : s.name === 'combat' ? combatView(g, s.combat, shown, ui.tray, ui.keep)
     : s.name === 'camp' ? campView(g, s.npc, s.line, s.news, s.loot, ui.bag)
     : s.name === 'scene' ? sceneView(g, s)
-    : summaryView(s.summary);
+    : summaryView(s.summary, !!g.save.story[actOf(s.summary.run.arenaId)]);
   if (focus) app.querySelector<HTMLElement>(focus)?.focus({ preventScroll: true });
   lastFocus = focus;
   // Janela de itens caídos: o foco entra nela (quem usa teclado não fica preso atrás do fundo escuro)

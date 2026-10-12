@@ -1,19 +1,22 @@
-import { ARENAS, CLASSES, ENEMIES, SKILLS } from '../../data';
-import { arenaById, stageOf, type Summary } from '../../state';
-import { art, attrLine, esc, itemLabel } from '../components';
+import { ACTS, ARENAS, CLASSES, ENEMIES, SKILLS } from '../../data';
+import { actOf, arenaById, type Summary } from '../../state';
+import { actName, art, attrLine, esc, itemLabel, stageLabel } from '../components';
 
-export function summaryView(s: Summary): string {
+/** `canRetry`: o checkpoint do ato em que o herói caiu existe no save (dá para voltar ao início dele). */
+export function summaryView(s: Summary, canRetry: boolean): string {
   const r = s.run;
   const title = { victory: 'Vitória!', defeat: 'Derrota', draw: 'Queda mútua', timeout: 'Fim da temporada' }[s.result];
   const fought = r.kills.length + r.fled.length + (s.result === 'defeat' || s.result === 'draw' ? 1 : 0);
   const total = ARENAS.reduce((n, a) => n + a.fights + 1, 0);
+  const act = actOf(r.arenaId);
+  const retry = s.result !== 'victory' && canRetry;
   return `<section class="screen summary-screen center">
     ${art(s.result === 'victory' ? 'victory' : 'defeat', 'summary-art', '')}
     <h1 class="summary-title ${s.result === 'victory' ? 'win' : 'lose'}">${title}</h1>
     <div class="row centered">${art(r.classId, `portrait${s.result === 'victory' ? '' : ' fallen'}`, CLASSES[r.classId].name, r.classId)}<p class="hero-line">${esc(r.name)}, ${CLASSES[r.classId].name}<br><span class="dim">${s.result === 'victory'
-      ? `conquistou todas as ${ARENAS.length} arenas!` : `caiu em ${arenaById(r.arenaId).name} (fase ${stageOf(r) + 1}/${ARENAS.length})`}</span></p></div>
+      ? `venceu os ${ACTS.length} atos da história!` : `caiu em ${arenaById(r.arenaId).name} (${stageLabel(r.arenaId)})`}</span></p></div>
     ${r.titles.length ? `<p class="sketch unlock">${r.titles.map((id) => `Campeão de <b>${arenaById(id).name}</b>`).join(' · ')}</p>` : ''}
-    ${s.result !== 'victory' ? '<p class="dim">O próximo gladiador recomeça do Fosso de Areia. Só o XP (nível) é mantido.</p>' : ''}
+    ${retry ? `<p class="dim">Você volta ao início do ${actName(act)} com a build que tinha ao entrar nele. O XP ganho fica.</p>` : ''}
     <div class="sketch report scroll">
       <dl class="kv">
         <dt>Lutas</dt><dd>${r.kills.length} vencidas de ${fought} disputadas (a campanha tem ${total})</dd>
@@ -31,6 +34,8 @@ export function summaryView(s: Summary): string {
         <dt>Nível</dt><dd>${s.levelBefore}${s.levelAfter > s.levelBefore ? ` → <b class="gold-text">${s.levelAfter}</b> (subiu de nível!)` : ''}</dd>
       </dl>
     </div>
-    <div class="row centered"><button data-a="title">Início</button><button class="primary" data-a="again">Nova campanha</button></div>
+    <div class="row centered"><button data-a="title">Início</button>${retry
+      ? `<button class="primary" data-a="story" data-v="${act}">Voltar ao ${actName(act)}</button>`
+      : '<button class="primary" data-a="again">Novo gladiador</button>'}</div>
   </section>`;
 }

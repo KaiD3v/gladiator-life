@@ -1,5 +1,5 @@
-import { ARENAS, CLASSES, ENEMIES, type ClassDef, type ClassId } from '../../data';
-import { art, assetUrl, attrLine, esc, skillList, statLine } from '../components';
+import { ACTS, CLASSES, ENEMIES, type ClassDef, type ClassId } from '../../data';
+import { actName, art, assetUrl, attrLine, esc, skillList, statLine } from '../components';
 
 export interface CreateForm { name: string; classId: ClassId }
 
@@ -8,7 +8,8 @@ const classDetails = (c: ClassDef) => `<p class="attrs">${attrLine(c.attrs)}</p>
       <p>${c.passive}</p>
       ${skillList(c.skills)}`;
 
-export function createView(form: CreateForm): string {
+/** `hasStory`: já existe um herói da história (registrar um novo apaga os atos liberados). */
+export function createView(form: CreateForm, hasStory: boolean): string {
   // Cada cartão traz os detalhes (vistos no desktop); no celular os cartões viram um seletor e os detalhes da classe
   // escolhida aparecem num painel único que rola por dentro.
   const classes = (Object.values(CLASSES)).map((c) => {
@@ -19,10 +20,10 @@ export function createView(form: CreateForm): string {
     </button>`;
   }).join('');
   const picked = CLASSES[form.classId];
-  const arenas = ARENAS.map((a, i) => `<div class="sketch arena-card"
+  const arenas = ACTS[0].arenas.map((a, i) => `<div class="sketch arena-card"
       style="background-image:linear-gradient(90deg, rgba(20,18,14,.92) 45%, rgba(20,18,14,.35)), url(${assetUrl(`bg-${a.id}`)})">
       ${art(a.boss, 'arena-boss', ENEMIES[a.boss].name)}
-      <span class="stage-no">Fase ${i + 1}</span>
+      <span class="stage-no">Arena ${i + 1}</span>
       <b class="name">${a.name}</b>
       <p class="statline">${a.fights} lutas + chefe ${ENEMIES[a.boss].name} · prazo ${a.days} dias</p>
     </div>`).join('<span class="stage-arrow" aria-hidden="true">➜</span>');
@@ -33,8 +34,8 @@ export function createView(form: CreateForm): string {
     <div class="class-pick" role="group" aria-label="Classe">${classes}</div>
     <div class="sketch class-detail scroll" aria-live="polite"><b class="name">${picked.name}</b>${classDetails(picked)}</div>
     <div class="campaign-wrap">
-      <p class="dim small">Todo gladiador começa no Fosso. Vença o chefe para ser transferido para a próxima arena, levando sua build.
-        Se cair, o próximo gladiador recomeça do zero.</p>
+      <p class="dim small">${actName(0)}: ${ACTS[0].name}. Vença o chefe para ser transferido para a próxima arena, levando sua build.
+        Se cair, você volta ao início do ato com a build daquele momento.${hasStory ? ' <b>Um gladiador novo apaga a história atual.</b>' : ''}</p>
       <div class="campaign">${arenas}</div>
     </div>
     <div class="row footer"><button type="button" data-a="title">Voltar</button>

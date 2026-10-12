@@ -26,7 +26,8 @@ const ids = (v: unknown, table: Record<string, unknown>) => Array.isArray(v) && 
 const isAttrs = (v: unknown) => isObj(v) && isCount(v.str) && isCount(v.dex) && isCount(v.wis);
 const ARENA_IDS = Object.fromEntries(ARENAS.map((a) => [a.id, a]));
 
-function validRun(r: unknown): r is RunState {
+/** Run válida para o conteúdo atual (também valida os checkpoints da história no save). */
+export function validRun(r: unknown): r is RunState {
   if (!isObj(r)) return false;
   const counts = ['daysSpent', 'level', 'gold', 'day', 'hp', 'encounter', 'xp', 'goldEarned', 'rounds', 'dealt', 'taken'];
   return isStr(r.name) && !!r.name && isStr(r.classId) && r.classId in CLASSES && isStr(r.arenaId) && r.arenaId in ARENA_IDS

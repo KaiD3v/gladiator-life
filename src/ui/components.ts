@@ -1,5 +1,8 @@
 // Peças de template reutilizadas pelas telas (strings HTML).
 import { ATTR_INFO, ITEMS, SKILLS, type Attr, type Attrs } from '../data';
+import { actName, stageInAct } from '../state';
+
+export { actName };
 
 export const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 const pct = (v: number, max: number) => Math.max(0, Math.min(100, (v / max) * 100));
@@ -24,6 +27,11 @@ export const statusArt = (id: string) => art(`st-${id}`, 'st');
 export const ATTRS: Attr[] = ['str', 'dex', 'wis'];
 export const attrTag = (a?: Attr) => (a ? `<span class="tag ${a}">${ATTR_INFO[a].short}</span>` : '');
 export const attrLine = (attrs: Attrs) => ATTRS.map((a) => `<span class="attr ${a}">${art(`attr-${a}`, 'ico', '')}${ATTR_INFO[a].short} ${attrs[a]}</span>`).join(' ');
+/** Onde a arena fica na história, ex.: "Ato I · Arena 2/3". */
+export const stageLabel = (arenaId: string) => {
+  const s = stageInAct(arenaId);
+  return `${actName(s.act)} · Arena ${s.arena + 1}/${s.arenas}`;
+};
 export const goldPill = (n: number) => `<span class="pill gold">${art('gold', 'ico', '')}${n} ouro</span>`;
 
 export const statLine = (s: { maxHp: number; maxEnergy: number; regen: number; atk: number; mag: number; def: number; speed: number; crit: number }) =>

@@ -1,8 +1,8 @@
-import { ARENAS, BAG_SIZE, CROWD, ITEMS, SKILLS, STATUS_INFO, WEAK_INFO } from '../../data';
+import { BAG_SIZE, CROWD, ITEMS, SKILLS, STATUS_INFO, WEAK_INFO } from '../../data';
 import { defaultKeep } from '../../engine/items';
 import { actionsFor, canUse, crowdView, fleeChance, hasStatus, hazardView, intentView, isItem, isQuickItem, playerActsFirst, postureView, type CombatState, type Fighter, type IntentView, type LogEntry } from '../../engine/combat';
 import { arenaById, isBossFight, nextArena, stageOf, type GameState } from '../../state';
-import { art, assetUrl, attrTag, bar, bossTag, esc, itemChip, statusArt } from '../components';
+import { art, assetUrl, attrTag, bar, bossTag, esc, itemChip, stageLabel, statusArt } from '../components';
 
 const GLYPH: Record<IntentView['kind'], string> = { attack: '⚔', magic: '✦', defend: '◈', buff: '▲', prep: '⚠', item: '⚗' };
 
@@ -228,7 +228,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
 
   return `<section class="screen combat-screen">
     <header class="topbar">
-      <div class="tb-title"><b>${arena.name}</b> <span class="dim">Fase ${stageOf(run) + 1}/${ARENAS.length} · Luta ${run.encounter + 1}/${run.enemies.length}</span>${isBoss ? ` ${bossTag()}` : ''}${items ? `<span class="chips tb-items">${items}</span>` : ''}</div>
+      <div class="tb-title"><b>${arena.name}</b> <span class="dim">${stageLabel(run.arenaId)} · Luta ${run.encounter + 1}/${run.enemies.length}</span>${isBoss ? ` ${bossTag()}` : ''}${items ? `<span class="chips tb-items">${items}</span>` : ''}</div>
       ${banner}
     </header>
     ${crowdMeter(c, last.crowd, fresh)}

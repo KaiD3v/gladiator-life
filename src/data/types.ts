@@ -128,6 +128,13 @@ export interface ArenaDef {
   hazard: HazardDef;
 }
 
+/** Ato da história: arenas em sequência. Vencer a última libera o ato seguinte. */
+export interface ActDef {
+  id: string;
+  name: string;
+  arenas: ArenaDef[];
+}
+
 export type NpcId = 'merchant' | 'inn' | Attr;
 
 export interface NpcDef {
