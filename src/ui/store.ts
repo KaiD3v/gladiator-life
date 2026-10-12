@@ -1,4 +1,5 @@
 // Estado da página: jogo (`g`), formulário de criação, persistência, animação do log e render.
+import { trackTransition } from './analytics';
 import { playSfx, setAmbience, setAmbienceLevel, setTrack, type Ambience, type Track } from './audio';
 import { RUN_KEY, SAVE_KEY, initialState, isBossFight, parseResume, parseSave, reduce, resumeSnapshot, resumeState, type GameAction, type GameState, type RunState, type SaveData } from '../state';
 import { ATTRS } from './components';
@@ -58,6 +59,7 @@ export function dispatch(a: GameAction) {
   const prev = g;
   g = reduce(g, a);
   if (g === prev) return;
+  trackTransition(prev, g, a);
   if (g.save !== prev.save) persist(g.save);
   if (g.run !== prev.run || g.screen !== prev.screen) persistRun(resumeSnapshot(g));
   if (g.screen.name !== prev.screen.name) {

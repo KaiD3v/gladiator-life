@@ -1,9 +1,11 @@
-// Monta a interface: engrenagem de opções, eventos e primeiro render. Nenhuma regra de jogo aqui.
+// Monta a interface: analytics, engrenagem de opções, eventos e primeiro render. Nenhuma regra de jogo aqui.
+import { mountAnalytics } from './analytics';
 import { setAmbience, setTrack } from './audio';
 import { bindEvents } from './events';
 import { mountSettings } from './settings';
 import { ambienceFor, firstRender, state, trackFor } from './store';
 
+mountAnalytics();
 mountSettings();
 // O navegador só libera áudio após um gesto: o primeiro clique/tecla retoma a faixa e o ambiente atuais.
 for (const ev of ['pointerdown', 'keydown'] as const) {

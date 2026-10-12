@@ -1,8 +1,8 @@
 # Arena dos Gladiadores
 
 RPG de gladiadores para navegador: combate por turnos, campanha roguelike em 3 arenas consecutivas, acampamento entre lutas
-(loja, treino, descanso, prazo em dias) e cenas de história. Vite + TypeScript estrito, sem framework e sem dependências de
-runtime. Interface, textos e comentários em **português**; identificadores de código e mensagens de commit em inglês.
+(loja, treino, descanso, prazo em dias) e cenas de história. Vite + TypeScript estrito, sem framework; a única dependência de
+runtime é `@vercel/analytics` (só em `ui/analytics.ts`). Interface, textos e comentários em **português**; identificadores de código e mensagens de commit em inglês.
 
 ## Comandos
 
@@ -25,7 +25,7 @@ Camadas com dependência em um só sentido: **`ui → state → engine → data/
 | `src/core/rng.ts` | `rand(s)` (mulberry32 com a semente guardada no próprio estado) e `pick`. | Toda aleatoriedade passa por aqui. |
 | `src/engine/` | Motores puros: `combat` (rodada inteira em `resolveRound`; ver "Combate" abaixo), `characters` (pipeline de modificadores, `buildPlayer`, `createPlayerFighter`, `createEnemyFighter`), `items` (`acquireItem`, `withMaxHpGrowth`, `buyBlock`, `rollShop`, `rollLoot`, `addToBag`), `scenes` (`scenesFor`, `beatView`, `sceneAssets`, `sceneTrack`, `sceneAmbience`). | Funções puras, testadas. |
 | `src/state/` | `types.ts` (`RunState`, `Screen`, `GameAction`), `save.ts` (save + nível), `resume.ts` (campanha em andamento), `run.ts` (regras da run usadas pela UI), `camp.ts`, `campaign.ts`, `scenes.ts` e `reducer.ts`. | `reduce(g, action)` é a **única** forma de mudar o estado do jogo. |
-| `src/ui/` | `store.ts` (estado da página, `dispatch`, render, animação do log), `events.ts` (tabela `data-a` → ação, teclado), `components.ts` (peças HTML), `views/<tela>.ts`, `audio.ts`. | Views são funções `(estado) => string HTML`; não guardam estado. |
+| `src/ui/` | `store.ts` (estado da página, `dispatch`, render, animação do log), `events.ts` (tabela `data-a` → ação, teclado), `components.ts` (peças HTML), `views/<tela>.ts`, `audio.ts`, `settings.ts` (engrenagem de opções), `analytics.ts` (Vercel Web Analytics: eventos derivados da diferença de estado em `dispatch`; nunca envie o nome do jogador). | Views são funções `(estado) => string HTML`; não guardam estado. |
 
 ## Combate
 
