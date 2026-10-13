@@ -9,6 +9,7 @@ export * from './classes';
 export * from './enemies';
 export * from './items';
 export * from './arenas';
+export * from './characters';
 export * from './npcs';
 export * from './balance';
 export * from './story';

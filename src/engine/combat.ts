@@ -74,7 +74,8 @@ export interface CombatState {
   taken: number;
   intent: Intent;
   step: number; // posição no padrão do inimigo
-  boss: boolean; // luta de chefe: sem veredito (Executar/Poupar)
+  boss: boolean; // luta de chefe: sem veredito (Executar/Poupar), salvo `trial`
+  trial?: boolean; // chefe que pode ser julgado (EnemyDef.trial)
   crowd: number; // favor da multidão, 0..100
   lastAction: string | null; // última ação do jogador
   streak: number; // quantas rodadas seguidas o jogador repetiu lastAction
@@ -102,10 +103,10 @@ export function makeFighter(
 }
 
 /** `known`: pontos fracos já descobertos em lutas anteriores da run (bestiário). */
-export function createCombat(player: Fighter, enemy: Fighter, seed: number, opts: { boss?: boolean; known?: WeakTag[]; hazard?: HazardDef } = {}): CombatState {
+export function createCombat(player: Fighter, enemy: Fighter, seed: number, opts: { boss?: boolean; trial?: boolean; known?: WeakTag[]; hazard?: HazardDef } = {}): CombatState {
   const s: CombatState = {
     round: 1, player, enemy, log: [], outcome: null, seed, dealt: 0, taken: 0, intent: { action: 'attack' }, step: 0,
-    boss: !!opts.boss, crowd: CROWD.start, lastAction: null, streak: 0, lastStandUsed: false, lastStandNote: false,
+    boss: !!opts.boss, ...(opts.trial ? { trial: true } : {}), crowd: CROWD.start, lastAction: null, streak: 0, lastStandUsed: false, lastStandNote: false,
     revealed: enemy.weak.filter((t) => opts.known?.includes(t)), phased: false, barked: [],
     hazard: opts.hazard, hazardIn: opts.hazard?.first ?? 0,
   };
@@ -116,9 +117,9 @@ export function createCombat(player: Fighter, enemy: Fighter, seed: number, opts
   return s;
 }
 
-/** Veredito liberado: luta comum, inimigo vivo com até CROWD.verdictHp de vida. */
+/** Veredito liberado: luta comum (ou chefe julgável), inimigo vivo com até CROWD.verdictHp de vida. */
 export const verdictAvailable = (s: CombatState) =>
-  !s.outcome && !s.boss && s.enemy.hp > 0 && s.enemy.hp <= s.enemy.stats.maxHp * CROWD.verdictHp;
+  !s.outcome && (!s.boss || !!s.trial) && s.enemy.hp > 0 && s.enemy.hp <= s.enemy.stats.maxHp * CROWD.verdictHp;
 
 /**
  * Ordem ESTÁVEL (atalhos de teclado): ataque, habilidades, Golpe de Glória (se a classe tem), defender, fugir, consumíveis
@@ -574,9 +575,12 @@ function hazardTick(s: CombatState) {
       log(s, `${f.name}: ${statusName(fx.status)} (${fx.turns} rod.)`, 'status', { target: f.side, sfx: 'status' });
     }
   }
-  if (h.gift) {
-    const fav = s.crowd >= CROWD.ovationAt ? s.player : s.enemy;
-    heal(s, fav, Math.round(fav.stats.maxHp * h.gift), h.name);
+  const fav = s.crowd >= CROWD.ovationAt ? s.player : s.enemy;
+  if (h.gift) heal(s, fav, Math.round(fav.stats.maxHp * h.gift), h.name);
+  if (h.harm && fav.hp > 0 && !fav.defending) {
+    const amount = Math.round(fav.stats.maxHp * h.harm);
+    damage(s, fav, amount);
+    log(s, `${h.name}: ${fav.name} -${amount}`, 'status', { target: fav.side, amount, sfx: 'hit' });
   }
   s.hazardIn = h.every;
   if (h.every === 1) log(s, h.warn, 'system');

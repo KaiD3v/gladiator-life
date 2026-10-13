@@ -1,11 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 import type { ActDef } from '../data';
 
-// Hoje só existe o Ato I: aqui as mesmas arenas viram dois atos (Fosso | Coliseu + Arena Rubra) para testar a passagem.
+// Dois atos fixos, independentes do conteúdo: as arenas do Ato I divididas em Fosso | Coliseu + Arena Rubra.
 vi.mock('../data/arenas', async (orig) => {
   const { ARENAS } = await orig<typeof import('../data/arenas')>();
-  const ACTS: ActDef[] = [{ id: 'one', name: 'Um', arenas: ARENAS.slice(0, 1) }, { id: 'two', name: 'Dois', arenas: ARENAS.slice(1) }];
-  return { ACTS, ARENAS };
+  const camp = { name: 'Ludus', bg: 'bg-town', npcs: ['cassio', 'brutus', 'lyra', 'oren', 'marta'] };
+  const ACTS: ActDef[] = [{ id: 'one', name: 'Um', camp, arenas: ARENAS.slice(0, 1) }, { id: 'two', name: 'Dois', camp, arenas: ARENAS.slice(1, 3) }];
+  return { ACTS, ARENAS: ACTS.flatMap((a) => a.arenas) };
 });
 
 const { defaultSave, initialState, maxHp, parseSave, reduce } = await import('.');

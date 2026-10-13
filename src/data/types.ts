@@ -84,6 +84,8 @@ export interface EnemyDef {
   loot?: string[]; // consumíveis que pode carregar para a luta (sorteados); o que não usar cai para o vencedor
   posture: number; // pontos de postura: a cada golpe/efeito no ponto fraco perde 1; em 0 o inimigo fica Desequilibrado
   weak: WeakTag[];
+  /** Chefe que pode ser julgado (Executar/Poupar). A escolha fica em `RunState.verdicts` e muda cenas futuras. */
+  trial?: boolean;
   /** Chefe: ao cair a esta fração de vida (uma vez), fala `line`, aplica `effects` em si e troca o padrão. */
   phase2?: { at: number; pattern: string[]; line: string; effects?: Effect[] };
   /** Falas do inimigo (cada uma no máximo uma vez por luta). `hurt`: 1ª vez abaixo de 50% (só sem phase2); `low`: até 20%. */
@@ -95,6 +97,7 @@ export interface ItemDef {
   name: string;
   desc: string;
   price: number;
+  act?: number; // índice do primeiro ato em que o mercador vende (padrão 0)
   mods?: Partial<Stats>;
   perks?: Partial<Perks>;
   /**
@@ -114,6 +117,7 @@ export interface HazardDef {
   strike: string;
   effects?: { status: StatusId; turns: number; power?: number }[]; // quem NÃO está defendendo sofre
   gift?: number; // fração da vida máxima curada no favorito da multidão (jogador se favor >= CROWD.ovationAt, senão o inimigo)
+  harm?: number; // fração da vida máxima de dano no favorito da multidão (Defender protege)
 }
 
 export interface ArenaDef {
@@ -128,21 +132,44 @@ export interface ArenaDef {
   hazard: HazardDef;
 }
 
+/** Acampamento do ato: o lugar e quem está nele (ids em NPCS, na ordem dos botões). */
+export interface CampDef {
+  name: string;
+  bg: string;
+  npcs: string[];
+}
+
 /** Ato da história: arenas em sequência. Vencer a última libera o ato seguinte. */
 export interface ActDef {
   id: string;
   name: string;
+  camp: CampDef;
   arenas: ArenaDef[];
 }
 
-export type NpcId = 'merchant' | 'inn' | Attr;
+/** Destino de um chefe julgável (EnemyDef.trial). */
+export type Verdict = 'executed' | 'spared';
+/** Condição de história (cena ou fala de NPC): o chefe `boss` foi julgado assim nesta run. */
+export interface Condition { boss: string; verdict: Verdict }
 
+/** Pessoa da história: nome e retrato, os mesmos nas cenas (SPEAKERS) e no acampamento (NPCS). */
+export interface CharacterDef { name: string; art: string }
+
+/** O que um NPC oferece no acampamento. Cada tipo tem a sua regra em `state/services.ts` e a sua vitrine na UI. */
+export type ServiceDef = { kind: 'shop' } | { kind: 'inn' } | { kind: 'trainer'; attr: Attr };
+export type ServiceKind = ServiceDef['kind'];
+
+/** Como o NPC reage a uma ação: chegada, negócio fechado, falta de ouro, recusa (requisito, espaço, desnecessário). */
+export type NpcReaction = 'greet' | 'deal' | 'poor' | 'denied';
+/** Fala de NPC: texto, ou texto que só entra no sorteio quando a condição vale. */
+export type NpcLine = string | { text: string; when: Condition };
+
+/** NPC do acampamento: uma pessoa (`who`, em CHARACTERS), um cargo, os serviços e as falas. Reutilizável entre atos. */
 export interface NpcDef {
-  id: NpcId;
-  name: string;
+  id: string;
+  who: string;
   role: string;
-  greet: string[];
-  deal: string[]; // após compra/treino/descanso
-  poor: string[]; // sem ouro
-  denied: string[]; // requisito não atendido, sem espaço ou desnecessário
+  services: ServiceDef[];
+  /** Toda reação precisa de ao menos uma fala sem condição. */
+  lines: Record<NpcReaction, NpcLine[]>;
 }

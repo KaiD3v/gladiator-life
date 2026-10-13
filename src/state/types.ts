@@ -1,6 +1,6 @@
 // Formas do estado do jogo: run, telas e ações. Sem lógica.
 import type { CombatState } from '../engine/combat';
-import type { Attr, Attrs, ClassId, NpcId, WeakTag } from '../data';
+import type { Attrs, ClassId, Verdict, WeakTag } from '../data';
 import type { SaveData } from './save';
 
 export interface RunState {
@@ -28,6 +28,7 @@ export interface RunState {
   fled: string[];
   bestiary: Record<string, WeakTag[]>; // pontos fracos descobertos por inimigo (só da run: não vai para o save)
   seen: string[]; // cenas `once` já tocadas (ex.: chegada do chefe: fugir e voltar não repete)
+  verdicts: Record<string, Verdict>; // destino dos chefes julgáveis (EnemyDef.trial): muda cenas dos atos seguintes
   rounds: number;
   dealt: number;
   taken: number;
@@ -46,7 +47,7 @@ export type Screen =
   | { name: 'create' }
   | { name: 'combat'; combat: CombatState }
   /** `loot`: itens coletados na última luta (a UI marca como novos até a próxima luta). */
-  | { name: 'camp'; npc: NpcId | null; line: string; news: string; loot?: string[] }
+  | { name: 'camp'; npc: string | null; line: string; news: string; loot?: string[] } // `npc`: id em NPCS
   | { name: 'summary'; summary: Summary }
   /** Fila de cenas de história; ao terminar (ou pular) segue para `next`. */
   | { name: 'scene'; queue: string[]; beat: number; next: Screen };
@@ -62,16 +63,15 @@ export type GameAction =
   | { type: 'act'; action: string }
   /** `keep`: índices em `bolsa + itens caídos` que o jogador leva (só na vitória; padrão: a bolsa e o que couber). */
   | { type: 'continue'; keep?: number[] }
-  | { type: 'talk'; npc: NpcId | null }
-  | { type: 'buy'; itemId: string }
+  | { type: 'talk'; npc: string | null }
+  /** Serviço de um NPC presente: `value` = id do item (loja), 'rest' (estalagem), 'train' ou id da habilidade (treinador). */
+  | { type: 'service'; npc: string; value: string }
   | { type: 'use'; itemId: string } // consumível de cura fora da luta (não gasta dia)
-  | { type: 'train'; attr: Attr }
-  | { type: 'learn'; skill: string }
-  | { type: 'rest' }
   | { type: 'fight' }
   | { type: 'next' } // próxima fala da cena
   | { type: 'skip' } // pula todas as cenas da fila
   | { type: 'toTitle' }
-  | { type: 'restart' }; // abandona a campanha em andamento e começa outra
+  | { type: 'restartAct'; seed: number } // abandona a campanha em andamento e recomeça o ato atual do checkpoint
+  | { type: 'abandon' }; // abandona a campanha em andamento e volta ao título (escolha de ato ou gladiador novo)
 
 export type ActionOf<T extends GameAction['type']> = Extract<GameAction, { type: T }>;

@@ -18,8 +18,8 @@ export const SKILLS: Record<string, SkillDef> = {
     id: 'thousandCuts', name: 'Mil Cortes', desc: 'Golpe de Glória: 4 golpes de 0.8x com +30% de crítico. Exige a torcida em 100.', cost: 0, type: 'physical', power: 0.8, hits: 4, critBonus: 0.3, glory: true,
   },
   // Veredito (luta comum, inimigo com 15% de vida ou menos)
-  execute: { id: 'execute', name: 'Executar', desc: 'Encerra a luta: a multidão vibra e os patronos pagam mais. Não vale contra chefes.', cost: 0, type: 'verdict' },
-  spare: { id: 'spare', name: 'Poupar', desc: 'Encerra a luta e deixa o inimigo vivo: menos ouro, mais experiência. Não vale contra chefes.', cost: 0, type: 'verdict' },
+  execute: { id: 'execute', name: 'Executar', desc: 'Encerra a luta: a multidão vibra e os patronos pagam mais. Contra chefes, só os que aceitam julgamento.', cost: 0, type: 'verdict' },
+  spare: { id: 'spare', name: 'Poupar', desc: 'Encerra a luta e deixa o inimigo vivo: menos ouro, mais experiência. Contra chefes, só os que aceitam julgamento.', cost: 0, type: 'verdict' },
   // Força
   shieldBash: {
     id: 'shieldBash', name: 'Golpe de Escudo', desc: 'Dano físico 1.3x, 60% de chance de atordoar.', cost: 4, type: 'physical', power: 1.3,
@@ -105,6 +105,37 @@ export const SKILLS: Record<string, SkillDef> = {
   roar: {
     id: 'roar', name: 'Rugido', desc: 'Enfraquece o alvo e regenera vida.', cost: 4, type: 'self',
     effects: [{ status: 'weaken', target: 'foe', turns: 2 }, { status: 'regen', target: 'self', turns: 3, power: 5 }],
+  },
+  // Inimigos do Ato II
+  net: {
+    id: 'net', name: 'Rede', desc: 'Dano físico 0.5x, enfraquece o alvo e 35% de chance de atordoar.', cost: 4, type: 'physical', power: 0.5,
+    effects: [{ status: 'weaken', target: 'foe', turns: 2 }, { status: 'stun', target: 'foe', turns: 1, chance: 0.35 }],
+  },
+  trident: { id: 'trident', name: 'Tridente', desc: 'Dano físico 1.5x.', cost: 4, type: 'physical', power: 1.5 },
+  deathRoll: {
+    id: 'deathRoll', name: 'Giro da Morte', desc: 'Golpe pesado: prepara por uma rodada, depois causa dano físico 2.6x e enfraquece o alvo.', cost: 6, type: 'physical', power: 2.6, windup: true,
+    effects: [{ status: 'weaken', target: 'foe', turns: 2 }],
+  },
+  tidalWave: {
+    id: 'tidalWave', name: 'Onda', desc: 'Dano mágico 1.4x, 30% de chance de atordoar.', cost: 6, type: 'magic', power: 1.4,
+    effects: [{ status: 'stun', target: 'foe', turns: 1, chance: 0.3 }],
+  },
+  pounce: {
+    id: 'pounce', name: 'Bote', desc: 'Golpe pesado: prepara por uma rodada, depois causa dano físico 2.6x com 40% de chance de atordoar.', cost: 6, type: 'physical', power: 2.6, windup: true,
+    effects: [{ status: 'stun', target: 'foe', turns: 1, chance: 0.4 }],
+  },
+  whip: {
+    id: 'whip', name: 'Chicote', desc: 'Dano físico 0.8x e enfraquece o alvo.', cost: 3, type: 'physical', power: 0.8,
+    effects: [{ status: 'weaken', target: 'foe', turns: 2 }],
+  },
+  volley: { id: 'volley', name: 'Saraivada', desc: 'Três flechas de dano físico 0.5x.', cost: 5, type: 'physical', power: 0.5, hits: 3 },
+  fireArrow: {
+    id: 'fireArrow', name: 'Flecha em Chamas', desc: 'Dano físico 1x e queimadura.', cost: 4, type: 'physical', power: 1,
+    effects: [{ status: 'burn', target: 'foe', turns: 2, power: 4 }],
+  },
+  dragonFlame: {
+    id: 'dragonFlame', name: 'Sopro do Dragão', desc: 'Golpe pesado: prepara por uma rodada, depois causa dano mágico 2.8x e queimadura forte.', cost: 8, type: 'magic', power: 2.8, windup: true,
+    effects: [{ status: 'burn', target: 'foe', turns: 3, power: 5 }],
   },
   // Consumíveis: a ação de cada item da bolsa (mesmo id, nome e descrição do item em items.ts)
   ...Object.fromEntries(Object.values(ITEMS).filter((it) => it.use).map((it) => [it.id, { id: it.id, name: it.name, desc: it.desc, cost: 0, type: 'self', ...it.use } satisfies SkillDef])),

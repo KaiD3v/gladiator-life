@@ -34,8 +34,19 @@ export function validRun(r: unknown): r is RunState {
     && counts.every((k) => isCount(r[k])) && (r.level as number) >= 1 && isNum(r.seed) && isAttrs(r.attrs) && isAttrs(r.trained)
     && ids(r.titles, ARENA_IDS) && ids(r.skills, SKILLS) && ids(r.items, ITEMS) && ids(r.bag, ITEMS) && ids(r.shop, ITEMS)
     && ids(r.enemies, ENEMIES) && (r.enemies as string[]).length > 0 && (r.encounter as number) < (r.enemies as string[]).length
-    && ids(r.kills, ENEMIES) && ids(r.fled, ENEMIES) && ids(r.seen, SCENES) && isObj(r.bestiary);
+    && ids(r.kills, ENEMIES) && ids(r.fled, ENEMIES) && ids(r.seen, SCENES) && isObj(r.bestiary)
+    && isObj(r.verdicts) && Object.entries(r.verdicts).every(([id, v]) => id in ENEMIES && (v === 'executed' || v === 'spared'));
 }
+
+/** Tela gravada quando a conversa era por papel ('merchant', 'str'...): fecha a conversa em vez de descartar a campanha. */
+function upgradeScreen(s: unknown): unknown {
+  if (!isObj(s)) return s;
+  if (s.name === 'scene') return { ...s, next: upgradeScreen(s.next) };
+  return s.name === 'camp' && isStr(s.npc) && !(s.npc in NPCS) ? { ...s, npc: null, line: '' } : s;
+}
+
+/** Run gravada antes de existir `verdicts` (veredito em chefe): completa com o padrão. */
+export const upgradeRun = (r: unknown): unknown => (isObj(r) && !('verdicts' in r) ? { ...r, verdicts: {} } : r);
 
 function validFighter(f: unknown): boolean {
   return isObj(f) && isStr(f.name) && isNum(f.hp) && isNum(f.energy) && isObj(f.stats) && ids(f.skills, SKILLS) && ids(f.bag, ITEMS)
@@ -68,7 +79,8 @@ export function parseResume(raw: string | null): { resume?: Resume; error?: stri
   if (raw === null) return {};
   try {
     const d = JSON.parse(raw);
-    if (d?.version === RUN_VERSION && validRun(d.run) && validScreen(d.screen)) return { resume: { run: d.run, screen: d.screen } };
+    const run = upgradeRun(d?.run), screen = upgradeScreen(d?.screen);
+    if (d?.version === RUN_VERSION && validRun(run) && validScreen(screen)) return { resume: { run, screen } };
   } catch { /* cai no aviso abaixo */ }
   return { error: 'A campanha salva não pôde ser carregada e foi descartada.' };
 }

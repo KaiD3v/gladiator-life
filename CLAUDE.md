@@ -21,10 +21,10 @@ Camadas com dependência em um só sentido: **`ui → state → engine → data/
 
 | Pasta | Contém | Regra |
 | --- | --- | --- |
-| `src/data/` | Conteúdo puro, um arquivo por domínio (`classes`, `enemies`, `items`, `skills`, `arenas`, `npcs`, `statuses`, `attributes`, `balance`, `story`) e os tipos em `types.ts`. `index.ts` reexporta tudo. | Só dados. Sem funções com regra. |
+| `src/data/` | Conteúdo puro, um arquivo por domínio (`classes`, `enemies`, `items`, `skills`, `arenas`, `characters`, `npcs`, `statuses`, `attributes`, `balance`, `story`) e os tipos em `types.ts`. `index.ts` reexporta tudo. | Só dados. Sem funções com regra. |
 | `src/core/rng.ts` | `rand(s)` (mulberry32 com a semente guardada no próprio estado) e `pick`. | Toda aleatoriedade passa por aqui. |
 | `src/engine/` | Motores puros: `combat` (rodada inteira em `resolveRound`; ver "Combate" abaixo), `characters` (pipeline de modificadores, `buildPlayer`, `createPlayerFighter`, `createEnemyFighter`), `items` (`acquireItem`, `withMaxHpGrowth`, `buyBlock`, `rollShop`, `rollLoot`, `addToBag`), `scenes` (`scenesFor`, `beatView`, `sceneAssets`, `sceneTrack`, `sceneAmbience`). | Funções puras, testadas. |
-| `src/state/` | `types.ts` (`RunState`, `Screen`, `GameAction`), `save.ts` (save, nível e checkpoints da história), `resume.ts` (campanha em andamento), `run.ts` (regras da run usadas pela UI), `camp.ts`, `campaign.ts`, `scenes.ts` e `reducer.ts`. | `reduce(g, action)` é a **única** forma de mudar o estado do jogo. |
+| `src/state/` | `types.ts` (`RunState`, `Screen`, `GameAction`), `save.ts` (save, nível e checkpoints da história), `resume.ts` (campanha em andamento), `run.ts` (regras da run usadas pela UI), `camp.ts` + `services.ts` (acampamento), `campaign.ts`, `scenes.ts` e `reducer.ts`. | `reduce(g, action)` é a **única** forma de mudar o estado do jogo. |
 | `src/ui/` | `store.ts` (estado da página, `dispatch`, render, animação do log), `events.ts` (tabela `data-a` → ação, teclado), `components.ts` (peças HTML), `views/<tela>.ts`, `audio.ts`, `settings.ts` (engrenagem de opções), `analytics.ts` (Vercel Web Analytics: eventos derivados da diferença de estado em `dispatch`; nunca envie o nome do jogador). | Views são funções `(estado) => string HTML`; não guardam estado. |
 
 ## Combate
@@ -36,12 +36,13 @@ Tudo em `engine/combat.ts`, com os números em `data/balance.ts` (`CROWD`, `POST
   atordoamento fica `steady` (imune) na rodada seguinte.
 - **Multidão** (`crowd` 0..100, `crowdView`): sobe com jogo vistoso, cai com repetição e covardia. Ovação (+dano), Golpe de
   Glória da classe (`ClassDef.glory`, só com 100), "A multidão exige mais" (salva da morte 1x) e veredito Executar/Poupar
-  em luta comum com o inimigo ≤15% (`verdictAvailable`). O favor multiplica o ouro em `afterCombat`.
+  em luta comum (ou contra chefe com `trial`) com o inimigo ≤15% (`verdictAvailable`). O favor multiplica o ouro em `afterCombat`.
+  O destino de chefe com `trial` fica em `RunState.verdicts` (vencer sem veredito conta como `executed`) e escolhe cenas (`when`).
 - **Postura** (`posture`/`weak` do inimigo, `postureView`): golpes e efeitos no ponto fraco abalam; em 0 fica `broken`
   (perde a vez, +50% de dano) e recompõe ao acabar. Pontos fracos descobertos vão para `RunState.bestiary`.
 - **Chefes**: `phase2` (troca de padrão e fala ao cruzar a vida indicada) e `barks` (falas, `LogEntry.bark`).
 - **Perigo da arena** (`ArenaDef.hazard`, `hazardView`): avisado uma rodada antes, age no fim da rodada; Defender protege
-  dos efeitos de status.
+  dos efeitos de status. `gift` cura e `harm` fere o favorito da multidão (o jogador com favor ≥ `ovationAt`, senão o inimigo).
 - **Bolsa** (`Fighter.bag`, `RunState.bag`, até `BAG_SIZE`): consumíveis viram ações de custo 0 (a habilidade de mesmo id,
   gerada em `data/skills.ts` a partir de `ItemDef.use`). Item sem efeito no inimigo é de defesa e age primeiro (como Defender);
   item de ataque segue a velocidade. O inimigo sorteia a bolsa do seu `loot` (`rollLoot`, com RNG derivado por `fork`: não
@@ -66,6 +67,10 @@ Tudo em `engine/combat.ts`, com os números em `data/balance.ts` (`CROWD`, `POST
   `SaveData.story[i]` é o herói (`RunState`) ao entrar no ato i: gravado em `startRun` (ato 0, apaga a história anterior) e
   ao vencer o último chefe de um ato (`afterCombat`, que segue direto para o próximo). Morrer encerra a run; `startAct`
   (título/resumo) restaura o checkpoint com vida cheia, nível atual e semente nova. Rejogar um ato substitui só o checkpoint seguinte.
+  Na engrenagem (`ui/settings.ts`), com confirmação: "Recomeçar o Ato N" (`restartAct`) e "Escolher ato" (`abandon`, vai ao
+  título); as duas encerram a run como derrota (o XP fica). Gladiador novo só pelo título.
+  Cada ato tem o seu acampamento (`ActDef.camp`: nome, fundo e a lista de ids de `NPCS`, na ordem dos botões; `campOf`).
+  Item com `act` só entra na loja a partir daquele ato (o filtro não mexe nos sorteios dos atos anteriores).
 - **Save**: só progressão permanente (`SaveData` em `state/save.ts`). Mudou o formato? Suba `version` e escreva a migração em
   `parseSave` mantendo o progresso de quem já joga; save inválido volta ao padrão com aviso, nunca quebra o jogo.
 - **Campanha em andamento** (`state/resume.ts`, chave `RUN_KEY`): a run e a tela atual são gravadas a cada transição e
@@ -85,10 +90,19 @@ Tudo em `engine/combat.ts`, com os números em `data/balance.ts` (`CROWD`, `POST
   Consumível: `use` no item (`heal`, `energy`, `cleanse`, `effects`); para um inimigo carregá-lo, ponha o id no `loot` dele.
   Habilidade de treinador precisa de `attr`, `req` e `price`. Inimigo precisa de `pattern`, `posture` e `weak` (chefe:
   `phase2` e `barks`, falas em linguagem neutra sobre o herói). Classe precisa de `glory`.
+- NPC: um objeto em `data/npcs.ts` (`who` = pessoa em `data/characters.ts`, com nome e retrato, a mesma usada em
+  `SPEAKERS`; `role`; `services`; `lines` por reação `greet`/`deal`/`poor`/`denied`) e o id no `camp.npcs` do ato. Toda
+  reação precisa de uma fala sem condição; fala `{ text, when: { boss, verdict } }` só entra no sorteio se a condição valer
+  (`meets`, o mesmo das cenas). Serviços prontos: `shop`, `inn` e `trainer` (com `attr`); um NPC pode ter vários. A UI
+  manda `{ type: 'service', npc, value }` (os botões mantêm `data-a` `buy`/`rest`/`train`/`learn`). Serviço novo:
+  variante em `ServiceDef`, função em `SERVICES` (`state/services.ts`, devolve a reação ou 'skip' sem mexer na run) e
+  vitrine em `SERVICE_VIEWS` (`ui/views/camp.ts`).
 - Cena: uma entrada em `data/story.ts` com `trigger` (`campaign-start`, `run-start`, `boss-intro`, `boss-defeat`,
-  `arena-enter`, `campaign-won`) e `once: true` se só pode tocar uma vez por campanha; `music` e `ambience` opcionais. Falas aceitam `{nome}` e `{classe}`.
+  `arena-enter`, `act-won`, `campaign-won`) e `once: true` se só pode tocar uma vez por campanha; `when: { boss, verdict }`
+  para a variante de poupar/executar (fila no fim de ato: `boss-defeat`, `act-won`, `arena-enter` do próximo); `music` e `ambience` opcionais. Falas aceitam `{nome}` e `{classe}`.
   Personagens que falam ficam em `SPEAKERS`. O herói pode ser de qualquer gênero: escreva falas sobre ele em linguagem neutra.
-- Ato novo: entrada em `ACTS` (`data/arenas.ts`) com `id`, `name` e 3 arenas; nada de motor muda.
+- Ato novo: entrada em `ACTS` (`data/arenas.ts`) com `id`, `name`, `camp` e 3 arenas, cena `act-won`; nada de motor muda.
+  O roteiro dos atos fica em `docs/story/` (fora do Git).
 - Arena nova: entrada nas `arenas` do ato em `data/arenas.ts` (ordem = ordem da campanha, com `hazard`) + cenas
   `boss-intro`/`boss-defeat`/`arena-enter` + fundo `bg-<id>`. `data/story.test.ts` falha se faltar cena ou asset.
 
@@ -143,6 +157,18 @@ Referência atual (600 campanhas por classe, % de títulos nas arenas 1 / 2 / 3)
 | aleatório | 33 / 9 / 1 | 13 / 0 / 0 | 18 / 2 / 0 |
 | guloso | 87 / 66 / 16 | 55 / 26 / 4 | 44 / 23 / 2 |
 | informado | 99 / 79 / 25 | 74 / 35 / 5 | 65 / 38 / 5 |
+
+Ato II (simulação com bot que usa o acampamento inteiro: compra todo equipamento, aprende e treina; 200 campanhas). Com essa
+política o Ato I fica fácil (o bot chega ao Ato II com os 12 equipamentos), então a régua do Ato II é a vida perdida por luta e
+a taxa de vencer o ato na 1ª tentativa a partir do checkpoint (todas as classes vencem em até 3):
+
+| Bot | Guerreiro | Mago | Assassino |
+| --- | --- | --- | --- |
+| guloso, 1ª tentativa | 75% | 68% | 95% |
+| informado, 1ª tentativa | 95% | 93% | 100% |
+
+Perda média de vida (luta comum / chefe), informado: Naumáquia 5-10 / 21-32, Venatio 2-5 / 5-17, Coroação 5-12 / 16-38.
+Pendências: o Mago sofre contra Nerissa (rápida e venenosa) e o Assassino passa fácil pelo ato.
 
 Metas: Fosso vencível por todas as classes, dificuldade crescente entre as arenas, Mago e Assassino no mesmo patamar.
 O Guerreiro é a classe mais fácil para os bots.

@@ -1,6 +1,6 @@
 // Itens: aquisição, loja, bolsa e espólio. Os efeitos em si são dados (mods/perks em characters.ts, `use` no combate).
 import { fork, rand } from '../core/rng';
-import { BAG_SIZE, ENEMIES, ITEMS, LOOT, SHOP_CONSUMABLES, SHOP_SIZE } from '../data';
+import { ACTS, BAG_SIZE, ENEMIES, ITEMS, LOOT, SHOP_CONSUMABLES, SHOP_SIZE } from '../data';
 import type { RunState } from '../state/types';
 import { buildPlayer } from './characters';
 
@@ -36,6 +36,9 @@ export function buyBlock(run: RunState, itemId: string): BuyBlock {
   return null;
 }
 
+/** Índice do ato da arena (0 = primeiro). */
+export const actOf = (arenaId: string) => ACTS.findIndex((a) => a.arenas.some((x) => x.id === arenaId));
+
 /**
  * Sorteia o estoque do mercador: equipamentos que o jogador ainda não tem e, depois, consumíveis.
  * Os consumíveis usam um RNG derivado para não mudar a sequência de sorteios da run.
@@ -47,7 +50,8 @@ export function rollShop(run: RunState) {
     return out;
   };
   const ids = Object.keys(ITEMS);
-  const gear = draw(run, ids.filter((id) => !ITEMS[id].use && !run.items.includes(id)), SHOP_SIZE);
+  const act = actOf(run.arenaId); // contrabando de atos futuros fica fora (e não muda os sorteios dos atos anteriores)
+  const gear = draw(run, ids.filter((id) => !ITEMS[id].use && !run.items.includes(id) && (ITEMS[id].act ?? 0) <= act), SHOP_SIZE);
   run.shop = [...gear, ...draw(fork(run, 0x51ed270b), ids.filter((id) => ITEMS[id].use), SHOP_CONSUMABLES)];
 }
 

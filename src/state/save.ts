@@ -1,6 +1,6 @@
 // Progressão permanente salva no navegador: XP (nível), estatísticas e a história (checkpoints por ato). Sem DOM.
 import { ACTS, ARENAS, XP_PER_LEVEL } from '../data';
-import { validRun } from './resume';
+import { upgradeRun, validRun } from './resume';
 import type { RunState } from './types';
 
 /**
@@ -25,7 +25,8 @@ export function parseSave(raw: string | null): { save: SaveData; error?: string 
     if (d?.version === 3 && stats) {
       const save: SaveData = { version: 3, xp: d.xp, runs: d.runs, wins: d.wins, best: d.best, story: [] };
       // História corrompida (ou de conteúdo que mudou) não leva o XP junto.
-      if (validStory(d.story)) return { save: { ...save, story: d.story } };
+      const story = Array.isArray(d.story) ? d.story.map(upgradeRun) : d.story;
+      if (validStory(story)) return { save: { ...save, story } };
       return { save, error: 'A história salva não pôde ser carregada e foi descartada. Seu nível foi mantido.' };
     }
     // v2 (antes dos atos): mantém tudo; ainda não havia herói da história.

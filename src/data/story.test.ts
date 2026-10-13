@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARENAS, CLASSES, ENEMIES, SKILLS } from '.';
+import { ACTS, ARENAS, CHARACTERS, CLASSES, ENEMIES, ITEMS, NPCS, SKILLS, type ServiceDef } from '.';
 import { defaultSave, initialState, reduce, type GameState } from '../state';
 import { SCENES, SPEAKERS } from './story';
 
@@ -51,6 +51,33 @@ describe('dados da história', () => {
     for (const c of Object.keys(CLASSES)) expect(asset(c)).toBe(true); // retrato do herói
   });
 
+  it('todo equipamento tem ícone; todo acampamento tem fundo e NPCs existentes, com retrato', () => {
+    for (const it of Object.values(ITEMS)) if (!it.use) expect(asset(it.id), `ícone ${it.id}`).toBe(true);
+    for (const act of ACTS) {
+      expect(asset(act.camp.bg), `${act.id}: ${act.camp.bg}`).toBe(true);
+      expect(new Set(act.camp.npcs).size, act.id).toBe(act.camp.npcs.length);
+      for (const id of act.camp.npcs) expect(NPCS[id], `${act.id}: ${id}`).toBeDefined();
+      // Com o balanceamento atual, todo acampamento tem loja, estalagem e um treinador por atributo.
+      const has = (s: ServiceDef) => act.camp.npcs.some((id) => NPCS[id].services.some((x) => JSON.stringify(x) === JSON.stringify(s)));
+      for (const s of [{ kind: 'shop' }, { kind: 'inn' }, ...(['str', 'dex', 'wis'] as const).map((attr) => ({ kind: 'trainer', attr }))] as ServiceDef[]) {
+        expect(has(s), `${act.id}: ${JSON.stringify(s)}`).toBe(true);
+      }
+    }
+    for (const c of Object.values(CHARACTERS)) expect(asset(c.art), c.art).toBe(true);
+  });
+
+  it('NPCs: pessoa conhecida, toda reação com fala sem condição, condições só sobre chefes julgáveis', () => {
+    for (const [id, npc] of Object.entries(NPCS)) {
+      expect(npc.id, id).toBe(id);
+      expect(CHARACTERS[npc.who], `${id}: ${npc.who}`).toBeDefined();
+      expect(npc.services.length, id).toBeGreaterThan(0);
+      for (const [reaction, lines] of Object.entries(npc.lines)) {
+        expect(lines.some((l) => typeof l === 'string'), `${id}.${reaction}`).toBe(true);
+        for (const l of lines) if (typeof l !== 'string') expect(ENEMIES[l.when.boss]?.trial, `${id}: ${l.when.boss}`).toBe(true);
+      }
+    }
+  });
+
   it('todo inimigo tem sprite, habilidades conhecidas e padrão feito só delas; toda arena só usa inimigos existentes', () => {
     for (const e of Object.values(ENEMIES)) {
       expect(asset(e.id), `sprite ${e.id}`).toBe(true);
@@ -100,10 +127,14 @@ describe('ordem das cenas', () => {
       story.push(...win.after);
       g = win.g;
     }
+    // Fim do Ato I emenda no Ato II; chefes julgáveis vencidos sem veredito contam como executados.
     expect(story).toEqual([
       'boss-intro-tauros', 'boss-defeat-tauros', 'transfer-colosseum',
       'boss-intro-serpent', 'boss-defeat-serpent', 'transfer-crimson',
-      'boss-intro-emperor', 'boss-defeat-emperor', 'epilogue',
+      'boss-intro-emperor', 'boss-defeat-emperor', 'epilogue', 'act2-opening',
+      'boss-intro-nerissa', 'boss-executed-nerissa', 'transfer-venatio',
+      'boss-intro-hannibal', 'boss-defeat-hannibal', 'transfer-coronation',
+      'boss-intro-draco', 'boss-executed-draco', 'act2-finale',
     ]);
     expect(g.screen.name === 'summary' && g.screen.summary.result).toBe('victory');
     expect(g.save.wins).toBe(1);

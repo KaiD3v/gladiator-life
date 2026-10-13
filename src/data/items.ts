@@ -13,6 +13,12 @@ export const ITEMS: Record<string, ItemDef> = {
   venomFlask: { id: 'venomFlask', name: 'Frasco de Peçonha', price: 45, desc: 'Golpes físicos aplicam veneno 2.', perks: { poisonOnHit: 2 } },
   ritualBandage: { id: 'ritualBandage', name: 'Bandagem Ritual', price: 50, desc: 'Recupera 3 de vida por rodada.', perks: { hpRegen: 3 } },
   warHorn: { id: 'warHorn', name: 'Trompa de Guerra', price: 45, desc: 'Contra-ataca 40% do ataque ao defender.', perks: { counter: 0.4 } },
+  // Contrabando do Ato II (a Sabina, na Subura, só vende a partir dele)
+  praetorianGladius: { id: 'praetorianGladius', name: 'Gládio Pretoriano', price: 110, act: 1, desc: '+6 de ataque.', mods: { atk: 6 } },
+  praetorianScutum: { id: 'praetorianScutum', name: 'Escudo Pretoriano', price: 110, act: 1, desc: '+6 de defesa.', mods: { def: 6 } },
+  lionMane: { id: 'lionMane', name: 'Juba de Leão', price: 120, act: 1, desc: '+40 de vida máxima (e cura 40).', mods: { maxHp: 40 } },
+  augurEye: { id: 'augurEye', name: 'Olho do Áugure', price: 120, act: 1, desc: '+7 de magia e +2 de energia máxima.', mods: { mag: 7, maxEnergy: 2 } },
+  laurelCrown: { id: 'laurelCrown', name: 'Coroa de Louros', price: 130, act: 1, desc: '+10% de crítico e crítico 0.5x mais forte.', mods: { crit: 0.1, critMult: 0.5 } },
   // Consumíveis (bolsa). Defesa: agem primeiro na rodada. Ataque: seguem a velocidade.
   potion: { id: 'potion', name: 'Poção de Vida', price: 20, desc: 'Cura 30 de vida. Age primeiro. Também pode ser bebida no acampamento.', use: { heal: 30 } },
   tonic: { id: 'tonic', name: 'Tônico', price: 15, desc: 'Recupera 6 de energia. Age primeiro.', use: { energy: 6 } },

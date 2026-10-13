@@ -42,6 +42,7 @@ describe('eventos de analytics', () => {
   });
 
   it('reiniciar não conta como fim de campanha', () => {
-    expect(step(camp(), { type: 'restart' }).events).toEqual([['run_restart', { class: 'mage', arena: 'pit', titles: 0 }]]);
+    expect(step(camp(), { type: 'abandon' }).events).toEqual([['run_restart', { class: 'mage', arena: 'pit', titles: 0, to: 'title' }]]);
+    expect(step(camp(), { type: 'restartAct', seed: 1 }).events).toEqual([['run_restart', { class: 'mage', arena: 'pit', titles: 0, to: 'act' }]]);
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ARENAS, SCENES, type SceneEvent } from '../data';
+import { ACTS, ARENAS, ENEMIES, SCENES, type SceneEvent } from '../data';
 import { beatView, sameEvent, sceneAmbience, sceneAssets, sceneTrack, scenesFor } from './scenes';
 
 describe('scenesFor', () => {
@@ -10,7 +10,9 @@ describe('scenesFor', () => {
       [{ on: 'boss-intro', boss: 'tauros' }, ['boss-intro-tauros']],
       [{ on: 'boss-defeat', boss: 'serpent' }, ['boss-defeat-serpent']],
       [{ on: 'arena-enter', arena: 'crimson' }, ['transfer-crimson']],
-      [{ on: 'campaign-won' }, ['epilogue']],
+      [{ on: 'act-won', act: 'chains' }, ['epilogue']],
+      [{ on: 'arena-enter', arena: 'naumachia' }, ['act2-opening']],
+      [{ on: 'act-won', act: 'oath' }, ['act2-finale']],
       [{ on: 'boss-intro', boss: 'ninguem' }, []],
     ];
     for (const [event, ids] of cases) expect(scenesFor(event), JSON.stringify(event)).toEqual(ids);
@@ -21,15 +23,24 @@ describe('scenesFor', () => {
     expect(scenesFor({ on: 'boss-defeat', boss: 'tauros' }, ['boss-defeat-tauros'])).toEqual(['boss-defeat-tauros']);
   });
 
+  it('derrota de chefe julgável toca a cena do veredito; sem veredito na run, nenhuma', () => {
+    const ev = { on: 'boss-defeat', boss: 'draco' } as const;
+    expect(scenesFor(ev, [], { draco: 'spared' })).toEqual(['boss-spared-draco']);
+    expect(scenesFor(ev, [], { draco: 'executed' })).toEqual(['boss-executed-draco']);
+    expect(scenesFor(ev)).toEqual([]);
+  });
+
   it('cada cena tem um gatilho único e a campanha inteira tem cena para os seus eventos', () => {
-    const keys = Object.values(SCENES).map((s) => JSON.stringify(s.trigger));
+    const keys = Object.values(SCENES).map((s) => JSON.stringify([s.trigger, s.when]));
     expect(new Set(keys).size).toBe(keys.length);
     expect(scenesFor({ on: 'campaign-start' })).toHaveLength(1);
     expect(scenesFor({ on: 'run-start' })).toHaveLength(1);
-    expect(scenesFor({ on: 'campaign-won' })).toHaveLength(1);
+    for (const act of ACTS) expect(scenesFor({ on: 'act-won', act: act.id }), act.id).toHaveLength(1);
     ARENAS.forEach((a, i) => {
       expect(scenesFor({ on: 'boss-intro', boss: a.boss }), a.boss).toHaveLength(1);
-      expect(scenesFor({ on: 'boss-defeat', boss: a.boss }), a.boss).toHaveLength(1);
+      if (ENEMIES[a.boss].trial) {
+        for (const v of ['spared', 'executed'] as const) expect(scenesFor({ on: 'boss-defeat', boss: a.boss }, [], { [a.boss]: v }), `${a.boss} ${v}`).toHaveLength(1);
+      } else expect(scenesFor({ on: 'boss-defeat', boss: a.boss }), a.boss).toHaveLength(1);
       expect(scenesFor({ on: 'arena-enter', arena: a.id }), a.id).toHaveLength(i > 0 ? 1 : 0);
     });
   });

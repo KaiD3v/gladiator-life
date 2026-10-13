@@ -1,9 +1,16 @@
 import { describe, expect, it } from 'vitest';
-import { ARENAS, CLASSES, CROWD, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SHOP_CONSUMABLES, SHOP_SIZE, SKILLS, START_GOLD } from '../data';
+import { ARENAS, CLASSES, CROWD, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SHOP_CONSUMABLES, SHOP_SIZE, SKILLS, START_GOLD, type Attr } from '../data';
 import {
   defaultSave, freeDays, initialState, learnBlock, levelOf, maxHp, parseSave, playerBuild, reduce, restPrice, trainPrice,
-  type GameState, type RunState,
+  type GameAction, type GameState, type RunState,
 } from '.';
+
+/** Serviços dos NPCs do Ato I (Cássio vende, Marta hospeda, Brutus/Lyra/Oren treinam o seu atributo). */
+const TRAINER = { str: 'brutus', dex: 'lyra', wis: 'oren' } as const;
+const buy = (itemId: string): GameAction => ({ type: 'service', npc: 'cassio', value: itemId });
+const rest: GameAction = { type: 'service', npc: 'marta', value: 'rest' };
+const train = (attr: Attr): GameAction => ({ type: 'service', npc: TRAINER[attr], value: 'train' });
+const learn = (skill: string): GameAction => ({ type: 'service', npc: TRAINER[SKILLS[skill].attr!], value: skill });
 
 /** Pula a fila de cenas de história, se houver. */
 const skip = (g: GameState) => reduce(g, { type: 'skip' });
@@ -68,24 +75,40 @@ describe('save', () => {
 describe('transições', () => {
   it('ações fora da tela correta são ignoradas', () => {
     const g = initialState(defaultSave());
-    for (const a of [{ type: 'act', action: 'attack' }, { type: 'continue' }, { type: 'fight' }, { type: 'rest' },
-      { type: 'buy', itemId: 'chippedSword' }, { type: 'train', attr: 'str' }] as const) {
+    for (const a of [{ type: 'act', action: 'attack' }, { type: 'continue' }, { type: 'fight' }, rest, buy('chippedSword'), train('str')] as GameAction[]) {
       expect(reduce(g, a)).toBe(g);
     }
     const fighting = reduce(start(), { type: 'fight' });
     expect(reduce(fighting, { type: 'continue' })).toBe(fighting); // combate ainda não acabou
-    expect(reduce(fighting, { type: 'rest' })).toBe(fighting); // não se descansa no meio da luta
+    expect(reduce(fighting, rest)).toBe(fighting); // não se descansa no meio da luta
   });
 
-  it('reiniciar abandona a campanha (vale como derrota) e abre o registro de um novo gladiador', () => {
+  it('escolher ato abandona a campanha (vale como derrota) e volta ao título, com a história intacta', () => {
     const g = initialState(defaultSave());
-    expect(reduce(g, { type: 'restart' })).toBe(g); // sem campanha em andamento
+    expect(reduce(g, { type: 'abandon' })).toBe(g); // sem campanha em andamento
     const playing = withRun(reduce(start(), { type: 'fight' }), { xp: 40 }); // até no meio da luta
-    const r = skip(reduce(playing, { type: 'restart' }));
+    const r = reduce(playing, { type: 'abandon' });
     expect(r.run).toBeNull();
-    expect(r.screen.name).toBe('create');
+    expect(r.screen.name).toBe('title');
     expect(r.save).toMatchObject({ xp: 40, runs: 1, wins: 0 });
-    expect(start('mage', r).run!.classId).toBe('mage');
+    expect(r.save.story).toEqual(playing.save.story);
+    expect(reduce(r, { type: 'startAct', act: 0, seed: 1 }).run).toMatchObject({ name: 'Spartacus', arenaId: 'pit' });
+  });
+
+  it('recomeçar o ato abandona a campanha e volta ao checkpoint do ato atual', () => {
+    const g = initialState(defaultSave());
+    expect(reduce(g, { type: 'restartAct', seed: 1 })).toBe(g); // sem campanha em andamento
+    let playing = start();
+    const checkpoint = playing.save.story[0];
+    playing = withRun(fightAs(playing, 'victory'), { gold: 999, items: ['chippedSword'] });
+    const r = reduce(playing, { type: 'restartAct', seed: 1 });
+    expect(r.screen.name).toBe('camp');
+    expect(r.run).toMatchObject({ arenaId: 'pit', encounter: 0, day: 1, gold: checkpoint.gold, items: [] });
+    expect(r.save).toMatchObject({ runs: 1, wins: 0 });
+    expect(r.save.xp).toBe(playing.run!.xp);
+    // run sem checkpoint do ato (gravada antes dos atos): nada muda
+    const orphan = { ...playing, save: { ...playing.save, story: [] } };
+    expect(reduce(orphan, { type: 'restartAct', seed: 1 })).toBe(orphan);
   });
 
   it('não inicia run com nome vazio', () => {
@@ -134,8 +157,8 @@ describe('run completa, dias e fuga', () => {
     }
     if (g.screen.name !== 'summary') throw new Error();
     expect(g.screen.summary.result).toBe('victory');
-    expect(g.screen.summary.run.titles).toEqual(['pit', 'colosseum', 'crimson']);
-    expect(g.save).toMatchObject({ runs: 1, wins: 1, best: 3 });
+    expect(g.screen.summary.run.titles).toEqual(ARENAS.map((a) => a.id));
+    expect(g.save).toMatchObject({ runs: 1, wins: 1, best: ARENAS.length });
     expect(g.save.xp).toBe(g.screen.summary.xpGained);
     expect(parseSave(JSON.stringify(g.save)).save).toEqual(g.save);
   });
@@ -202,9 +225,9 @@ describe('run completa, dias e fuga', () => {
   it('no último dia só se luta: descanso, treino e aprendizado ficam bloqueados', () => {
     const g = withRun(start(), { day: ARENAS[0].days, hp: 10, gold: 999 });
     expect(freeDays(g.run!)).toBe(0);
-    expect(reduce(g, { type: 'rest' })).toBe(g);
-    expect(reduce(g, { type: 'train', attr: 'str' })).toBe(g);
-    expect(reduce(g, { type: 'learn', skill: 'warCry' })).toBe(g);
+    expect(reduce(g, rest)).toBe(g);
+    expect(reduce(g, train('str'))).toBe(g);
+    expect(reduce(g, learn('warCry'))).toBe(g);
     expect(reduce(g, { type: 'fight' }).screen.name).toBe('combat');
   });
 });
@@ -212,22 +235,22 @@ describe('run completa, dias e fuga', () => {
 describe('acampamento', () => {
   it('comprar item gasta ouro, aplica o item e tira da loja; sem ouro o mercador recusa', () => {
     const g = withRun(start(), { gold: 100, shop: ['titanHeart', 'chippedSword'], hp: 50 });
-    const after = reduce(g, { type: 'buy', itemId: 'titanHeart' });
+    const after = reduce(g, buy('titanHeart'));
     expect(after.run).toMatchObject({ gold: 100 - ITEMS.titanHeart.price, items: ['titanHeart'], shop: ['chippedSword'], hp: 75 });
-    expect(after.screen.name === 'camp' && after.screen.npc).toBe('merchant');
+    expect(after.screen.name === 'camp' && after.screen.npc).toBe('cassio');
     expect(after.run!.day).toBe(1); // comprar não gasta dia
 
-    const broke = reduce(withRun(g, { gold: 0 }), { type: 'buy', itemId: 'titanHeart' });
+    const broke = reduce(withRun(g, { gold: 0 }), buy('titanHeart'));
     expect(broke.run!.items).toEqual([]);
-    expect(broke.screen.name === 'camp' && NPCS.merchant.poor).toContain(broke.screen.name === 'camp' && broke.screen.line);
-    expect(reduce(g, { type: 'buy', itemId: 'warHorn' })).toBe(g); // fora do estoque
+    expect(broke.screen.name === 'camp' && NPCS.cassio.lines.poor).toContain(broke.screen.name === 'camp' && broke.screen.line);
+    expect(reduce(g, buy('warHorn'))).toBe(g); // fora do estoque
   });
 
   it('treinar sobe o atributo, encarece o próximo treino, gasta 1 dia e Força aumenta a vida', () => {
     const g = withRun(start(), { gold: 200 });
     const price = trainPrice(g.run!, 'str');
     const hpBefore = g.run!.hp;
-    const after = reduce(g, { type: 'train', attr: 'str' });
+    const after = reduce(g, train('str'));
     const run = after.run!;
     expect(run.attrs.str).toBe(CLASSES.warrior.attrs.str + 1);
     expect(run.gold).toBe(200 - price);
@@ -236,17 +259,17 @@ describe('acampamento', () => {
     expect(run.hp).toBe(hpBefore + 5);
     expect(playerBuild(run).stats.atk).toBe(CLASSES.warrior.stats.atk + 1);
 
-    expect(reduce(withRun(g, { gold: 0 }), { type: 'train', attr: 'str' }).run!.attrs.str).toBe(CLASSES.warrior.attrs.str);
+    expect(reduce(withRun(g, { gold: 0 }), train('str')).run!.attrs.str).toBe(CLASSES.warrior.attrs.str);
   });
 
   it('aprender habilidade exige atributo, espaço e ouro', () => {
     const g = withRun(start('mage'), { gold: 500 });
     expect(learnBlock(g.run!, 'cleave')).toBe('req'); // mago tem FOR 2, precisa 7
-    const denied = reduce(g, { type: 'learn', skill: 'cleave' });
+    const denied = reduce(g, learn('cleave'));
     expect(denied.run!.skills).toEqual(CLASSES.mage.skills);
-    expect(denied.screen.name === 'camp' && denied.screen.npc).toBe('str');
+    expect(denied.screen.name === 'camp' && denied.screen.npc).toBe('brutus');
 
-    const learned = reduce(g, { type: 'learn', skill: 'mend' });
+    const learned = reduce(g, learn('mend'));
     expect(learned.run!.skills).toContain('mend');
     expect(learned.run!.gold).toBe(500 - SKILLS.mend.price!);
     expect(learned.run!.day).toBe(2);
@@ -260,15 +283,15 @@ describe('acampamento', () => {
   it('descansar pagando cura 50%; sem ouro cura só 20%; com vida cheia não gasta o dia', () => {
     const g = withRun(start(), { hp: 10, gold: 100 });
     const max = maxHp(g.run!);
-    const paid = reduce(g, { type: 'rest' });
+    const paid = reduce(g, rest);
     expect(paid.run).toMatchObject({ hp: 10 + Math.round(max * REST_PAID), gold: 100 - restPrice(g.run!), day: 2 });
 
-    const free = reduce(withRun(g, { gold: 0 }), { type: 'rest' });
+    const free = reduce(withRun(g, { gold: 0 }), rest);
     expect(free.run).toMatchObject({ hp: 10 + Math.round(max * REST_FREE), gold: 0, day: 2 });
 
-    const full = reduce(withRun(g, { hp: max }), { type: 'rest' });
+    const full = reduce(withRun(g, { hp: max }), rest);
     expect(full.run!.day).toBe(1);
-    expect(full.screen.name === 'camp' && NPCS.inn.denied).toContain(full.screen.name === 'camp' && full.screen.line);
+    expect(full.screen.name === 'camp' && NPCS.marta.lines.denied).toContain(full.screen.name === 'camp' && full.screen.line);
   });
 
   it('nível vem do XP; atributos e itens somam estatísticas', () => {
@@ -384,8 +407,8 @@ describe('bolsa e espólio', () => {
 
   it('consumível comprado vai para a bolsa; bolsa cheia recusa sem cobrar', () => {
     const g = withRun(start(), { gold: 100, shop: ['potion'] });
-    expect(reduce(g, { type: 'buy', itemId: 'potion' }).run).toMatchObject({ gold: 100 - ITEMS.potion.price, bag: ['potion'], items: [] });
-    const full = reduce(withRun(g, { bag: ['tonic', 'tonic', 'tonic', 'tonic'] }), { type: 'buy', itemId: 'potion' });
+    expect(reduce(g, buy('potion')).run).toMatchObject({ gold: 100 - ITEMS.potion.price, bag: ['potion'], items: [] });
+    const full = reduce(withRun(g, { bag: ['tonic', 'tonic', 'tonic', 'tonic'] }), buy('potion'));
     expect(full.run).toMatchObject({ gold: 100, shop: ['potion'] });
   });
 });

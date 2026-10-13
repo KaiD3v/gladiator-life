@@ -1,5 +1,5 @@
 // Motor de cenas (puro): decide quais cenas tocam em cada evento e resolve cada fala para a UI.
-import { CLASSES, SCENES, SPEAKERS, type Ambience, type ClassId, type SceneEvent } from '../data';
+import { CLASSES, SCENES, SPEAKERS, type Ambience, type ClassId, type Condition, type SceneEvent, type Verdict } from '../data';
 
 /** Gatilho e evento são o mesmo: mesmos campos com os mesmos valores (a ordem das chaves não importa). */
 export function sameEvent(a: SceneEvent, b: SceneEvent): boolean {
@@ -7,10 +7,16 @@ export function sameEvent(a: SceneEvent, b: SceneEvent): boolean {
   return ka.length === Object.keys(b).length && ka.every((k) => a[k] === b[k]);
 }
 
-/** Cenas que casam com o evento, na ordem dos dados; cenas `once` já vistas ficam de fora. */
-export function scenesFor(event: SceneEvent, seen: readonly string[] = []): string[] {
+/** Condição de história satisfeita pelos vereditos da run (sem condição: sempre). Vale para cenas e falas de NPC. */
+export const meets = (when: Condition | undefined, verdicts: Readonly<Record<string, Verdict>>) => !when || verdicts[when.boss] === when.verdict;
+
+/**
+ * Cenas que casam com o evento, na ordem dos dados; cenas `once` já vistas ficam de fora, e cenas com `when` só tocam se
+ * o veredito do chefe (`verdicts`, da run) for o pedido.
+ */
+export function scenesFor(event: SceneEvent, seen: readonly string[] = [], verdicts: Readonly<Record<string, Verdict>> = {}): string[] {
   return Object.values(SCENES)
-    .filter((s) => sameEvent(s.trigger, event) && !(s.once && seen.includes(s.id)))
+    .filter((s) => sameEvent(s.trigger, event) && !(s.once && seen.includes(s.id)) && meets(s.when, verdicts))
     .map((s) => s.id);
 }
 

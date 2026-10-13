@@ -28,11 +28,19 @@ export const newGame = (g: GameState): GameState =>
 export const toTitle = (g: GameState): GameState =>
   g.screen.name === 'summary' || g.screen.name === 'create' ? { ...g, screen: { name: 'title' }, run: null } : g;
 
-/** Abandona a campanha em andamento (conta como derrota: o XP já ganho fica) e abre o registro de um novo gladiador. */
-export function restart(g: GameState): GameState {
+/** Abandona a campanha em andamento (conta como derrota: o XP já ganho fica) e volta ao título, onde se escolhe o ato. */
+export function abandon(g: GameState): GameState {
   if (!g.run) return g;
   const done = finish(g, structuredClone(g.run), 'defeat');
-  return { ...done, screen: scene(scenesFor({ on: 'campaign-start' }), { name: 'create' }), notice: undefined };
+  return { ...done, screen: { name: 'title' }, notice: undefined };
+}
+
+/** Abandona a campanha em andamento (como `abandon`) e recomeça o ato atual do checkpoint. Sem checkpoint, nada muda. */
+export function restartAct(g: GameState, a: ActionOf<'restartAct'>): GameState {
+  if (!g.run) return g;
+  const act = actOf(g.run.arenaId);
+  if (!g.save.story[act]) return g;
+  return startAct(finish(g, structuredClone(g.run), 'defeat'), { type: 'startAct', act, seed: a.seed });
 }
 
 /** Gladiador novo: começa a história do zero (apaga os atos liberados e seus checkpoints). */
@@ -45,7 +53,7 @@ export function startRun(g: GameState, a: ActionOf<'startRun'>): GameState {
   const run: RunState = {
     name, classId: a.classId, arenaId: arena.id, titles: [], daysSpent: 0, level, attrs: { ...cls.attrs }, trained: { str: 0, dex: 0, wis: 0 },
     skills: [...cls.skills], items: [], bag: [], gold: START_GOLD + GOLD_PER_LEVEL * (level - 1), day: 1, hp: 0, shop: [],
-    encounter: 0, enemies: [], seed: a.seed, xp: 0, goldEarned: 0, kills: [], fled: [], bestiary: {}, seen: [], rounds: 0, dealt: 0, taken: 0,
+    encounter: 0, enemies: [], seed: a.seed, xp: 0, goldEarned: 0, kills: [], fled: [], bestiary: {}, seen: [], verdicts: {}, rounds: 0, dealt: 0, taken: 0,
   };
   run.hp = maxHp(run);
   enterArena(run);
@@ -82,7 +90,7 @@ export function fight(g: GameState): GameState {
   const run = structuredClone(g.run);
   const combat: Screen = { name: 'combat', combat: startFight(run) };
   const boss = run.enemies[run.encounter];
-  const intro = isBossFight(run) ? scenesFor({ on: 'boss-intro', boss }, run.seen) : [];
+  const intro = isBossFight(run) ? scenesFor({ on: 'boss-intro', boss }, run.seen, run.verdicts) : [];
   if (!intro.length) return { ...g, run, screen: combat };
   run.seen.push(...intro);
   return { ...g, run, screen: scene(intro, combat) };
@@ -126,10 +134,14 @@ export function afterCombat(g: GameState, a: ActionOf<'continue'>): GameState {
       const arena = arenaById(run.arenaId);
       run.titles.push(arena.id);
       run.xp += WIN_BONUS_XP * tier;
+      if (ENEMIES[enemyId].trial) run.verdicts[enemyId] = c.verdict ?? 'executed'; // vencer sem veredito também mata
       const next = nextArena(run);
+      const act = actOf(arena.id), actEnds = !next || actOf(next.id) !== act;
+      const after = [...scenesFor({ on: 'boss-defeat', boss: enemyId }, run.seen, run.verdicts),
+        ...(actEnds ? scenesFor({ on: 'act-won', act: ACTS[act].id }, run.seen, run.verdicts) : [])];
       if (!next) {
         const done = finish(g, run, 'victory');
-        return { ...done, screen: scene([...scenesFor({ on: 'boss-defeat', boss: enemyId }), ...scenesFor({ on: 'campaign-won' })], done.screen) };
+        return { ...done, screen: scene([...after, ...scenesFor({ on: 'campaign-won' }, run.seen, run.verdicts)], done.screen) };
       }
       // Campeão: transferido para a próxima arena com a build intacta, curado, numa temporada nova.
       run.daysSpent += run.day - 1;
@@ -137,12 +149,14 @@ export function afterCombat(g: GameState, a: ActionOf<'continue'>): GameState {
       enterArena(run);
       run.hp = maxHp(run);
       // Novo ato: o herói como entra nele vira o checkpoint (substitui o de uma passagem anterior; os atos seguintes ficam).
-      const act = actOf(next.id), story = g.save.story;
-      const save = act === actOf(arena.id) ? g.save : { ...g.save, story: [...story.slice(0, act), structuredClone(run), ...story.slice(act + 1)] };
+      const nextAct = actOf(next.id), story = g.save.story;
+      const save = actEnds ? { ...g.save, story: [...story.slice(0, nextAct), structuredClone(run), ...story.slice(nextAct + 1)] } : g.save;
       const at = stageInAct(next.id);
-      const news = `Campeão de ${arena.name}! +${gold} de ouro. Você foi transferido para ${next.name} (${actName(at.act)}, arena ${at.arena + 1} de ${at.arenas}): ${ENEMIES[next.boss].name} precisa cair até o dia ${next.days}.`;
+      const news = actEnds
+        ? `${actName(at.act)}: ${ACTS[at.act].name}. ${ACTS[at.act].camp.name}, ${next.name}: ${ENEMIES[next.boss].name} precisa cair até o dia ${next.days}.`
+        : `Campeão de ${arena.name}! +${gold} de ouro. Você foi transferido para ${next.name} (${actName(at.act)}, arena ${at.arena + 1} de ${at.arenas}): ${ENEMIES[next.boss].name} precisa cair até o dia ${next.days}.`;
       const camp: Screen = { name: 'camp', npc: null, line: '', news, loot };
-      return { ...g, save, run, screen: scene([...scenesFor({ on: 'boss-defeat', boss: enemyId }), ...scenesFor({ on: 'arena-enter', arena: next.id })], camp) };
+      return { ...g, save, run, screen: scene([...after, ...scenesFor({ on: 'arena-enter', arena: next.id }, run.seen, run.verdicts)], camp) };
     }
     run.encounter++;
     const crowdNote = c.verdict === 'executed' ? ' Você o executou: a multidão vibra e os patronos pagam mais.'

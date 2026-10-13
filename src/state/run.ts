@@ -2,18 +2,16 @@
 import { rand } from '../core/rng';
 import { createCombat, type CombatState } from '../engine/combat';
 import { buildPlayer, createEnemyFighter, createPlayerFighter } from '../engine/characters';
-import { rollLoot, rollShop } from '../engine/items';
-import { ACTS, ARENAS, MAX_SKILLS, REST_PRICE, SKILLS, TRAIN_BASE, TRAIN_STEP, type ArenaDef, type Attr } from '../data';
+import { actOf, rollLoot, rollShop } from '../engine/items';
+import { ACTS, ARENAS, CHARACTERS, ENEMIES, MAX_SKILLS, NPCS, REST_PRICE, SKILLS, TRAIN_BASE, TRAIN_STEP, type ArenaDef, type Attr, type CampDef, type CharacterDef, type NpcDef } from '../data';
 import type { RunState } from './types';
 
-export { rollShop };
+export { actOf, rollShop };
 export const arenaById = (id: string): ArenaDef => ARENAS.find((a) => a.id === id)!;
 /** Índice da fase atual (0 = primeira arena). */
 export const stageOf = (run: Pick<RunState, 'arenaId'>) => ARENAS.findIndex((a) => a.id === run.arenaId);
 /** Próxima arena da campanha (undefined na última). */
 export const nextArena = (run: Pick<RunState, 'arenaId'>): ArenaDef | undefined => ARENAS[stageOf(run) + 1];
-/** Índice do ato da arena (0 = primeiro). */
-export const actOf = (arenaId: string) => ACTS.findIndex((a) => a.arenas.some((x) => x.id === arenaId));
 const ROMAN = ['I', 'II', 'III', 'IV', 'V'];
 /** Nome do ato para o jogador, em algarismos romanos (o índice segue numérico no motor). */
 export const actName = (act: number) => `Ato ${ROMAN[act] ?? act + 1}`;
@@ -22,6 +20,10 @@ export function stageInAct(arenaId: string) {
   const act = actOf(arenaId), arenas = ACTS[act].arenas;
   return { act, arena: arenas.findIndex((a) => a.id === arenaId), arenas: arenas.length };
 }
+/** Acampamento do ato em que a run está. */
+export const campOf = (run: Pick<RunState, 'arenaId'>): CampDef => ACTS[actOf(run.arenaId)].camp;
+/** NPC com a pessoa resolvida (nome e retrato de CHARACTERS). */
+export const npcOf = (id: string): NpcDef & CharacterDef => ({ ...NPCS[id], ...CHARACTERS[NPCS[id].who] });
 /** A luta atual (ou a próxima, no acampamento) é contra o chefe da arena. */
 export const isBossFight = (run: Pick<RunState, 'encounter' | 'enemies'>) => run.encounter === run.enemies.length - 1;
 
@@ -59,7 +61,8 @@ export function startFight(run: RunState): CombatState {
   const enemyId = run.enemies[run.encounter];
   const seed = Math.floor(rand(run) * 2 ** 32);
   const enemy = { ...createEnemyFighter(enemyId, arenaById(run.arenaId).tier), bag: rollLoot(enemyId, seed) };
-  return createCombat(createPlayerFighter(run), enemy, seed, { boss: isBossFight(run), hazard: arenaById(run.arenaId).hazard, known: run.bestiary[enemyId] });
+  const boss = isBossFight(run);
+  return createCombat(createPlayerFighter(run), enemy, seed, { boss, trial: boss && !!ENEMIES[enemyId].trial, hazard: arenaById(run.arenaId).hazard, known: run.bestiary[enemyId] });
 }
 
 /** Prepara a temporada da arena atual: adversários sorteados + chefe, dia 1, loja nova. */

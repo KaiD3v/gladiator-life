@@ -1,5 +1,5 @@
 // Eventos da página: tabela `data-a` → ação, mais entrada de texto, envio do formulário e atalhos de teclado.
-import { BAG_SIZE, type Attr, type ClassId, type NpcId } from '../data';
+import { BAG_SIZE, type ClassId } from '../data';
 import { actionsFor } from '../engine/combat';
 import { defaultKeep } from '../engine/items';
 import type { GameAction } from '../state';
@@ -7,6 +7,12 @@ import { icon } from './components';
 import { settingsOpen } from './settings';
 import { TRAY_PAGES, type TrayPage } from './views/combat';
 import { app, dispatch, form, render, state, ui } from './store';
+
+/** Serviço do NPC com quem se está conversando (os botões das ofertas só aparecem com a conversa aberta). */
+function serve(value: string): GameAction | void {
+  const s = state().screen;
+  if (s.name === 'camp' && s.npc) return { type: 'service', npc: s.npc, value };
+}
 
 /** Cada `data-a` vira uma ou mais ações do jogo (`v` = `data-v` do botão); void = tratada na própria página. */
 const ACTIONS: Record<string, (v: string) => GameAction | GameAction[] | void> = {
@@ -35,13 +41,13 @@ const ACTIONS: Record<string, (v: string) => GameAction | GameAction[] | void> =
   skip: () => ({ type: 'skip' }),
   talk: (v) => {
     ui.bag = false;
-    return { type: 'talk', npc: (v || null) as NpcId | null };
+    return { type: 'talk', npc: v || null };
   },
-  buy: (v) => ({ type: 'buy', itemId: v }),
+  buy: (v) => serve(v),
   use: (v) => ({ type: 'use', itemId: v }),
-  train: (v) => ({ type: 'train', attr: v as Attr }),
-  learn: (v) => ({ type: 'learn', skill: v }),
-  rest: () => ({ type: 'rest' }),
+  train: () => serve('train'),
+  learn: (v) => serve(v),
+  rest: () => serve('rest'),
   fight: () => ({ type: 'fight' }),
 };
 

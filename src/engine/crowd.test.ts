@@ -1,4 +1,4 @@
-﻿import { describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { CLASSES, CROWD, ENEMIES } from '../data';
 import { NO_PERKS, actionsFor, addStatus, canUse, createCombat, crowdView, makeFighter, resolveRound, verdictAvailable, type CombatState } from './combat';
 
@@ -204,6 +204,15 @@ describe('veredito (polegar)', () => {
     expect(resolveRound(boss, 'execute')).toBe(boss);
     const mid = low(false, 0.5);
     expect(resolveRound(mid, 'spare')).toBe(mid);
+  });
+
+  it('chefe julgável (trial) aceita veredito; os outros chefes não', () => {
+    const e = foe('bandit', ['attack']);
+    e.stats.maxHp = 100;
+    e.hp = 10;
+    const trial = createCombat(hero(), e, 1, { boss: true, trial: true });
+    expect(verdictAvailable(trial)).toBe(true);
+    expect(resolveRound(trial, 'spare')).toMatchObject({ outcome: 'victory', verdict: 'spared' });
   });
 
   it('executar: vitória imediata, inimigo morto, +15 de favor, sem o inimigo agir', () => {

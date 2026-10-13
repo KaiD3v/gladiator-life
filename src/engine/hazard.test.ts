@@ -36,6 +36,19 @@ describe('perigo da arena', () => {
     expect(s.log.filter((l) => l.text === sand.strike).length).toBe(2);
   });
 
+  it('dano no favorito da multidão (flechas pretorianas): favor alto mira o jogador; defender protege', () => {
+    const arrows: HazardDef = { id: 'x', name: 'Flechas', every: 3, first: 1, warn: 'aviso', strike: 'golpe', harm: 0.1 };
+    const fav = (crowd: number, act: string, foeAct = 'defend') => {
+      const s = { ...fight(arrows, [foeAct]), crowd };
+      return resolveRound(s, act);
+    };
+    const hit = fav(80, 'attack');
+    expect(hit.log.some((l) => l.text === 'Flechas: Herói -50')).toBe(true);
+    expect(fav(80, 'defend').log.some((l) => l.text.startsWith('Flechas: Herói'))).toBe(false);
+    expect(fav(10, 'attack', 'attack').log.some((l) => l.text === 'Flechas: Alvo -1000')).toBe(true);
+    expect(fav(10, 'attack', 'defend').log.some((l) => l.text.startsWith('Flechas: Alvo'))).toBe(false);
+  });
+
   it('quem não defende sofre o status; defender protege', () => {
     let s = run(fight(), 'attack', 'attack', 'attack');
     expect(hasStatus(s.player, 'weaken')).toBe(true);

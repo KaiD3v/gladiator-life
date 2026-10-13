@@ -20,7 +20,7 @@ describe('campanha salva entre sessões', () => {
   });
 
   it('acampamento volta igual, inclusive a conversa aberta', () => {
-    const g = reduce(start(), { type: 'talk', npc: 'merchant' });
+    const g = reduce(start(), { type: 'talk', npc: 'cassio' });
     const r = reload(g);
     expect(r.screen).toEqual(g.screen);
     expect(r.run).toEqual(g.run);

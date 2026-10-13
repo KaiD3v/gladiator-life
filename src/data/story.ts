@@ -1,9 +1,12 @@
 // História da campanha. Somente dados: quem fala, onde e o quê. Cada cena declara o gatilho que a faz tocar (engine/scenes.ts).
 // Texto aceita {nome} (nome do gladiador) e {classe}.
+import { CHARACTERS } from './characters';
+import type { Condition } from './types';
 
 export type SpeakerId =
   | 'narrator' | 'hero' | 'general' | 'mother' | 'father'
-  | 'brutus' | 'marta' | 'lyra' | 'oren' | 'tauros' | 'serpent' | 'emperor';
+  | 'brutus' | 'marta' | 'lyra' | 'oren' | 'tauros' | 'serpent' | 'emperor'
+  | 'taurosFree' | 'herald' | 'varro' | 'nerissa' | 'hannibal' | 'draco';
 
 export interface Speaker {
   name: string;
@@ -25,7 +28,8 @@ export type SceneEvent =
   | { on: 'boss-intro'; boss: string } // entrando na luta contra o chefe
   | { on: 'boss-defeat'; boss: string }
   | { on: 'arena-enter'; arena: string } // transferência para uma nova arena
-  | { on: 'campaign-won' }; // última arena conquistada
+  | { on: 'act-won'; act: string } // última arena do ato conquistada (antes da chegada ao ato seguinte)
+  | { on: 'campaign-won' }; // última arena do último ato conquistada
 
 /** Faixas de música do jogo (arquivos em public/audio/<faixa>.mp3). */
 export type MusicTrack = 'menu' | 'battle' | 'boss' | 'first-scene';
@@ -41,6 +45,8 @@ export interface SceneDef {
   bg: string;
   music?: MusicTrack;
   ambience?: Ambience;
+  /** Só toca se o chefe `boss` foi julgado assim (chefe derrotado sem veredito conta como executado). */
+  when?: Condition;
   beats: Beat[];
 }
 
@@ -50,13 +56,20 @@ export const SPEAKERS: Record<SpeakerId, Speaker> = {
   general: { name: 'General Caius Varro', art: 'npc-general', side: 'right' },
   mother: { name: 'Helena', art: 'npc-mother', side: 'right' },
   father: { name: 'Marcus', art: 'npc-father', side: 'right' },
-  brutus: { name: 'Brutus', art: 'npc-str', side: 'right' },
-  marta: { name: 'Marta', art: 'npc-inn', side: 'right' },
-  lyra: { name: 'Lyra', art: 'npc-dex', side: 'right' },
-  oren: { name: 'Mestre Oren', art: 'npc-wis', side: 'right' },
+  brutus: { ...CHARACTERS.brutus, side: 'right' },
+  marta: { ...CHARACTERS.marta, side: 'right' },
+  lyra: { ...CHARACTERS.lyra, side: 'right' },
+  oren: { ...CHARACTERS.oren, side: 'right' },
   tauros: { name: 'Tauros, o Campeão', art: 'tauros', side: 'right' },
   serpent: { name: 'Nerissa, a Rainha Serpente', art: 'serpent', side: 'right' },
   emperor: { name: 'Aurelius, o Imperador Caído', art: 'emperor', side: 'right' },
+  // Ato II
+  taurosFree: { ...CHARACTERS.tauros, side: 'right' },
+  herald: { name: 'Arauto Imperial', art: 'npc-herald', side: 'right' },
+  varro: { name: 'Imperador Caius Varro', art: 'npc-varro', side: 'right' },
+  nerissa: { name: 'Nerissa, Rainha das Marés', art: 'nerissa', side: 'right' },
+  hannibal: { name: 'Aníbal, o Domador', art: 'hannibal', side: 'right' },
+  draco: { name: 'Draco', art: 'draco', side: 'right' },
 };
 
 const scenes: SceneDef[] = [
@@ -179,7 +192,7 @@ const scenes: SceneDef[] = [
     ],
   },
   {
-    id: 'epilogue', trigger: { on: 'campaign-won' }, title: 'Liberdade', bg: 'bg-crimson', ambience: 'arena-cheer',
+    id: 'epilogue', trigger: { on: 'act-won', act: 'chains' }, title: 'Liberdade', bg: 'bg-crimson', ambience: 'arena-cheer',
     beats: [
       { who: 'narrator', text: 'Milhares de vozes gritam o seu nome. Caius Varro desce até a areia, sorrindo para a plateia.' },
       { who: 'general', text: 'Cidadãos! Prometi liberdade ao campeão das três arenas. Caius Varro cumpre a sua palavra!' },
@@ -187,6 +200,149 @@ const scenes: SceneDef[] = [
       { who: 'hero', text: 'Um dia eu volto. E nesse dia não vai haver multidão para te proteger.' },
       { who: 'general', text: 'Estarei esperando. Seria um desperdício perder um talento assim.' },
       { who: 'narrator', text: 'Você cruza o portão sem correntes. Atrás, o dragão de Varro tremula ao vento. Esta história ainda não acabou.', bg: 'bg-title', ambience: null },
+    ],
+  },
+
+  // ================= Ato II: O Juramento =================
+  {
+    id: 'act2-opening', trigger: { on: 'arena-enter', arena: 'naumachia' }, title: 'O Juramento', bg: 'bg-corvara', music: 'first-scene',
+    beats: [
+      { who: 'narrator', text: 'Três luas depois. O Vale de Corvara ainda cheira a cinza, mas o mato já cobre as ruínas.' },
+      { who: 'hero', text: 'Prometi voltar. Só não achei que voltaria para cá primeiro.' },
+      { who: 'taurosFree', text: 'Achei que fosse te encontrar aqui. Quem perde a casa sempre volta para olhar as cinzas.' },
+      { who: 'hero', text: 'Tauros?! Você jurou que nunca mais pisaria numa arena.' },
+      { who: 'taurosFree', text: 'E não piso. Mas escute: Varro foi aclamado imperador. Para festejar, vai dar os Jogos da Coroação.' },
+      { who: 'taurosFree', text: 'Naquela noite ele não levou só você. Levou todos os jovens deste vale. Estão acorrentados no ludus imperial.' },
+      { who: 'hero', text: 'Estão vivos...?' },
+      { who: 'taurosFree', text: 'Por enquanto. Há uma tradição antiga: o campeão dos Jogos pode pedir uma graça ao imperador, diante da multidão.' },
+      { who: 'taurosFree', text: 'Com milhares olhando, ele não pode recusar. É a única corrente que prende Varro.' },
+      { who: 'narrator', text: 'Na Subura, o bairro mais pobre da capital, um ludus caindo aos pedaços espera por {nome}.', bg: 'bg-subura' },
+      { who: 'brutus', text: 'Fiquei velho demais para a capital. Volto ao Fosso: alguém precisa cuidar dos novatos que Varro ainda manda para lá.' },
+      { who: 'brutus', text: 'Tauros cuida do seu braço agora. E não deixe ninguém dizer que você voltou às correntes à toa.' },
+      { who: 'marta', text: 'Montei a cozinha aqui mesmo. Lyra e Oren vieram junto. Ninguém fica para trás, nem você.' },
+      { who: 'herald', text: 'Por ordem do Imperador Caius Varro! Os Jogos da Coroação estão abertos a todo gladiador, escravo ou livre!', bg: 'bg-naumachia', ambience: 'arena-crowd' },
+      { who: 'herald', text: 'Quem é livre e quer lutar, que faça o juramento do auctoratus!' },
+      { who: 'hero', text: 'Aceito ser queimado, acorrentado, açoitado e morto pelo ferro.' },
+      { who: 'narrator', text: 'Com essas palavras, {nome} volta a pertencer à arena. Desta vez, por escolha.' },
+    ],
+  },
+  // ---------- Naumáquia ----------
+  {
+    id: 'boss-intro-nerissa', trigger: { on: 'boss-intro', boss: 'nerissa' }, once: true, title: 'A Rainha das Marés', bg: 'bg-naumachia', music: 'boss', ambience: 'arena-crowd',
+    beats: [
+      { who: 'narrator', text: 'As comportas se abrem e o lago imperial engole a areia. Uma galera dourada desliza até o centro.' },
+      { who: 'nerissa', text: 'Olhe só quem voltou. Por sua causa, Varro me tirou do Coliseu e me jogou na água com os peixes.' },
+      { who: 'nerissa', text: 'Sete temporadas de glória, perdidas para um camponês. Hoje eu cobro, com juros.' },
+      { who: 'hero', text: 'Você viu meus pais morrerem. Eu não esqueci.' },
+      { who: 'nerissa', text: 'Ótimo. Lembre-se disso enquanto afunda.' },
+    ],
+  },
+  {
+    id: 'boss-spared-nerissa', trigger: { on: 'boss-defeat', boss: 'nerissa' }, when: { boss: 'nerissa', verdict: 'spared' }, title: 'Clemência na água', bg: 'bg-naumachia', ambience: 'arena-cheer',
+    beats: [
+      { who: 'narrator', text: 'Nerissa cai de joelhos na água rasa. A multidão espera o veredito... e {nome} baixa a arma.' },
+      { who: 'nerissa', text: 'Você... me poupou? Ninguém nesta cidade faz isso.' },
+      { who: 'nerissa', text: 'Então tome outro presente: o campeão de Varro, Draco. O dragão também nasceu no seu vale.' },
+      { who: 'hero', text: 'O quê? Ninguém de Corvara lutaria por Varro.' },
+      { who: 'nerissa', text: 'Ninguém escolhe o que vira quando é criado numa jaula. E não me olhe assim: um dia eu pago essa dívida.' },
+    ],
+  },
+  {
+    id: 'boss-executed-nerissa', trigger: { on: 'boss-defeat', boss: 'nerissa' }, when: { boss: 'nerissa', verdict: 'executed' }, title: 'A maré baixa', bg: 'bg-naumachia', ambience: 'arena-cheer',
+    beats: [
+      { who: 'narrator', text: 'O último golpe cai. A água do lago imperial fica vermelha, e a multidão grita até perder a voz.' },
+      { who: 'nerissa', text: 'Hah... nem a serpente escapa da arena...' },
+      { who: 'nerissa', text: 'Um último segredo, de graça: Draco, o campeão de Varro... o dragão também nasceu no seu vale.' },
+      { who: 'hero', text: 'Draco... de Corvara?' },
+      { who: 'narrator', text: 'A Rainha das Marés afunda. Ninguém na arquibancada lembra que um dia ela teve outro nome.' },
+    ],
+  },
+  {
+    id: 'transfer-venatio', trigger: { on: 'arena-enter', arena: 'venatio' }, title: 'As jaulas', bg: 'bg-venatio',
+    beats: [
+      { who: 'narrator', text: 'Sob a Venatio há um labirinto de jaulas. O cheiro de fera e de medo sobe pelos alçapões.' },
+      { who: 'taurosFree', text: 'Foi aqui que eu fui parar depois do Fosso. Varro me vendeu para servir de isca aos leões.' },
+      { who: 'taurosFree', text: 'Um domador, Aníbal, abriu a jaula errada de propósito. Eu fugi. Ele nunca contou para ninguém.' },
+      { who: 'hero', text: 'E agora ele é o campeão daqui?' },
+      { who: 'taurosFree', text: 'Aníbal deve a Varro a vida da filha. Não espere misericórdia dele. Mas também não espere ódio.' },
+      { who: 'oren', text: 'As feras sentem o medo antes de o golpe chegar. Respire devagar, e elas hesitam.' },
+    ],
+  },
+  // ---------- Venatio ----------
+  {
+    id: 'boss-intro-hannibal', trigger: { on: 'boss-intro', boss: 'hannibal' }, once: true, title: 'O Domador', bg: 'bg-venatio', music: 'boss', ambience: 'arena-crowd',
+    beats: [
+      { who: 'narrator', text: 'Os alçapões se abrem. Um leão de guerra salta para a areia, e atrás dele vem um homem com cicatrizes de garras.' },
+      { who: 'hannibal', text: 'Então é você que o Tauros treina. Ele está bem? Não responda. É melhor eu não saber.' },
+      { who: 'hannibal', text: 'Varro tem minha filha no palácio. Enquanto eu vencer, ela come. Entende?' },
+      { who: 'hero', text: 'Entendo. E mesmo assim não vou cair.' },
+      { who: 'hannibal', text: 'Então que a fera decida.' },
+    ],
+  },
+  {
+    id: 'boss-defeat-hannibal', trigger: { on: 'boss-defeat', boss: 'hannibal' }, title: 'A dívida do domador', bg: 'bg-venatio', ambience: 'arena-cheer',
+    beats: [
+      { who: 'narrator', text: 'O leão recua para a jaula. Aníbal larga o chicote e se apoia na lança.' },
+      { who: 'hannibal', text: 'Acabou para mim. Varro não perdoa campeões que perdem.' },
+      { who: 'hannibal', text: 'Se você chegar à tribuna... peça por todos os acorrentados. A minha menina também está nessa lista.' },
+      { who: 'hero', text: 'Prometo.' },
+      { who: 'narrator', text: 'A Venatio grita o nome de {nome}. No camarote imperial, alguém para de sorrir.' },
+    ],
+  },
+  {
+    id: 'transfer-coronation', trigger: { on: 'arena-enter', arena: 'coronation' }, title: 'A coroação', bg: 'bg-coronation', ambience: 'arena-crowd',
+    beats: [
+      { who: 'narrator', text: 'O Anfiteatro da Coroação brilha em ouro e púrpura. Cem mil vozes esperam o novo imperador.' },
+      { who: 'varro', text: 'Cidadãos! Hoje o Império tem um imperador que cumpre a palavra. Que os Jogos coroem o mais digno!' },
+      { who: 'varro', text: '{nome}. Que surpresa agradável. Voltou de livre vontade para as minhas correntes.' },
+      { who: 'hero', text: 'Voltei pelos que você acorrentou em Corvara.' },
+      { who: 'varro', text: 'Então vença. E, quando chegar a hora, conheça o meu campeão. Acho que vocês têm muito em comum.' },
+      { who: 'narrator', text: 'No camarote, um gladiador de armadura negra observa em silêncio. No peito, o dragão de Varro.' },
+    ],
+  },
+  // ---------- Anfiteatro da Coroação ----------
+  {
+    id: 'boss-intro-draco', trigger: { on: 'boss-intro', boss: 'draco' }, once: true, title: 'O Dragão de Varro', bg: 'bg-coronation', music: 'boss', ambience: 'arena-crowd',
+    beats: [
+      { who: 'narrator', text: 'O fogo sobe de braseiros em forma de dragão. Draco entra sem pressa, sem olhar para a multidão.' },
+      { who: 'draco', text: 'O imperador disse que você é do Vale de Corvara. Eu não lembro de vale nenhum.' },
+      { who: 'draco', text: 'Lembro de jaulas, de fome e de uma voz dizendo que a fraqueza morre primeiro. Ele estava certo.' },
+      { who: 'hero', text: 'Quem disse isso foi o homem que queimou a nossa casa.' },
+      { who: 'draco', text: 'Eu não tenho casa. Tenho uma espada.' },
+    ],
+  },
+  {
+    id: 'boss-spared-draco', trigger: { on: 'boss-defeat', boss: 'draco' }, when: { boss: 'draco', verdict: 'spared' }, title: 'O nome verdadeiro', bg: 'bg-coronation', ambience: 'arena-cheer',
+    beats: [
+      { who: 'narrator', text: 'Draco cai na areia. {nome} ergue a mão aberta, e a multidão, pela primeira vez, pede clemência junto.' },
+      { who: 'draco', text: 'Por que não termina? O imperador...' },
+      { who: 'hero', text: 'Você pescava trutas no rio com uma lança de bambu. E sempre perdia para mim.' },
+      { who: 'draco', text: '...O rio. Eu lembro do rio. Eu me chamava Darius.' },
+      { who: 'draco', text: 'Se você me deixar viver, Varro me mata esta noite. Mas, se eu sobreviver... a minha espada é sua.' },
+    ],
+  },
+  {
+    id: 'boss-executed-draco', trigger: { on: 'boss-defeat', boss: 'draco' }, when: { boss: 'draco', verdict: 'executed' }, title: 'O dragão cai', bg: 'bg-coronation', ambience: 'arena-cheer',
+    beats: [
+      { who: 'narrator', text: 'O golpe final cai. Draco ainda tenta dizer alguma coisa.' },
+      { who: 'draco', text: 'O rio... a gente pescava no rio... não era?' },
+      { who: 'hero', text: '...Era. Descanse, Darius.' },
+      { who: 'narrator', text: 'O dragão de Varro morre na areia, com o nome verdadeiro preso na garganta.' },
+    ],
+  },
+  {
+    id: 'act2-finale', trigger: { on: 'act-won', act: 'oath' }, title: 'A graça do imperador', bg: 'bg-coronation', ambience: 'arena-cheer',
+    beats: [
+      { who: 'narrator', text: 'Campeão dos Jogos da Coroação. Os guardas abrem caminho até a tribuna imperial.' },
+      { who: 'varro', text: 'O povo pede, o imperador concede. Diga, campeão: qual é a sua graça?' },
+      { who: 'hero', text: 'Liberdade para os cativos de Corvara. Todos eles. E para todos os acorrentados do ludus imperial.' },
+      { who: 'narrator', text: 'A multidão explode. Varro sorri, e o sorriso não chega aos olhos.' },
+      { who: 'varro', text: 'Concedido! Caius Varro cumpre a sua palavra!' },
+      { who: 'varro', text: 'Pena que os seus já não estão aqui. Meu feiticeiro precisava de almas jovens para o templo sob a Arena Rubra.' },
+      { who: 'varro', text: 'Vá buscá-los, se tiver coragem. Ninguém nunca voltou daquele templo.' },
+      { who: 'taurosFree', text: 'Ele te deu a graça e roubou o presente. É assim que ele vence.', ambience: null },
+      { who: 'hero', text: 'Então vamos tirar dele o templo também.' },
+      { who: 'narrator', text: 'Atrás do Anfiteatro, uma lua vermelha volta a nascer sobre a Arena Rubra. A história continua no Ato III.', bg: 'bg-crimson' },
     ],
   },
 ];

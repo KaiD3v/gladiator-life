@@ -1,11 +1,10 @@
 // Acampamento (vida fora das batalhas).
-import { ATTR_INFO, BAG_SIZE, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, type NpcId } from '../../data';
+import { ATTR_INFO, BAG_SIZE, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, type ServiceDef, type ServiceKind } from '../../data';
 import { isQuickItem } from '../../engine/combat';
 import { buyBlock } from '../../engine/items';
-import { arenaById, freeDays, isBossFight, learnBlock, maxHp, playerBuild, restPrice, trainPrice, useBlock, type GameState, type RunState } from '../../state';
+import { arenaById, campOf, freeDays, isBossFight, learnBlock, maxHp, npcOf, playerBuild, restPrice, trainPrice, useBlock, type GameState, type RunState } from '../../state';
 import { ATTRS, art, assetUrl, bar, bossTag, esc, goldPill, itemChip, skillList, stageLabel, statLine } from '../components';
 
-const CAMP_NPCS: NpcId[] = ['merchant', 'str', 'dex', 'wis', 'inn'];
 
 const STAT_LABEL = { maxHp: 'Vida', maxEnergy: 'Energia', regen: 'Regen.', atk: 'Atq', mag: 'Mag', def: 'Def', speed: 'Vel', crit: 'Crít' };
 type ShownStat = keyof typeof STAT_LABEL;
@@ -29,10 +28,11 @@ function offerCard(pic: string, title: string, body: string, button: string, opt
   </div>`;
 }
 
-function npcOffers(run: RunState, npc: NpcId): string {
-  const noDays = freeDays(run) <= 0;
-  const dayNote = noDays ? ' · último dia!' : ' · 1 dia';
-  if (npc === 'merchant') {
+const dayNote = (run: RunState) => (freeDays(run) <= 0 ? ' · último dia!' : ' · 1 dia');
+
+/** Vitrine de cada tipo de serviço (a regra fica em state/services.ts). Os `data-a` viram a ação `service` do NPC aberto. */
+const SERVICE_VIEWS: { [K in ServiceKind]: (run: RunState, svc: Extract<ServiceDef, { kind: K }>) => string } = {
+  shop: (run) => {
     if (!run.shop.length) return '<p class="dim">Estoque esgotado. Volte depois da próxima luta.</p>';
     return run.shop.map((id) => {
       const it = ITEMS[id];
@@ -40,8 +40,8 @@ function npcOffers(run: RunState, npc: NpcId): string {
       const body = `<p>${it.use ? `<span class="cost">Consumível</span> · ` : ''}${it.desc}</p>${it.use ? '' : statDiff(run, { ...run, items: [...run.items, id] })}`;
       return offerCard(id, it.name, body, full ? `Bolsa cheia (${BAG_SIZE})` : priceLabel(run, 'Comprar · ', it.price), { a: 'buy', v: id, disabled: full, poor: run.gold < it.price });
     }).join('');
-  }
-  if (npc === 'inn') {
+  },
+  inn: (run) => {
     const max = maxHp(run);
     const price = restPrice(run);
     const paid = run.gold >= price;
@@ -49,25 +49,31 @@ function npcOffers(run: RunState, npc: NpcId): string {
     const body = `<p>${paid ? `Quarto com ensopado: recupera ${Math.round(REST_PAID * 100)}% da vida.` : `Sem ouro para o quarto (${price}): o estábulo recupera só ${Math.round(REST_FREE * 100)}%.`}</p>
       <p class="dim">Vida ${run.hp}/${max}${gain > 0 ? ` → +${gain}` : ''}</p>`;
     return offerCard('rest', paid ? 'Descansar no quarto' : 'Dormir no estábulo', body,
-      `${paid ? `${price} ouro` : 'Grátis'}${dayNote}`, { a: 'rest', disabled: noDays });
-  }
-  const a = npc;
-  const info = ATTR_INFO[a];
-  const price = trainPrice(run, a);
-  const train = offerCard(`attr-${a}`, `Treinar ${info.name}: ${run.attrs[a]} → ${run.attrs[a] + 1}`,
-    `<p>${info.desc}</p>${statDiff(run, { ...run, attrs: { ...run.attrs, [a]: run.attrs[a] + 1 } })}`,
-    priceLabel(run, '', price, dayNote), { a: 'train', v: a, disabled: noDays, poor: run.gold < price });
-  const skills = Object.values(SKILLS).filter((sk) => sk.attr === a && sk.price).map((sk) => {
-    const block = learnBlock(run, sk.id);
-    const reqOk = run.attrs[a] >= sk.req!;
-    const body = `<p><span class="cost">${sk.cost} energia</span> · ${sk.desc}</p>
-      <p class="${reqOk ? 'dim' : 'warn'}">Requer ${info.short} ${sk.req}${block === 'slots' ? ' · sem espaço livre' : ''}</p>`;
-    const label = block === 'known' ? 'Conhecida' : priceLabel(run, 'Aprender · ', sk.price!, dayNote);
-    return offerCard(`attr-${a}`, sk.name, body, label,
-      { a: 'learn', v: sk.id, disabled: block === 'known' || block === 'days', poor: block === 'gold' || block === 'req' || block === 'slots' });
-  }).join('');
-  return train + skills;
-}
+      `${paid ? `${price} ouro` : 'Grátis'}${dayNote(run)}`, { a: 'rest', disabled: freeDays(run) <= 0 });
+  },
+  trainer: (run, { attr: a }) => {
+    const noDays = freeDays(run) <= 0;
+    const info = ATTR_INFO[a];
+    const price = trainPrice(run, a);
+    const train = offerCard(`attr-${a}`, `Treinar ${info.name}: ${run.attrs[a]} → ${run.attrs[a] + 1}`,
+      `<p>${info.desc}</p>${statDiff(run, { ...run, attrs: { ...run.attrs, [a]: run.attrs[a] + 1 } })}`,
+      priceLabel(run, '', price, dayNote(run)), { a: 'train', v: a, disabled: noDays, poor: run.gold < price });
+    const skills = Object.values(SKILLS).filter((sk) => sk.attr === a && sk.price).map((sk) => {
+      const block = learnBlock(run, sk.id);
+      const reqOk = run.attrs[a] >= sk.req!;
+      const body = `<p><span class="cost">${sk.cost} energia</span> · ${sk.desc}</p>
+        <p class="${reqOk ? 'dim' : 'warn'}">Requer ${info.short} ${sk.req}${block === 'slots' ? ' · sem espaço livre' : ''}</p>`;
+      const label = block === 'known' ? 'Conhecida' : priceLabel(run, 'Aprender · ', sk.price!, dayNote(run));
+      return offerCard(`attr-${a}`, sk.name, body, label,
+        { a: 'learn', v: sk.id, disabled: block === 'known' || block === 'days', poor: block === 'gold' || block === 'req' || block === 'slots' });
+    }).join('');
+    return train + skills;
+  },
+};
+
+/** Todas as vitrines dos serviços do NPC, em ordem. */
+const npcOffers = (run: RunState, services: ServiceDef[]) =>
+  services.map((svc) => (SERVICE_VIEWS[svc.kind] as (run: RunState, svc: ServiceDef) => string)(run, svc)).join('');
 
 /** Bolsa aberta pelo botão do topo: cada consumível com quantidade, tipo, descrição e uso (só cura fora da luta). */
 function bagPanel(run: RunState, loot: string[]): string {
@@ -86,7 +92,7 @@ function bagPanel(run: RunState, loot: string[]): string {
   </div>`;
 }
 
-export function campView(g: GameState, npc: NpcId | null, line: string, news: string, loot: string[] = [], bagOpen = false): string {
+export function campView(g: GameState, npc: string | null, line: string, news: string, loot: string[] = [], bagOpen = false): string {
   const run = g.run!;
   const arena = arenaById(run.arenaId);
   const { stats } = playerBuild(run);
@@ -94,28 +100,33 @@ export function campView(g: GameState, npc: NpcId | null, line: string, news: st
   const isBoss = isBossFight(run);
   const free = freeDays(run);
 
-  const npcButtons = CAMP_NPCS.map((id) => `<button class="npc${npc === id ? ' selected' : ''}" data-a="talk" data-v="${id}" aria-pressed="${npc === id}">
-      ${art(`npc-${id}`, 'npc-sprite', NPCS[id].name)}<span><b>${NPCS[id].name}</b><small>${NPCS[id].role}</small></span></button>`).join('');
+  const camp = campOf(run);
+  const npcButtons = camp.npcs.map((id) => {
+    const n = npcOf(id);
+    return `<button class="npc${npc === id ? ' selected' : ''}" data-a="talk" data-v="${id}" aria-pressed="${npc === id}">
+      ${art(n.art, 'npc-sprite', n.name)}<span><b>${n.name}</b><small>${n.role}</small></span></button>`;
+  }).join('');
+  const talking = npc && NPCS[npc] ? npcOf(npc) : null;
 
   const panel = bagOpen ? bagPanel(run, loot)
-    : npc
+    : talking
     ? `<div class="sketch npc-panel" aria-live="polite">
-        <div class="dialog">${art(`npc-${npc}`, 'npc-portrait', NPCS[npc].name)}
-          <div class="bubble"><b>${NPCS[npc].name}</b> <span class="dim">· ${NPCS[npc].role}</span><p>“${esc(line)}”</p></div>
+        <div class="dialog">${art(talking.art, 'npc-portrait', talking.name)}
+          <div class="bubble"><b>${talking.name}</b> <span class="dim">· ${talking.role}</span><p>“${esc(line)}”</p></div>
           <button class="close" data-a="talk" data-v="" aria-label="Fechar conversa">✕</button></div>
-        <div class="offers">${npcOffers(run, npc)}</div>
+        <div class="offers">${npcOffers(run, talking.services)}</div>
       </div>`
     : '';
 
   return `<section class="screen camp-screen">
     <header class="topbar">
-      <h2>Acampamento <span class="dim tb-sub">${stageLabel(run.arenaId)} · ${arena.name}</span></h2>
+      <h2>${camp.name} <span class="dim tb-sub">${stageLabel(run.arenaId)} · ${arena.name}</span></h2>
       <div class="row pills"><span class="pill">${art('day', 'ico', '')}Dia ${run.day}/${arena.days}</span>${goldPill(run.gold)}
         <button class="pill bag-btn${bagOpen ? ' selected' : ''}${loot.length ? ' new' : ''}" data-a="bag" aria-pressed="${bagOpen}" aria-label="Bolsa ${run.bag.length} de ${BAG_SIZE}${loot.length ? ', itens novos' : ''}">${art('chest', 'ico', '')}<span class="bag-word">Bolsa </span>${run.bag.length}/${BAG_SIZE}</button></div>
     </header>
     ${bar('hp', run.hp, stats.maxHp, `Vida ${run.hp}/${stats.maxHp}`)}
     ${news ? `<p class="sketch news" title="${esc(news)}">${esc(news)}</p>` : ''}
-    <div class="town" style="background-image:url(${assetUrl('bg-town')})">${npc || bagOpen ? '' : '<p class="town-hint">Toque em alguém para conversar, comprar, treinar ou descansar</p>'}${npcButtons}</div>
+    <div class="town" style="background-image:url(${assetUrl(camp.bg)})">${npc || bagOpen ? '' : '<p class="town-hint">Toque em alguém para conversar, comprar, treinar ou descansar</p>'}${npcButtons}</div>
     <div class="camp-body scroll">
       ${panel}
       <div class="sketch ficha">
