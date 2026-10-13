@@ -1,6 +1,6 @@
 // Campanha em andamento salva no navegador: a run e a tela atual, para continuar do mesmo ponto ao recarregar a página.
 // Fica separada do SaveData (progressão permanente): some quando a run acaba (morte, prazo ou campanha vencida). Sem DOM.
-import { ARENAS, CLASSES, ENEMIES, ITEMS, NPCS, SCENES, SKILLS } from '../data';
+import { ARENAS, BET, BETS, CLASSES, ENEMIES, ITEMS, NPCS, SCENES, SKILLS } from '../data';
 import type { SaveData } from './save';
 import type { GameState, RunState, Screen } from './types';
 
@@ -35,7 +35,9 @@ export function validRun(r: unknown): r is RunState {
     && ids(r.titles, ARENA_IDS) && ids(r.skills, SKILLS) && ids(r.items, ITEMS) && ids(r.bag, ITEMS) && ids(r.shop, ITEMS)
     && ids(r.enemies, ENEMIES) && (r.enemies as string[]).length > 0 && (r.encounter as number) < (r.enemies as string[]).length
     && ids(r.kills, ENEMIES) && ids(r.fled, ENEMIES) && ids(r.seen, SCENES) && isObj(r.bestiary)
-    && isObj(r.verdicts) && Object.entries(r.verdicts).every(([id, v]) => id in ENEMIES && (v === 'executed' || v === 'spared'));
+    && isObj(r.verdicts) && Object.entries(r.verdicts).every(([id, v]) => id in ENEMIES && (v === 'executed' || v === 'spared'))
+    && (r.bet === undefined || (isObj(r.bet) && BETS.some((b) => b.id === (r.bet as Obj).id) && isCount(r.bet.stake) && r.bet.stake < BET.stakes.length))
+    && (r.rival === undefined || (isObj(r.rival) && isStr(r.rival.enemy) && r.rival.enemy in ENEMIES && isStr(r.rival.name) && isCount(r.rival.rank) && isCount(r.rival.at)));
 }
 
 /** Tela gravada quando a conversa era por papel ('merchant', 'str'...): fecha a conversa em vez de descartar a campanha. */

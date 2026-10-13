@@ -69,7 +69,7 @@ export const NPCS: Record<string, NpcDef> = {
   },
   // ---------- Ato II: Ludus da Subura ----------
   sabina: {
-    id: 'sabina', who: 'sabina', role: 'Mercadora da Subura', services: [{ kind: 'shop' }],
+    id: 'sabina', who: 'sabina', role: 'Mercadora e agenciadora de apostas', services: [{ kind: 'shop' }, { kind: 'bookie' }],
     lines: {
       greet: [
         'Na Subura tudo tem preço. Inclusive o que não está à venda.', 'Campeão da plebe! Para você, desconto nenhum, mas sorriso grátis.',

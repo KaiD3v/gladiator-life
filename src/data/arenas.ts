@@ -12,6 +12,7 @@ export const ACTS: ActDef[] = [
   ] },
   {
     id: 'oath', name: 'O Juramento',
+    features: { demands: true, rival: true, ally: 'taurosCharge' },
     camp: { name: 'Ludus da Subura', bg: 'bg-subura', npcs: ['sabina', 'tauros', 'lyra', 'oren', 'marta'] },
     arenas: [
       { id: 'naumachia', name: 'Naumáquia', desc: 'O lago imperial alagado para batalhas navais.', tier: 4, pool: ['retiarius', 'corsair', 'crocodile', 'tideAugur'], fights: 3, boss: 'nerissa', days: 11,

@@ -1,9 +1,10 @@
 // Regras da run: montagem do personagem, arena atual, loja e preços. Funções puras sobre RunState.
-import { rand } from '../core/rng';
+import { fork, pick, rand } from '../core/rng';
 import { createCombat, type CombatState } from '../engine/combat';
-import { buildPlayer, createEnemyFighter, createPlayerFighter } from '../engine/characters';
-import { actOf, rollLoot, rollShop } from '../engine/items';
-import { ACTS, ARENAS, CHARACTERS, ENEMIES, MAX_SKILLS, NPCS, REST_PRICE, SKILLS, TRAIN_BASE, TRAIN_STEP, type ArenaDef, type Attr, type CampDef, type CharacterDef, type NpcDef } from '../data';
+import { actOf, buildPlayer, createEnemyFighter, createPlayerFighter } from '../engine/characters';
+import { rollLoot, rollShop } from '../engine/items';
+import { ACTS, ARENAS, BET, CHARACTERS, DEMAND_GOALS, ENEMIES, MAX_SKILLS, NPCS, REST_PRICE, SKILLS, TRAIN_BASE, TRAIN_STEP, type ArenaDef, type Attr, type CampDef, type CharacterDef, type NpcDef } from '../data';
+import type { SavedRival } from './save';
 import type { RunState } from './types';
 
 export { actOf, rollShop };
@@ -57,12 +58,46 @@ export function useBlock(run: RunState, itemId: string): UseBlock {
   return null;
 }
 
+/** A luta atual (ou a próxima, no acampamento) é contra o Rival da arena. */
+export const rivalFight = (run: Pick<RunState, 'encounter' | 'rival'>) => run.rival?.at === run.encounter;
+/** Nome de quem o herói enfrenta na luta atual (o Rival tem nome próprio). */
+export const foeName = (run: RunState) => (rivalFight(run) ? run.rival!.name : ENEMIES[run.enemies[run.encounter]].name);
+
+/**
+ * Exigência da Plebe de uma luta comum (ActFeatures.demands), sorteada pela semente do combate com RNG derivado: não muda
+ * nenhum outro sorteio. "Bloqueie um golpe pesado" só contra quem tem golpe pesado.
+ */
+function drawDemand(enemyId: string, seed: number) {
+  const heavy = ENEMIES[enemyId].pattern.some((id) => SKILLS[id]?.windup);
+  return pick(fork({ seed }, 0x2f6b1d3), DEMAND_GOALS.filter((g) => g !== 'perfectBlock' || heavy));
+}
+
 export function startFight(run: RunState): CombatState {
   const enemyId = run.enemies[run.encounter];
   const seed = Math.floor(rand(run) * 2 ** 32);
-  const enemy = { ...createEnemyFighter(enemyId, arenaById(run.arenaId).tier), bag: rollLoot(enemyId, seed) };
+  const rival = rivalFight(run) ? run.rival! : undefined;
+  const mark = rival && { name: rival.name, rank: rival.rank, taunt: `Você de novo, ${run.name}? Da última vez a areia bebeu o seu sangue.` };
+  const boost = betBoost(run);
+  const enemy = { ...createEnemyFighter(enemyId, arenaById(run.arenaId).tier, mark, boost), bag: rollLoot(enemyId, seed) };
   const boss = isBossFight(run);
-  return createCombat(createPlayerFighter(run), enemy, seed, { boss, trial: boss && !!ENEMIES[enemyId].trial, hazard: arenaById(run.arenaId).hazard, known: run.bestiary[enemyId] });
+  const demand = !boss && ACTS[actOf(run.arenaId)].features?.demands ? drawDemand(enemyId, seed) : undefined;
+  return createCombat(createPlayerFighter(run), enemy, seed, {
+    boss, trial: boss && !!ENEMIES[enemyId].trial, hazard: arenaById(run.arenaId).hazard, known: run.bestiary[enemyId], demand,
+    note: boost ? `A aposta alta atraiu um adversário mais forte: +${Math.round(boost * 100)}% de vida e ataque.` : undefined,
+  });
+}
+
+/** Quanto a aposta da run fortalece o adversário da próxima luta (0 sem aposta). */
+export const betBoost = (run: Pick<RunState, 'bet'>) => (run.bet ? BET.stakes[run.bet.stake].boost : 0);
+
+/** O Rival guardado para esta arena (SaveData.rivals, por ato) entra no lugar da última luta antes do chefe. */
+export function placeRival(run: RunState, rivals: Record<string, SavedRival>) {
+  delete run.rival;
+  const r = rivals[ACTS[actOf(run.arenaId)].id];
+  const at = run.enemies.length - 2;
+  if (!r || r.arena !== run.arenaId || at < 0) return;
+  run.enemies[at] = r.enemy;
+  run.rival = { enemy: r.enemy, name: r.name, rank: r.rank, at };
 }
 
 /** Prepara a temporada da arena atual: adversários sorteados + chefe, dia 1, loja nova. */

@@ -29,10 +29,18 @@ export interface RunState {
   bestiary: Record<string, WeakTag[]>; // pontos fracos descobertos por inimigo (só da run: não vai para o save)
   seen: string[]; // cenas `once` já tocadas (ex.: chegada do chefe: fugir e voltar não repete)
   verdicts: Record<string, Verdict>; // destino dos chefes julgáveis (EnemyDef.trial): muda cenas dos atos seguintes
+  bet?: RunBet; // aposta feita com a Sabina, resolvida na próxima luta
+  rival?: RunRival; // Rival desta arena (SaveData.rivals), no lugar da luta `at`
   rounds: number;
   dealt: number;
   taken: number;
 }
+
+/** Aposta da run: objetivo (id em BETS) e valor (índice em BET.stakes, que também fortalece o adversário). */
+export interface RunBet { id: string; stake: number }
+
+/** Rival em campo nesta arena: quem já derrotou o herói, com nome e patente. */
+export interface RunRival { enemy: string; name: string; rank: number; at: number }
 
 export interface Summary {
   result: 'victory' | 'defeat' | 'draw' | 'timeout';

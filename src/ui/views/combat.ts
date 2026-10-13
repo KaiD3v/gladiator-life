@@ -1,7 +1,7 @@
-import { BAG_SIZE, CROWD, ITEMS, SKILLS, STATUS_INFO, WEAK_INFO } from '../../data';
+import { ALLY, BAG_SIZE, CROWD, GOALS, ITEMS, SKILLS, STATUS_INFO, WEAK_INFO } from '../../data';
 import { defaultKeep } from '../../engine/items';
-import { actionsFor, canUse, crowdView, fleeChance, hasStatus, hazardView, intentView, isItem, isQuickItem, playerActsFirst, postureView, type CombatState, type Fighter, type IntentView, type LogEntry } from '../../engine/combat';
-import { arenaById, isBossFight, nextArena, stageOf, type GameState } from '../../state';
+import { actionsFor, canUse, crowdView, demandView, fleeChance, hasStatus, hazardView, intentView, isItem, isQuickItem, playerActsFirst, postureView, type CombatState, type Fighter, type IntentView, type LogEntry } from '../../engine/combat';
+import { arenaById, isBossFight, nextArena, rivalFight, stageOf, type GameState } from '../../state';
 import { art, assetUrl, attrTag, bar, bossTag, esc, itemChip, stageLabel, statusArt } from '../components';
 
 const GLYPH: Record<IntentView['kind'], string> = { attack: '⚔', magic: '✦', defend: '◈', buff: '▲', prep: '⚠', item: '⚗' };
@@ -182,6 +182,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
   const hz = animating ? null : hazardView(c);
   const statusHazard = !!hz && hz.in <= 1 && !!c.hazard?.effects?.length;
 
+  const allyReady = !!c.player.ally && canUse(c, c.player.ally);
   const button = (id: string, i: number) => {
     const s = SKILLS[id];
     const extra = id === 'flee' ? ` · ${Math.round(fleeChance(c.player, c.enemy) * 100)}%` : '';
@@ -190,8 +191,10 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
     const item = isItem(id);
     const short = s.cost - c.player.energy; // falta de energia: diz quanto falta em vez de só apagar o botão
     const cost = item ? `Item ×${c.player.bag.filter((x) => x === id).length} · ${isQuickItem(id) ? 'age primeiro' : 'segue a velocidade'}`
-      : s.glory && c.crowd < 100 ? 'Requer multidão 100' : short > 0 && !c.outcome ? `${s.cost} energia · faltam ${short}` : s.cost ? `${s.cost} energia` : 'sem custo';
-    const cls = `action${id === 'flee' ? ' flee' : ''}${item ? ' item-act' : ''}${suggest ? ' suggest' : ''}${s.glory ? ` glory-btn${cv.gloryReady ? ' ready' : ''}` : ''}`;
+      : s.glory && c.crowd < 100 ? 'Requer multidão 100'
+      : s.ally ? (c.allyUsed ? 'Já veio nesta luta' : c.crowd < ALLY.crowdAt ? `Requer multidão ${ALLY.crowdAt}` : 'sem custo · 1x por luta')
+      : short > 0 && !c.outcome ? `${s.cost} energia · faltam ${short}` : s.cost ? `${s.cost} energia` : 'sem custo';
+    const cls = `action${id === 'flee' ? ' flee' : ''}${item ? ' item-act' : ''}${suggest ? ' suggest' : ''}${s.glory ? ` glory-btn${cv.gloryReady ? ' ready' : ''}` : ''}${s.ally ? ` glory-btn ally-btn${allyReady ? ' ready' : ''}` : ''}`;
     return `<button class="${cls}" data-a="act" data-v="${id}" title="${s.desc}" ${animating || !canUse(c, id) ? 'disabled' : ''}>
       <span class="a-top">${id === 'flee' ? statusArt('flee') : ''}<b>${s.name}</b> ${attrTag(s.attr)}<kbd>${i + 1}</kbd></span>
       <span class="cost${short > 0 && !item ? ' short' : ''}">${cost}${extra}</span>
@@ -206,7 +209,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
   // Aba com aviso: Básico quando Defender é sugerido ou a Glória está pronta.
   // Itens: quando a vida está baixa e há cura na bolsa.
   const lowHeal = c.player.hp <= c.player.stats.maxHp * 0.35 && bag.some(([id]) => SKILLS[id].heal);
-  const alert: Partial<Record<TrayPage, boolean>> = { basic: (heavy || statusHazard || cv.gloryReady) && !animating, items: lowHeal && !animating };
+  const alert: Partial<Record<TrayPage, boolean>> = { basic: (heavy || statusHazard || cv.gloryReady || allyReady) && !animating, items: lowHeal && !animating };
   const tabs = TRAY_PAGES.map((p) => `<button class="tab${p === tray ? ' on' : ''}${alert[p] ? ' alert' : ''}${p === 'items' && !bag.length ? ' empty' : ''}" data-a="tray" data-v="${p}" role="tab" aria-selected="${p === tray}">${TRAY_LABEL[p]}${p === 'items' ? ` ${c.player.bag.length}` : ''}</button>`).join('');
   const controls = c.outcome && !animating
     ? `<div class="tray"><button class="primary wide" data-a="continue">${continueLabel(c, isBoss, nextArena(run)?.name)}</button></div>`
@@ -222,13 +225,15 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
       </div>`;
 
   const items = run.items.map(itemChip).join('');
-  const crowdChips = `${cv.ovation ? `<span class="chip ovation">Ovação +${Math.round(CROWD.ovationBonus * 100)}%</span>` : ''}${cv.lastStandReady ? '<span class="chip exige">Exige mais</span>' : ''}`;
+  const dv = demandView(c);
+  const demandChip = dv ? `<span class="chip demand ${dv.state}" title="Exigência da Plebe: ${GOALS[dv.goal].text}. Cumprir rende ouro.">${dv.state === 'done' ? '✓' : dv.state === 'failed' ? '✗' : '⚑'} ${GOALS[dv.goal].text}</span>` : '';
+  const crowdChips = `${demandChip}${cv.ovation ? `<span class="chip ovation">Ovação +${Math.round(CROWD.ovationBonus * 100)}%</span>` : ''}${cv.lastStandReady ? '<span class="chip exige">Exige mais</span>' : ''}`;
   const pFirst = playerActsFirst(c);
   const carry = c.enemy.bag.map((id) => `<span class="chip carry" title="Na bolsa de ${esc(c.enemy.name)}: ${esc(ITEMS[id].desc)}">⚗ ${ITEMS[id].name}</span>`).join('');
 
   return `<section class="screen combat-screen">
     <header class="topbar">
-      <div class="tb-title"><b>${arena.name}</b> <span class="dim">${stageLabel(run.arenaId)} · Luta ${run.encounter + 1}/${run.enemies.length}</span>${isBoss ? ` ${bossTag()}` : ''}${items ? `<span class="chips tb-items">${items}</span>` : ''}</div>
+      <div class="tb-title"><b>${arena.name}</b> <span class="dim">${stageLabel(run.arenaId)} · Luta ${run.encounter + 1}/${run.enemies.length}</span>${isBoss ? ` ${bossTag()}` : ''}${rivalFight(run) ? ` ${bossTag('RIVAL')}` : ''}${items ? `<span class="chips tb-items">${items}</span>` : ''}</div>
       ${banner}
     </header>
     ${crowdMeter(c, last.crowd, fresh)}

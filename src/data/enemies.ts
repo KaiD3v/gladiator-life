@@ -216,7 +216,7 @@ export const ENEMIES: Record<string, EnemyDef> = {
     stats: base({ maxHp: 315, maxEnergy: 16, regen: 4, atk: 21, mag: 18, def: 8, speed: 8, crit: 0.1 }), perks: { counter: 0.2 },
     skills: ['attack', 'cleave', 'shieldBash', 'ironStance', 'dragonFlame'],
     pattern: ['cleave', 'attack', 'dragonFlame', 'ironStance'], loot: ['potion', 'fireBomb', 'salve'],
-    posture: 7, weak: ['poison', 'magic'], trial: true,
+    posture: 7, weak: ['magic', 'burn'], trial: true,
     phase2: {
       at: 0.5, pattern: ['dragonFlame', 'cleave', 'shieldBash', 'attack'], line: 'Esse golpe... Quem te ensinou? Só uma pessoa no vale lutava assim.',
       effects: [{ status: 'guard', target: 'self', turns: 1 }],

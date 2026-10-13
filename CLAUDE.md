@@ -43,6 +43,20 @@ Tudo em `engine/combat.ts`, com os números em `data/balance.ts` (`CROWD`, `POST
 - **Chefes**: `phase2` (troca de padrão e fala ao cruzar a vida indicada) e `barks` (falas, `LogEntry.bark`).
 - **Perigo da arena** (`ArenaDef.hazard`, `hazardView`): avisado uma rodada antes, age no fim da rodada; Defender protege
   dos efeitos de status. `gift` cura e `harm` fere o favorito da multidão (o jogador com favor ≥ `ovationAt`, senão o inimigo).
+- **Camadas por ato** (`ActDef.features`; cada ato liga as suas, números em `balance.ts`):
+  - **Relíquias** (Ato II): itens `relic` com perks de gatilho (`openingStun`, `dotHunter`, `brokenHunter`, `critCrowd`, `rally`,
+    `insight`, `blockReflect`, `anchor`) aplicados em `combat.ts` (`opening`, `hit`, `reactions`, `hazardTick`). Perk novo:
+    campo em `Perks`, zero em `NO_PERKS`, gatilho no motor; sorteio só quando o perk existe (não mexe nas sementes).
+  - **Objetivos de luta** (`GOALS`, `goalMet`): `CombatState.feats` registra item usado, desequilíbrio e golpe pesado
+    bloqueado. Base de duas coisas: **Exigências da Plebe** (`features.demands`: objetivo sorteado com `fork` pela semente da
+    luta comum, `demandView` na UI, ouro `DEMAND.gold × tier` em `afterCombat`) e **apostas** (serviço `bookie` da Sabina,
+    `RunState.bet` = objetivo + valor em `BET.stakes`; paga valor × odds na próxima luta e, quanto maior o valor, mais forte
+    o adversário dessa luta via `boost` de `createEnemyFighter`; fugir perde).
+  - **Aliado** (`features.ally` = id da habilidade `ally`): ação depois da Glória, 1x por luta, com favor ≥ `ALLY.crowdAt`;
+    bate com `ALLY.atk` (não com o ataque do herói) e abala a postura.
+  - **Rival** (`features.rival`): quem mata o herói numa luta comum vira `SaveData.rivals[ato]` (nome com alcunha de
+    `RIVAL_TITLES`, patente); `placeRival` o põe no lugar da última luta comum daquela arena nas próximas tentativas, mais forte
+    por patente e pagando `RIVAL.reward`×; vencê-lo o apaga. Gladiador novo zera os rivais.
 - **Bolsa** (`Fighter.bag`, `RunState.bag`, até `BAG_SIZE`): consumíveis viram ações de custo 0 (a habilidade de mesmo id,
   gerada em `data/skills.ts` a partir de `ItemDef.use`). Item sem efeito no inimigo é de defesa e age primeiro (como Defender);
   item de ataque segue a velocidade. O inimigo sorteia a bolsa do seu `loot` (`rollLoot`, com RNG derivado por `fork`: não
@@ -165,11 +179,12 @@ a taxa de vencer o ato na 1ª tentativa a partir do checkpoint (todas as classes
 
 | Bot | Guerreiro | Mago | Assassino |
 | --- | --- | --- | --- |
-| guloso, 1ª tentativa | 75% | 68% | 95% |
-| informado, 1ª tentativa | 95% | 93% | 100% |
+| guloso, 1ª tentativa | 92% | 69% | 97% |
+| informado, 1ª tentativa | 100% | 94% | 99% |
 
-Perda média de vida (luta comum / chefe), informado: Naumáquia 5-10 / 21-32, Venatio 2-5 / 5-17, Coroação 5-12 / 16-38.
-Pendências: o Mago sofre contra Nerissa (rápida e venenosa) e o Assassino passa fácil pelo ato.
+(com relíquias, apostas, Exigências e o Chamado de Tauros; o bot usa o aliado assim que pode e aposta com ouro sobrando).
+Perda média de vida (luta comum / chefe), informado: Naumáquia 4-12 / 8-25, Venatio 1-3 / 11-16, Coroação 3-10 / 10-31.
+Pendências: o Mago é a classe mais difícil no Ato II (Nerissa e Draco) e o Assassino a mais fácil.
 
 Metas: Fosso vencível por todas as classes, dificuldade crescente entre as arenas, Mago e Assassino no mesmo patamar.
 O Guerreiro é a classe mais fácil para os bots.

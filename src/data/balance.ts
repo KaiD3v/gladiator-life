@@ -66,3 +66,18 @@ export const POSTURE = {
   brokenTurns: 2, // duração em rodadas; a postura volta cheia ao fim
   glory: true, // Golpe de Glória zera a postura
 };
+
+// ---------- Ato II: camadas novas (ActFeatures e relíquias) ----------
+export const GOAL = { quickRounds: 5, healthyAt: 0.5 }; // "vença em até N rodadas" / "vença com essa fração da vida"
+export const DEMAND = { gold: 12 }; // Exigência da Plebe cumprida: ouro × nível de perigo da arena
+export const ALLY = { crowdAt: 60, strain: 2, atk: 30 }; // Chamado do aliado: favor mínimo; postura que abala; ataque do aliado (não o do herói)
+export const RELIC = { rallyAt: 0.3, rallyGuard: 2, rallyRegen: 0.06, rallyTurns: 3 }; // Juba de Leão
+// Apostas com a Sabina: quanto maior o valor, mais forte o adversário da próxima luta (+vida, +ataque e magia); paga valor × odds.
+export const BET = {
+  stakes: [
+    { gold: 40, boost: 0 },
+    { gold: 100, boost: 0.2 },
+    { gold: 200, boost: 0.4 },
+  ],
+};
+export const RIVAL = { hp: 0.3, atk: 0.15, reward: 2 }; // Rival: +vida e +ataque por patente; ouro e XP multiplicados

@@ -1,5 +1,5 @@
 // Progressão permanente salva no navegador: XP (nível), estatísticas e a história (checkpoints por ato). Sem DOM.
-import { ACTS, ARENAS, XP_PER_LEVEL } from '../data';
+import { ACTS, ARENAS, ENEMIES, XP_PER_LEVEL } from '../data';
 import { upgradeRun, validRun } from './resume';
 import type { RunState } from './types';
 
@@ -7,12 +7,22 @@ import type { RunState } from './types';
  * Progressão permanente: XP (nível), estatísticas e `story`, o herói da história no início de cada ato já liberado
  * (`story[i]` = como estava ao entrar no ato i; atos liberados = `story.length`). Morrer volta ao checkpoint do ato.
  */
-export interface SaveData { version: 3; xp: number; runs: number; wins: number; best: number; story: RunState[] }
+export interface SaveData { version: 3; xp: number; runs: number; wins: number; best: number; story: RunState[]; rivals: Record<string, SavedRival> }
+
+/** Rival de um ato (chave: id do ato): o inimigo comum que derrotou o herói naquela arena. Some ao ser vencido. */
+export interface SavedRival { arena: string; enemy: string; name: string; rank: number }
 
 export const SAVE_KEY = 'arena-dos-gladiadores:save';
-export const defaultSave = (): SaveData => ({ version: 3, xp: 0, runs: 0, wins: 0, best: 0, story: [] });
+export const defaultSave = (): SaveData => ({ version: 3, xp: 0, runs: 0, wins: 0, best: 0, story: [], rivals: {} });
 
 const isCount = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0;
+const isRival = (r: unknown): r is SavedRival => {
+  const o = r as Partial<SavedRival> | null;
+  return !!o && ARENAS.some((a) => a.id === o.arena) && typeof o.enemy === 'string' && o.enemy in ENEMIES && typeof o.name === 'string' && isCount(o.rank) && o.rank >= 1;
+};
+/** Rivais válidos (os inválidos somem sem aviso: perder um rival não tira progresso). */
+const validRivals = (v: unknown): Record<string, SavedRival> =>
+  Object.fromEntries(Object.entries(typeof v === 'object' && v ? v : {}).filter(([id, r]) => ACTS.some((a) => a.id === id) && isRival(r)));
 const validStory = (v: unknown): v is RunState[] =>
   Array.isArray(v) && v.length <= ACTS.length && v.every((r, i) => validRun(r) && r.arenaId === ACTS[i].arenas[0].id);
 
@@ -23,14 +33,14 @@ export function parseSave(raw: string | null): { save: SaveData; error?: string 
     const d = JSON.parse(raw);
     const stats = isCount(d?.xp) && isCount(d.runs) && isCount(d.wins) && isCount(d.best) && d.best <= ARENAS.length;
     if (d?.version === 3 && stats) {
-      const save: SaveData = { version: 3, xp: d.xp, runs: d.runs, wins: d.wins, best: d.best, story: [] };
+      const save: SaveData = { version: 3, xp: d.xp, runs: d.runs, wins: d.wins, best: d.best, story: [], rivals: validRivals(d.rivals) };
       // História corrompida (ou de conteúdo que mudou) não leva o XP junto.
       const story = Array.isArray(d.story) ? d.story.map(upgradeRun) : d.story;
       if (validStory(story)) return { save: { ...save, story } };
       return { save, error: 'A história salva não pôde ser carregada e foi descartada. Seu nível foi mantido.' };
     }
     // v2 (antes dos atos): mantém tudo; ainda não havia herói da história.
-    if (d?.version === 2 && stats) return { save: { version: 3, xp: d.xp, runs: d.runs, wins: d.wins, best: d.best, story: [] } };
+    if (d?.version === 2 && stats) return { save: { ...defaultSave(), xp: d.xp, runs: d.runs, wins: d.wins, best: d.best } };
     // v1 (arenas desbloqueáveis): mantém XP e runs; "vitórias" mudaram de sentido (campanha completa), então zeram.
     if (d?.version === 1 && isCount(d.xp) && isCount(d.runs) && Array.isArray(d.unlocked)) {
       return { save: { ...defaultSave(), xp: d.xp, runs: d.runs, best: Math.min(ARENAS.length, Math.max(0, d.unlocked.length - 1)) } };

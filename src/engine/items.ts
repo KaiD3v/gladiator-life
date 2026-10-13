@@ -1,8 +1,8 @@
 // Itens: aquisição, loja, bolsa e espólio. Os efeitos em si são dados (mods/perks em characters.ts, `use` no combate).
 import { fork, rand } from '../core/rng';
-import { ACTS, BAG_SIZE, ENEMIES, ITEMS, LOOT, SHOP_CONSUMABLES, SHOP_SIZE } from '../data';
+import { BAG_SIZE, ENEMIES, ITEMS, LOOT, SHOP_CONSUMABLES, SHOP_SIZE } from '../data';
 import type { RunState } from '../state/types';
-import { buildPlayer } from './characters';
+import { actOf, buildPlayer } from './characters';
 
 /** Executa a mudança; se a vida máxima cresceu, a vida atual cresce o mesmo tanto. */
 export function withMaxHpGrowth(run: RunState, mutate: () => void) {
@@ -35,9 +35,6 @@ export function buyBlock(run: RunState, itemId: string): BuyBlock {
   if (run.gold < ITEMS[itemId].price) return 'gold';
   return null;
 }
-
-/** Índice do ato da arena (0 = primeiro). */
-export const actOf = (arenaId: string) => ACTS.findIndex((a) => a.arenas.some((x) => x.id === arenaId));
 
 /**
  * Sorteia o estoque do mercador: equipamentos que o jogador ainda não tem e, depois, consumíveis.

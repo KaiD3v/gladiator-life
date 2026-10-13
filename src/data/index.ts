@@ -12,4 +12,6 @@ export * from './arenas';
 export * from './characters';
 export * from './npcs';
 export * from './balance';
+export * from './goals';
+export * from './rivals';
 export * from './story';

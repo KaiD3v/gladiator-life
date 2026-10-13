@@ -1,18 +1,33 @@
 // Fluxo da campanha: criar o gladiador, entrar em luta, resolver o resultado, transferir de arena e encerrar.
-import { resolveRound } from '../engine/combat';
+import { fork, pick } from '../core/rng';
+import { goalMet, resolveRound } from '../engine/combat';
 import { chooseBag, defaultKeep } from '../engine/items';
 import { scenesFor } from '../engine/scenes';
-import { ACTS, CLASSES, CROWD, ENEMIES, GOLD_PER_LEVEL, START_GOLD, WIN_BONUS_XP } from '../data';
-import { actName, actOf, arenaById, enterArena, freeDays, isBossFight, maxHp, nextArena, rollShop, stageInAct, startFight } from './run';
-import { levelOf, type SaveData } from './save';
+import { ACTS, BET, BETS, CLASSES, CROWD, DEMAND, ENEMIES, GOALS, GOLD_PER_LEVEL, RIVAL, RIVAL_TITLES, START_GOLD, WIN_BONUS_XP } from '../data';
+import { actName, actOf, arenaById, enterArena, freeDays, isBossFight, maxHp, nextArena, placeRival, rivalFight, rollShop, stageInAct, startFight } from './run';
+import { levelOf, type SaveData, type SavedRival } from './save';
 import { scene } from './scenes';
 import type { ActionOf, GameState, RunState, Screen, Summary } from './types';
 
-/** Fim da campanha (morte, prazo ou última arena conquistada): grava só XP e estatísticas. */
-function finish(g: GameState, run: RunState, result: Summary['result']): GameState {
+/**
+ * Quem derrotou o herói numa luta comum de um ato com Rival passa a ser o Rival daquele ato: nome com alcunha e patente 1; se
+ * já era o Rival (ou o mesmo inimigo na mesma arena), sobe de patente. Um Rival por ato.
+ */
+function markRival(rivals: Record<string, SavedRival>, run: RunState, killer: string): Record<string, SavedRival> {
+  const act = ACTS[actOf(run.arenaId)];
+  if (!act.features?.rival || isBossFight(run)) return rivals;
+  const cur = rivals[act.id];
+  const same = !!cur && cur.enemy === killer && cur.arena === run.arenaId;
+  const name = same ? cur.name : `${ENEMIES[killer].name} ${pick(fork(run, 0x7a11e5), RIVAL_TITLES)}`;
+  return { ...rivals, [act.id]: { arena: run.arenaId, enemy: killer, name, rank: same ? cur.rank + 1 : 1 } };
+}
+
+/** Fim da campanha (morte, prazo ou última arena conquistada): grava XP e estatísticas. `killer`: inimigo que derrotou o herói. */
+function finish(g: GameState, run: RunState, result: Summary['result'], killer?: string): GameState {
   run.daysSpent += run.day - 1;
   const save: SaveData = {
     ...g.save,
+    rivals: killer ? markRival(g.save.rivals, run, killer) : g.save.rivals,
     xp: g.save.xp + run.xp,
     runs: g.save.runs + 1,
     wins: g.save.wins + (result === 'victory' ? 1 : 0),
@@ -57,7 +72,7 @@ export function startRun(g: GameState, a: ActionOf<'startRun'>): GameState {
   };
   run.hp = maxHp(run);
   enterArena(run);
-  const save: SaveData = { ...g.save, story: [structuredClone(run)] };
+  const save: SaveData = { ...g.save, story: [structuredClone(run)], rivals: {} };
   const news = `Bem-vindo ao ludus de ${arena.name}, arena 1 de ${ACTS[0].arenas.length}. ${ENEMIES[arena.boss].name} precisa cair até o dia ${arena.days}.`;
   return { ...g, save, run, screen: scene(scenesFor({ on: 'run-start' }), { name: 'camp', npc: null, line: '', news }) };
 }
@@ -74,6 +89,7 @@ export function startAct(g: GameState, a: ActionOf<'startAct'>): GameState {
   run.seed = a.seed;
   run.level = levelOf(g.save.xp);
   enterArena(run);
+  placeRival(run, g.save.rivals);
   run.hp = maxHp(run);
   const arena = arenaById(run.arenaId);
   const news = `${actName(a.act)}: ${ACTS[a.act].name}. De volta a ${arena.name}: ${ENEMIES[arena.boss].name} precisa cair até o dia ${arena.days}.`;
@@ -115,7 +131,11 @@ export function afterCombat(g: GameState, a: ActionOf<'continue'>): GameState {
   const run = structuredClone(g.run);
   const enemyId = run.enemies[run.encounter];
   const isBoss = isBossFight(run);
+  const isRival = rivalFight(run);
+  const foe = c.enemy.name;
   const tier = arenaById(run.arenaId).tier;
+  const act = ACTS[actOf(run.arenaId)];
+  let save = g.save;
   run.hp = c.player.hp;
   run.bag = bag;
   run.rounds += c.round;
@@ -123,41 +143,64 @@ export function afterCombat(g: GameState, a: ActionOf<'continue'>): GameState {
   run.taken += c.taken;
   run.bestiary[enemyId] = [...new Set([...(run.bestiary[enemyId] ?? []), ...c.revealed])];
   run.day++;
-  if (c.outcome === 'defeat' || c.outcome === 'draw') return finish(g, run, c.outcome);
+  if (c.outcome === 'defeat' || c.outcome === 'draw') return finish(g, run, c.outcome, enemyId);
+  // Aposta com a Sabina: resolvida em qualquer fim de luta (fugir perde)
+  let betNote = '';
+  if (run.bet) {
+    const bet = BETS.find((b) => b.id === run.bet!.id)!;
+    const prize = Math.round(BET.stakes[run.bet.stake].gold * bet.odds);
+    if (goalMet(bet.goal, c)) {
+      run.gold += prize;
+      run.goldEarned += prize;
+      betNote = ` Aposta ganha (${GOALS[bet.goal].text}): +${prize} de ouro.`;
+    } else betNote = ' Aposta perdida.';
+    delete run.bet;
+  }
   let news: string;
   if (c.outcome === 'victory') {
     // A torcida paga: ouro × (1 + favor/CROWD.goldDivisor); executar rende mais ouro, poupar rende menos ouro e mais XP.
     const verdictGold = c.verdict === 'executed' ? CROWD.executeGold : c.verdict === 'spared' ? CROWD.spareGold : 1;
-    const gold = Math.round(ENEMIES[enemyId].gold * tier * (1 + c.crowd / CROWD.goldDivisor) * verdictGold);
+    const rivalBonus = isRival ? RIVAL.reward : 1;
+    const demandGold = c.demandMet ? DEMAND.gold * tier : 0;
+    const gold = Math.round(ENEMIES[enemyId].gold * tier * (1 + c.crowd / CROWD.goldDivisor) * verdictGold * rivalBonus) + demandGold;
     run.kills.push(enemyId);
-    run.xp += Math.round(ENEMIES[enemyId].xp * tier * (c.verdict === 'spared' ? CROWD.spareXp : 1));
+    run.xp += Math.round(ENEMIES[enemyId].xp * tier * (c.verdict === 'spared' ? CROWD.spareXp : 1) * rivalBonus);
     run.gold += gold;
     run.goldEarned += gold;
+    const demandNote = c.demand ? (c.demandMet ? ` Exigência da Plebe cumprida: +${demandGold} de ouro.` : ' A multidão não teve o que exigiu.') : '';
+    let rivalNote = '';
+    if (isRival) { // vingança: o Rival some do save
+      const { [act.id]: _beaten, ...rest } = save.rivals;
+      save = { ...save, rivals: rest };
+      delete run.rival;
+      rivalNote = ` Vingança! ${foe} não volta mais.`;
+    }
     if (isBoss) {
       const arena = arenaById(run.arenaId);
       run.titles.push(arena.id);
       run.xp += WIN_BONUS_XP * tier;
       if (ENEMIES[enemyId].trial) run.verdicts[enemyId] = c.verdict ?? 'executed'; // vencer sem veredito também mata
       const next = nextArena(run);
-      const act = actOf(arena.id), actEnds = !next || actOf(next.id) !== act;
+      const actEnds = !next || actOf(next.id) !== actOf(arena.id);
       const after = [...scenesFor({ on: 'boss-defeat', boss: enemyId }, run.seen, run.verdicts),
-        ...(actEnds ? scenesFor({ on: 'act-won', act: ACTS[act].id }, run.seen, run.verdicts) : [])];
+        ...(actEnds ? scenesFor({ on: 'act-won', act: act.id }, run.seen, run.verdicts) : [])];
       if (!next) {
-        const done = finish(g, run, 'victory');
+        const done = finish({ ...g, save }, run, 'victory');
         return { ...done, screen: scene([...after, ...scenesFor({ on: 'campaign-won' }, run.seen, run.verdicts)], done.screen) };
       }
       // Campeão: transferido para a próxima arena com a build intacta, curado, numa temporada nova.
       run.daysSpent += run.day - 1;
       run.arenaId = next.id;
       enterArena(run);
+      placeRival(run, save.rivals);
       run.hp = maxHp(run);
       // Novo ato: o herói como entra nele vira o checkpoint (substitui o de uma passagem anterior; os atos seguintes ficam).
-      const nextAct = actOf(next.id), story = g.save.story;
-      const save = actEnds ? { ...g.save, story: [...story.slice(0, nextAct), structuredClone(run), ...story.slice(nextAct + 1)] } : g.save;
+      const nextAct = actOf(next.id), story = save.story;
+      if (actEnds) save = { ...save, story: [...story.slice(0, nextAct), structuredClone(run), ...story.slice(nextAct + 1)] };
       const at = stageInAct(next.id);
       const news = actEnds
         ? `${actName(at.act)}: ${ACTS[at.act].name}. ${ACTS[at.act].camp.name}, ${next.name}: ${ENEMIES[next.boss].name} precisa cair até o dia ${next.days}.`
-        : `Campeão de ${arena.name}! +${gold} de ouro. Você foi transferido para ${next.name} (${actName(at.act)}, arena ${at.arena + 1} de ${at.arenas}): ${ENEMIES[next.boss].name} precisa cair até o dia ${next.days}.`;
+        : `Campeão de ${arena.name}! +${gold} de ouro.${betNote} Você foi transferido para ${next.name} (${actName(at.act)}, arena ${at.arena + 1} de ${at.arenas}): ${ENEMIES[next.boss].name} precisa cair até o dia ${next.days}.`;
       const camp: Screen = { name: 'camp', npc: null, line: '', news, loot };
       return { ...g, save, run, screen: scene([...after, ...scenesFor({ on: 'arena-enter', arena: next.id }, run.seen, run.verdicts)], camp) };
     }
@@ -165,15 +208,15 @@ export function afterCombat(g: GameState, a: ActionOf<'continue'>): GameState {
     const crowdNote = c.verdict === 'executed' ? ' Você o executou: a multidão vibra e os patronos pagam mais.'
       : c.verdict === 'spared' ? ' Você o poupou: menos ouro, mais experiência.'
       : c.crowd >= 50 ? ' Os patronos jogam moedas na arena.' : '';
-    news = `Vitória sobre ${ENEMIES[enemyId].name}! +${gold} de ouro.${crowdNote}`;
+    news = `Vitória sobre ${foe}! +${gold} de ouro.${rivalNote}${demandNote}${betNote}${crowdNote}`;
   } else if (isBoss) {
-    news = `Você fugiu de ${ENEMIES[enemyId].name}. O chefe continua esperando.`;
+    news = `Você fugiu de ${foe}. O chefe continua esperando.${betNote}`;
   } else {
     run.fled.push(enemyId);
     run.encounter++;
-    news = `Você fugiu de ${ENEMIES[enemyId].name}: sem ouro nem glória desta vez.`;
+    news = `Você fugiu de ${foe}: sem ouro nem glória desta vez.${betNote}`;
   }
-  if (freeDays(run) < 0) return finish(g, run, 'timeout');
+  if (freeDays(run) < 0) return finish({ ...g, save }, run, 'timeout');
   rollShop(run);
-  return { ...g, run, screen: { name: 'camp', npc: null, line: '', news, loot } };
+  return { ...g, save, run, screen: { name: 'camp', npc: null, line: '', news, loot } };
 }

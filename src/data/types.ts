@@ -26,6 +26,15 @@ export interface Perks {
   thorns: number; // fração do dano recebido refletida
   poisonOnHit: number; // veneno aplicado por golpe físico
   hpRegen: number; // vida por rodada
+  // Gatilhos das relíquias (Ato II em diante). Somam como os demais; 0 = sem efeito.
+  openingStun: number; // chance de atordoar o inimigo no início da luta
+  dotHunter: number; // dano extra contra alvo envenenado ou queimado (fração)
+  brokenHunter: number; // dano extra contra alvo Desequilibrado, além do bônus normal (fração)
+  critCrowd: number; // favor extra a cada crítico do jogador
+  rally: number; // > 0: uma vez por luta, abaixo de RELIC.rallyAt de vida, entra em guarda e regenera
+  insight: number; // > 0: todos os pontos fracos do inimigo começam revelados
+  blockReflect: number; // fração do golpe pesado bloqueado (Defender) devolvida a quem atacou
+  anchor: number; // > 0: imune aos efeitos de status dos perigos da arena (o dano no favorito ainda acerta)
 }
 
 export interface Effect {
@@ -51,6 +60,8 @@ export interface SkillDef {
   critIfPoisoned?: boolean;
   windup?: boolean; // golpe pesado: quando o inimigo o usa, gasta uma rodada preparando e só acerta na seguinte
   glory?: boolean; // Golpe de Glória: só usável com a torcida em 100
+  ally?: boolean; // Chamado de um aliado: uma vez por luta, com favor >= ALLY.crowdAt
+  verb?: string; // texto do golpe no registro ("chama Tauros, que investe contra"); padrão "usa <nome> em"
   effects?: Effect[];
   // Habilidades de jogador: atributo que escala o efeito, requisito para aprender e preço no treinador
   attr?: Attr;
@@ -98,6 +109,7 @@ export interface ItemDef {
   desc: string;
   price: number;
   act?: number; // índice do primeiro ato em que o mercador vende (padrão 0)
+  relic?: boolean; // relíquia: efeito com gatilho (perks de gatilho), destacada na loja
   mods?: Partial<Stats>;
   perks?: Partial<Perks>;
   /**
@@ -139,13 +151,27 @@ export interface CampDef {
   npcs: string[];
 }
 
+/** Mecânicas que um ato liga (cada ato traz camadas novas; os seguintes podem repetir as anteriores). */
+export interface ActFeatures {
+  demands?: boolean; // Exigências da Plebe: objetivo sorteado em cada luta comum
+  rival?: boolean; // quem te mata vira Rival e volta na próxima tentativa do ato
+  ally?: string; // Chamado do aliado (id da habilidade em SKILLS)
+}
+
 /** Ato da história: arenas em sequência. Vencer a última libera o ato seguinte. */
 export interface ActDef {
   id: string;
   name: string;
   camp: CampDef;
+  features?: ActFeatures;
   arenas: ArenaDef[];
 }
+
+/** Objetivo de luta, conferido no fim do combate: base das Exigências da Plebe e das apostas. */
+export type GoalId = 'win' | 'noItems' | 'broke' | 'quick' | 'execute' | 'perfectBlock' | 'healthy';
+export interface GoalDef { id: GoalId; text: string }
+/** Aposta da Sabina: paga `stake × odds` se o objetivo for cumprido na próxima luta. */
+export interface BetDef { id: string; goal: GoalId; odds: number }
 
 /** Destino de um chefe julgável (EnemyDef.trial). */
 export type Verdict = 'executed' | 'spared';
@@ -156,7 +182,7 @@ export interface Condition { boss: string; verdict: Verdict }
 export interface CharacterDef { name: string; art: string }
 
 /** O que um NPC oferece no acampamento. Cada tipo tem a sua regra em `state/services.ts` e a sua vitrine na UI. */
-export type ServiceDef = { kind: 'shop' } | { kind: 'inn' } | { kind: 'trainer'; attr: Attr };
+export type ServiceDef = { kind: 'shop' } | { kind: 'inn' } | { kind: 'trainer'; attr: Attr } | { kind: 'bookie' };
 export type ServiceKind = ServiceDef['kind'];
 
 /** Como o NPC reage a uma ação: chegada, negócio fechado, falta de ouro, recusa (requisito, espaço, desnecessário). */

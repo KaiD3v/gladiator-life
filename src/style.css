@@ -448,6 +448,11 @@ button.danger { border-color: var(--red); color: var(--red); }
 .crowd-delta.up { color: var(--gold); } .crowd-delta.down { color: var(--red); }
 .crowd.glory .crowd-fill { box-shadow: 0 0 10px var(--gold); }
 .chip.ovation, .chip.exige { border-color: var(--gold); color: var(--gold); }
+.bet-offer .bet-stakes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; grid-column: 1 / -1; }
+.bet-offer .bet-stakes button { display: flex; flex-direction: column; align-items: center; padding: 4px; font-size: 0.95rem; }
+.bet-offer .bet-stakes small { font-size: 0.75rem; color: var(--dim); }
+.chip.relic { font-size: 0.75rem; color: var(--purple); vertical-align: middle; }
+.chip.demand { color: var(--gold); } .chip.demand.done { color: var(--green); } .chip.demand.failed { color: var(--dim); text-decoration: line-through; }
 .action.glory-btn { border-color: var(--gold); background: linear-gradient(#3a2d10, #261d0a); }
 .action.glory-btn:disabled { opacity: 0.6; }
 .action.glory-btn.ready { animation: gloryGlow 1.2s ease-in-out infinite alternate; }

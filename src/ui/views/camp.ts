@@ -1,8 +1,8 @@
 // Acampamento (vida fora das batalhas).
-import { ATTR_INFO, BAG_SIZE, ENEMIES, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, SKILLS, type ServiceDef, type ServiceKind } from '../../data';
+import { ATTR_INFO, BAG_SIZE, BET, BETS, ENEMIES, GOALS, ITEMS, MAX_SKILLS, NPCS, REST_FREE, REST_PAID, RIVAL, SKILLS, type ServiceDef, type ServiceKind } from '../../data';
 import { isQuickItem } from '../../engine/combat';
 import { buyBlock } from '../../engine/items';
-import { arenaById, campOf, freeDays, isBossFight, learnBlock, maxHp, npcOf, playerBuild, restPrice, trainPrice, useBlock, type GameState, type RunState } from '../../state';
+import { arenaById, betBoost, campOf, foeName, freeDays, isBossFight, rivalFight, learnBlock, maxHp, npcOf, playerBuild, restPrice, trainPrice, useBlock, type GameState, type RunState } from '../../state';
 import { ATTRS, art, assetUrl, bar, bossTag, esc, goldPill, itemChip, skillList, stageLabel, statLine } from '../components';
 
 
@@ -38,7 +38,7 @@ const SERVICE_VIEWS: { [K in ServiceKind]: (run: RunState, svc: Extract<ServiceD
       const it = ITEMS[id];
       const full = buyBlock(run, id) === 'bag';
       const body = `<p>${it.use ? `<span class="cost">Consumível</span> · ` : ''}${it.desc}</p>${it.use ? '' : statDiff(run, { ...run, items: [...run.items, id] })}`;
-      return offerCard(id, it.name, body, full ? `Bolsa cheia (${BAG_SIZE})` : priceLabel(run, 'Comprar · ', it.price), { a: 'buy', v: id, disabled: full, poor: run.gold < it.price });
+      return offerCard(id, `${it.name}${it.relic ? ' <span class="chip relic">Relíquia</span>' : ''}`, body, full ? `Bolsa cheia (${BAG_SIZE})` : priceLabel(run, 'Comprar · ', it.price), { a: 'buy', v: id, disabled: full, poor: run.gold < it.price });
     }).join('');
   },
   inn: (run) => {
@@ -51,6 +51,19 @@ const SERVICE_VIEWS: { [K in ServiceKind]: (run: RunState, svc: Extract<ServiceD
     return offerCard('rest', paid ? 'Descansar no quarto' : 'Dormir no estábulo', body,
       `${paid ? `${price} ouro` : 'Grátis'}${dayNote(run)}`, { a: 'rest', disabled: freeDays(run) <= 0 });
   },
+  bookie: (run) => BETS.map((b) => {
+    const stakes = BET.stakes.map((st, i) => {
+      const mine = run.bet?.id === b.id && run.bet.stake === i;
+      const foe = st.boost ? `adversário +${Math.round(st.boost * 100)}%` : 'luta normal';
+      const label = mine ? 'Aposta feita' : run.gold < st.gold ? `Faltam ${st.gold - run.gold} ouro` : `${st.gold} → ${Math.round(st.gold * b.odds)} ouro`;
+      return `<button data-a="bet" data-v="bet:${b.id}:${i}" class="${run.gold < st.gold ? 'poor' : ''}${mine ? ' selected' : ''}" ${run.bet ? 'disabled' : ''}>${label}<small>${foe}</small></button>`;
+    }).join('');
+    return `<div class="sketch offer bet-offer">
+      ${art('gold', 'offer-art', '')}
+      <div><h3>Aposta: ${GOALS[b.goal].text}</h3><p>Na próxima luta. Paga ${b.odds}× o valor; quanto mais alto, mais forte o adversário. Fugir perde a aposta.</p></div>
+      <div class="bet-stakes">${stakes}</div>
+    </div>`;
+  }).join(''),
   trainer: (run, { attr: a }) => {
     const noDays = freeDays(run) <= 0;
     const info = ATTR_INFO[a];
@@ -146,7 +159,9 @@ export function campView(g: GameState, npc: string | null, line: string, news: s
       ${art(next.id, 'foe-preview', next.name, isBoss ? 'boss' : 'enemy')}
       <div class="next-info">
         <h3>Próxima luta ${run.encounter + 1}/${run.enemies.length}</h3>
-        <p><b>${next.name}</b>${isBoss ? ` ${bossTag('(CHEFE)')}` : ''}<span class="dim next-desc"> · ${next.desc}</span></p>
+        <p><b>${esc(foeName(run))}</b>${isBoss ? ` ${bossTag('(CHEFE)')}` : ''}${rivalFight(run) ? ` ${bossTag('(RIVAL)')}` : ''}<span class="dim next-desc"> · ${rivalFight(run)
+          ? `Já derrotou você. Patente ${run.rival!.rank}: mais forte, paga ${RIVAL.reward}× ouro e XP.` : next.desc}</span></p>
+        ${run.bet ? `<p class="small gold-text">Aposta de ${BET.stakes[run.bet.stake].gold} ouro: ${GOALS[BETS.find((b) => b.id === run.bet!.id)!.goal].text}${betBoost(run) ? ` · adversário +${Math.round(betBoost(run) * 100)}%` : ''}</p>` : ''}
         <p class="${free <= 2 ? 'warn' : 'dim'} small">${free <= 0 ? 'Último dia: hoje só resta lutar!' : `${free} dia(s) livre(s) antes do prazo.`}</p>
       </div>
       <button class="primary" data-a="fight">Ir para a arena · 1 dia</button>

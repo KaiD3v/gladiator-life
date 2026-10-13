@@ -17,6 +17,12 @@ export const SKILLS: Record<string, SkillDef> = {
   thousandCuts: {
     id: 'thousandCuts', name: 'Mil Cortes', desc: 'Golpe de Glória: 4 golpes de 0.8x com +30% de crítico. Exige a torcida em 100.', cost: 0, type: 'physical', power: 0.8, hits: 4, critBonus: 0.3, glory: true,
   },
+  // Chamado do aliado do ato (ActFeatures.ally): uma vez por luta, com a multidão a favor
+  taurosCharge: {
+    id: 'taurosCharge', name: 'Chamado de Tauros', desc: 'Tauros salta para a arena: golpe de 60 de força (antes da armadura), abala a postura e 50% de chance de atordoar. 1x por luta, exige multidão 60.',
+    cost: 0, type: 'physical', power: 2, ally: true, verb: 'chama Tauros, que investe contra',
+    effects: [{ status: 'stun', target: 'foe', turns: 1, chance: 0.5 }],
+  },
   // Veredito (luta comum, inimigo com 15% de vida ou menos)
   execute: { id: 'execute', name: 'Executar', desc: 'Encerra a luta: a multidão vibra e os patronos pagam mais. Contra chefes, só os que aceitam julgamento.', cost: 0, type: 'verdict' },
   spare: { id: 'spare', name: 'Poupar', desc: 'Encerra a luta e deixa o inimigo vivo: menos ouro, mais experiência. Contra chefes, só os que aceitam julgamento.', cost: 0, type: 'verdict' },

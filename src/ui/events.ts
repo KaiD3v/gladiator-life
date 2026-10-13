@@ -44,6 +44,7 @@ const ACTIONS: Record<string, (v: string) => GameAction | GameAction[] | void> =
     return { type: 'talk', npc: v || null };
   },
   buy: (v) => serve(v),
+  bet: (v) => serve(v),
   use: (v) => ({ type: 'use', itemId: v }),
   train: () => serve('train'),
   learn: (v) => serve(v),

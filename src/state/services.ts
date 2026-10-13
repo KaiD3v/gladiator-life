@@ -1,6 +1,6 @@
 // Serviços do acampamento: o que cada tipo de NPC faz (ServiceDef em data/types.ts). Todos com a mesma interface, então
 // um NPC novo é só dado (data/npcs.ts) e um tipo novo de serviço é uma entrada aqui (e a sua vitrine em ui/views/camp.ts).
-import { ITEMS, REST_FREE, REST_PAID, SKILLS, type NpcReaction, type ServiceDef, type ServiceKind } from '../data';
+import { BET, BETS, ITEMS, REST_FREE, REST_PAID, SKILLS, type NpcReaction, type ServiceDef, type ServiceKind } from '../data';
 import { acquireItem, buyBlock, withMaxHpGrowth } from '../engine/items';
 import { freeDays, learnBlock, maxHp, restPrice, trainPrice } from './run';
 import type { RunState } from './types';
@@ -68,7 +68,22 @@ const trainer: Service<Extract<ServiceDef, { kind: 'trainer' }>> = (run, { attr 
   return 'deal';
 };
 
-export const SERVICES: { [K in ServiceKind]: Service<Extract<ServiceDef, { kind: K }>> } = { shop, inn, trainer };
+/**
+ * Apostas: `value` = 'bet:<id em BETS>:<índice em BET.stakes>'. Uma por vez, paga ao fim da próxima luta (state/campaign.ts);
+ * valor mais alto fortalece o adversário dessa luta (state/run.ts, startFight).
+ */
+const bookie: Service<Extract<ServiceDef, { kind: 'bookie' }>> = (run, _svc, value) => {
+  const [tag, id, i] = value.split(':');
+  const bet = BETS.find((b) => b.id === id), stake = BET.stakes[Number(i)];
+  if (tag !== 'bet' || !bet || !stake || !/^\d+$/.test(i)) return 'skip';
+  if (run.bet) return 'denied';
+  if (run.gold < stake.gold) return 'poor';
+  run.gold -= stake.gold;
+  run.bet = { id: bet.id, stake: Number(i) };
+  return 'deal';
+};
+
+export const SERVICES: { [K in ServiceKind]: Service<Extract<ServiceDef, { kind: K }>> } = { shop, inn, trainer, bookie };
 
 /** Primeiro serviço do NPC que aceita `value` (um NPC pode ter vários). */
 export function provide(run: RunState, services: ServiceDef[], value: string): NpcReaction | 'skip' {

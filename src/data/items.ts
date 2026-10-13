@@ -13,12 +13,15 @@ export const ITEMS: Record<string, ItemDef> = {
   venomFlask: { id: 'venomFlask', name: 'Frasco de Peçonha', price: 45, desc: 'Golpes físicos aplicam veneno 2.', perks: { poisonOnHit: 2 } },
   ritualBandage: { id: 'ritualBandage', name: 'Bandagem Ritual', price: 50, desc: 'Recupera 3 de vida por rodada.', perks: { hpRegen: 3 } },
   warHorn: { id: 'warHorn', name: 'Trompa de Guerra', price: 45, desc: 'Contra-ataca 40% do ataque ao defender.', perks: { counter: 0.4 } },
-  // Contrabando do Ato II (a Sabina, na Subura, só vende a partir dele)
-  praetorianGladius: { id: 'praetorianGladius', name: 'Gládio Pretoriano', price: 110, act: 1, desc: '+6 de ataque.', mods: { atk: 6 } },
-  praetorianScutum: { id: 'praetorianScutum', name: 'Escudo Pretoriano', price: 110, act: 1, desc: '+6 de defesa.', mods: { def: 6 } },
-  lionMane: { id: 'lionMane', name: 'Juba de Leão', price: 120, act: 1, desc: '+40 de vida máxima (e cura 40).', mods: { maxHp: 40 } },
-  augurEye: { id: 'augurEye', name: 'Olho do Áugure', price: 120, act: 1, desc: '+7 de magia e +2 de energia máxima.', mods: { mag: 7, maxEnergy: 2 } },
-  laurelCrown: { id: 'laurelCrown', name: 'Coroa de Louros', price: 130, act: 1, desc: '+10% de crítico e crítico 0.5x mais forte.', mods: { crit: 0.1, critMult: 0.5 } },
+  // Relíquias do Ato II (contrabando da Sabina, na Subura): efeitos com gatilho, não só números
+  retiariusNet: { id: 'retiariusNet', name: 'Rede do Retiário', price: 110, act: 1, relic: true, desc: 'No início de cada luta, 50% de chance de atordoar o adversário.', perks: { openingStun: 0.5 } },
+  crocTooth: { id: 'crocTooth', name: 'Dente de Crocodilo', price: 110, act: 1, relic: true, desc: '+30% de dano contra alvo envenenado ou queimado.', perks: { dotHunter: 0.3 } },
+  praetorianGladius: { id: 'praetorianGladius', name: 'Gládio Pretoriano', price: 110, act: 1, relic: true, desc: '+3 de ataque e +30% de dano extra contra Desequilibrado.', mods: { atk: 3 }, perks: { brokenHunter: 0.3 } },
+  praetorianScutum: { id: 'praetorianScutum', name: 'Escudo Pretoriano', price: 120, act: 1, relic: true, desc: '+3 de defesa. Defender um golpe pesado devolve 50% do golpe a quem atacou.', mods: { def: 3 }, perks: { blockReflect: 0.5 } },
+  lionMane: { id: 'lionMane', name: 'Juba de Leão', price: 120, act: 1, relic: true, desc: '+30 de vida máxima. Abaixo de 30% de vida (1x por luta): guarda por 2 rodadas e regeneração.', mods: { maxHp: 30 }, perks: { rally: 1 } },
+  augurEye: { id: 'augurEye', name: 'Olho do Áugure', price: 100, act: 1, relic: true, desc: '+6 de magia. Todos os pontos fracos do adversário começam revelados.', mods: { mag: 6 }, perks: { insight: 1 } },
+  laurelCrown: { id: 'laurelCrown', name: 'Coroa de Louros', price: 120, act: 1, relic: true, desc: '+5% de crítico. Cada crítico rende +5 de favor da multidão.', mods: { crit: 0.05 }, perks: { critCrowd: 5 } },
+  tideAnchor: { id: 'tideAnchor', name: 'Âncora das Marés', price: 100, act: 1, relic: true, desc: '+2 de defesa. Imune aos efeitos dos perigos da arena (onda, jaulas, areia, brasas); flechas ainda acertam.', mods: { def: 2 }, perks: { anchor: 1 } },
   // Consumíveis (bolsa). Defesa: agem primeiro na rodada. Ataque: seguem a velocidade.
   potion: { id: 'potion', name: 'Poção de Vida', price: 20, desc: 'Cura 30 de vida. Age primeiro. Também pode ser bebida no acampamento.', use: { heal: 30 } },
   tonic: { id: 'tonic', name: 'Tônico', price: 15, desc: 'Recupera 6 de energia. Age primeiro.', use: { energy: 6 } },

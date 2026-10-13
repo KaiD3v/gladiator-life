@@ -43,7 +43,7 @@ describe('save', () => {
   });
 
   it('save válido é preservado, inclusive a história', () => {
-    const save = { version: 3, xp: 250, runs: 3, wins: 1, best: 2, story: [] };
+    const save = { version: 3, xp: 250, runs: 3, wins: 1, best: 2, story: [], rivals: {} };
     expect(parseSave(JSON.stringify(save))).toEqual({ save });
     const withStory = start().save;
     expect(withStory.story).toHaveLength(1);
@@ -52,7 +52,7 @@ describe('save', () => {
 
   it('save v2 (antes dos atos) migra mantendo tudo, sem história', () => {
     const r = parseSave(JSON.stringify({ version: 2, xp: 250, runs: 3, wins: 1, best: 2 }));
-    expect(r).toEqual({ save: { version: 3, xp: 250, runs: 3, wins: 1, best: 2, story: [] } });
+    expect(r).toEqual({ save: { version: 3, xp: 250, runs: 3, wins: 1, best: 2, story: [], rivals: {} } });
   });
 
   it('história inválida é descartada com aviso, mas o nível fica', () => {
@@ -68,7 +68,7 @@ describe('save', () => {
   it('save v1 (arenas desbloqueáveis) migra mantendo XP e runs', () => {
     const r = parseSave(JSON.stringify({ version: 1, xp: 250, unlocked: ['pit', 'colosseum'], runs: 3, wins: 2 }));
     expect(r.error).toBeUndefined();
-    expect(r.save).toEqual({ version: 3, xp: 250, runs: 3, wins: 0, best: 1, story: [] });
+    expect(r.save).toEqual({ version: 3, xp: 250, runs: 3, wins: 0, best: 1, story: [], rivals: {} });
   });
 });
 

@@ -1,6 +1,7 @@
 // Regras de combate. Funções puras sobre CombatState: nenhuma dependência de DOM.
 import {
-  ATTR_HEAL_BONUS, ATTR_SKILL_BONUS, CROWD, ITEMS, LOOT, POSTURE, SKILLS, STATUS_INFO, WEAK_INFO, type Attrs, type EnemyDef, type HazardDef, type Perks, type SkillDef, type Stats, type StatusId, type WeakTag,
+  ALLY, ATTR_HEAL_BONUS, ATTR_SKILL_BONUS, CROWD, GOAL, GOALS, ITEMS, LOOT, POSTURE, RELIC, SKILLS, STATUS_INFO, WEAK_INFO,
+  type Attrs, type EnemyDef, type GoalId, type HazardDef, type Perks, type SkillDef, type Stats, type StatusId, type WeakTag,
 } from '../data';
 import { rand } from '../core/rng';
 
@@ -20,6 +21,7 @@ export interface Fighter {
   bag: string[]; // consumíveis (ids de ITEMS); o que sobrar do inimigo cai para o jogador
   pattern: string[]; // ciclo de ações do inimigo (vazio no jogador)
   glory?: string; // Golpe de Glória do jogador (id de habilidade)
+  ally?: string; // Chamado do aliado do ato (id de habilidade; ActFeatures.ally)
   hp: number;
   energy: number;
   statuses: Status[];
@@ -87,9 +89,21 @@ export interface CombatState {
   verdict?: 'executed' | 'spared';
   hazard?: HazardDef; // perigo da arena
   hazardIn: number; // rodadas até o perigo agir (1 = no fim desta rodada); 0 sem perigo
+  demand?: GoalId; // Exigência da Plebe desta luta (ActFeatures.demands)
+  demandMet?: boolean; // conferida na vitória
+  feats?: Feat[]; // o que o jogador fez na luta (para objetivos); ausente em lutas gravadas antes dos objetivos
+  allyUsed?: boolean; // Chamado do aliado já usado nesta luta
+  rallied?: boolean; // Juba de Leão já agiu nesta luta
 }
 
-export const NO_PERKS: Perks = { counter: 0, lifesteal: 0, thorns: 0, poisonOnHit: 0, hpRegen: 0 };
+/** Feitos do jogador numa luta, para conferir objetivos. */
+export type Feat = 'item' | 'broken' | 'perfectBlock';
+const feat = (s: CombatState, f: Feat) => { if (!(s.feats ??= []).includes(f)) s.feats.push(f); };
+
+export const NO_PERKS: Perks = {
+  counter: 0, lifesteal: 0, thorns: 0, poisonOnHit: 0, hpRegen: 0,
+  openingStun: 0, dotHunter: 0, brokenHunter: 0, critCrowd: 0, rally: 0, insight: 0, blockReflect: 0, anchor: 0,
+};
 
 export function makeFighter(
   name: string, side: Side, stats: Stats, perks: Perks, attrs: Attrs, skills: string[], hp = stats.maxHp, pattern: string[] = [],
@@ -102,19 +116,42 @@ export function makeFighter(
   };
 }
 
-/** `known`: pontos fracos já descobertos em lutas anteriores da run (bestiário). */
-export function createCombat(player: Fighter, enemy: Fighter, seed: number, opts: { boss?: boolean; trial?: boolean; known?: WeakTag[]; hazard?: HazardDef } = {}): CombatState {
+/**
+ * `known`: pontos fracos já descobertos em lutas anteriores da run (bestiário). `demand`: Exigência da Plebe da luta.
+ * `note`: aviso do sistema logo após a apresentação (ex.: adversário fortalecido por aposta).
+ */
+export function createCombat(
+  player: Fighter, enemy: Fighter, seed: number, opts: { boss?: boolean; trial?: boolean; known?: WeakTag[]; hazard?: HazardDef; demand?: GoalId; note?: string } = {},
+): CombatState {
   const s: CombatState = {
     round: 1, player, enemy, log: [], outcome: null, seed, dealt: 0, taken: 0, intent: { action: 'attack' }, step: 0,
     boss: !!opts.boss, ...(opts.trial ? { trial: true } : {}), crowd: CROWD.start, lastAction: null, streak: 0, lastStandUsed: false, lastStandNote: false,
     revealed: enemy.weak.filter((t) => opts.known?.includes(t)), phased: false, barked: [],
-    hazard: opts.hazard, hazardIn: opts.hazard?.first ?? 0,
+    hazard: opts.hazard, hazardIn: opts.hazard?.first ?? 0, feats: [], ...(opts.demand ? { demand: opts.demand } : {}),
   };
   s.intent = planIntent(s);
   log(s, `${player.name} enfrenta ${enemy.name}!`, 'system');
+  if (opts.note) log(s, opts.note, 'system');
   bark(s, 'start');
+  if (s.demand) log(s, `A multidão exige: ${GOALS[s.demand].text}.`, 'system');
+  opening(s);
   if (s.hazard && s.hazardIn === 1) log(s, s.hazard.warn, 'system');
   return s;
+}
+
+/** Relíquias que agem no início da luta. O sorteio só acontece com a relíquia (lutas sem ela mantêm a mesma sequência). */
+function opening(s: CombatState) {
+  const p = s.player, e = s.enemy;
+  if (p.perks.insight && e.weak.some((t) => !s.revealed.includes(t))) {
+    s.revealed = [...e.weak];
+    log(s, `Olho do Áugure: pontos fracos de ${e.name} revelados.`, 'system');
+  }
+  if (p.perks.openingStun) {
+    if (rand(s) < p.perks.openingStun) {
+      addStatus(e, 'stun', 1, 0);
+      log(s, `Rede do Retiário: ${e.name} começa enroscado e perde a vez!`, 'status', { target: 'enemy', sfx: 'status' });
+    } else log(s, `${e.name} escapa da rede.`, 'status');
+  }
 }
 
 /** Veredito liberado: luta comum (ou chefe julgável), inimigo vivo com até CROWD.verdictHp de vida. */
@@ -126,7 +163,8 @@ export const verdictAvailable = (s: CombatState) =>
  * da bolsa (um por tipo, na ordem em que entraram) e, com o estado de combate, Executar/Poupar quando o veredito está liberado.
  */
 export const actionsFor = (f: Fighter, s?: CombatState): string[] => [
-  'attack', ...f.skills, ...(f.glory ? [f.glory] : []), 'defend', 'flee', ...new Set(f.bag), ...(s && verdictAvailable(s) ? ['execute', 'spare'] : []),
+  'attack', ...f.skills, ...(f.glory ? [f.glory] : []), ...(f.ally ? [f.ally] : []), 'defend', 'flee', ...new Set(f.bag),
+  ...(s && verdictAvailable(s) ? ['execute', 'spare'] : []),
 ];
 
 export const isItem = (id: string) => !!ITEMS[id]?.use;
@@ -136,7 +174,7 @@ export const isQuickItem = (id: string) => isItem(id) && !ITEMS[id].use!.effects
 export function canUse(s: CombatState, id: string): boolean {
   if (s.outcome || !actionsFor(s.player, s).includes(id)) return false;
   const sk = SKILLS[id];
-  return s.player.energy >= sk.cost && (!sk.glory || s.crowd >= 100);
+  return s.player.energy >= sk.cost && (!sk.glory || s.crowd >= 100) && (!sk.ally || (!s.allyUsed && s.crowd >= ALLY.crowdAt));
 }
 
 /** Estado da torcida para a UI. */
@@ -176,7 +214,7 @@ function judge(state: CombatState, id: string): CombatState {
   }
   s.outcome = 'victory';
   log(s, s.verdict === 'executed' ? `${s.enemy.name} foi derrotado!` : `${s.enemy.name} se rende.`, 'system', { sfx: 'victory' });
-  dropNote(s);
+  settle(s);
   return s;
 }
 
@@ -233,6 +271,8 @@ export function resolveRound(state: CombatState, playerAction: string): CombatSt
     act(s, actor, actor === s.player ? s.enemy : s.player, SKILLS[id]);
     if (actor === s.player) {
       const sk = SKILLS[id];
+      if (isItem(id)) feat(s, 'item');
+      if (sk.ally) s.allyUsed = true;
       if (sk.glory) gain(s, CROWD.gloryDrop - s.crowd);
       else {
         let d = 0;
@@ -241,7 +281,10 @@ export function resolveRound(state: CombatState, playerAction: string): CombatSt
         if (id === 'defend' && idleFoe) d += CROWD.coward;
         if (d) gain(s, d);
       }
-    } else if (SKILLS[id].windup && s.player.defending && s.player.hp > 0) gain(s, CROWD.perfectBlock);
+    } else if (SKILLS[id].windup && s.player.defending && s.player.hp > 0) {
+      gain(s, CROWD.perfectBlock);
+      feat(s, 'perfectBlock');
+    }
     reactions(s);
     checkEnd(s);
   }
@@ -349,8 +392,9 @@ function act(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef) {
       log(s, `${actor.name} está purificado.`, 'status', { target: actor.side, sfx: 'heal' });
     }
   } else {
-    for (let i = 0; i < (skill.hits ?? 1) && foe.hp > 0 && actor.hp > 0; i++) hit(s, actor, foe, skill);
+    for (let i = 0; i < (skill.hits ?? 1) && foe.hp > 0 && actor.hp > 0; i++) hit(s, actor, foe, skill, skill.verb);
     if (skill.glory && POSTURE.glory && actor === s.player && foe.hp > 0) strain(s, foe.maxPosture); // Golpe de Glória quebra a postura
+    if (skill.ally && actor === s.player && foe.hp > 0) strain(s, ALLY.strain); // o aliado abala a postura
   }
   for (const e of skill.effects ?? []) {
     const target = e.target === 'self' ? actor : foe;
@@ -396,17 +440,25 @@ function hit(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef, verb
   const physical = skill.type === 'physical';
   const weak = hasStatus(actor, 'weaken') ? 0.7 : 1;
   const attrBonus = skill.attr ? actor.attrs[skill.attr] * ATTR_SKILL_BONUS : 0;
-  let dmg = ((physical ? actor.stats.atk : actor.stats.mag) * (skill.power ?? 1) + attrBonus) * weak * (0.9 + rand(s) * 0.2);
+  const base = skill.ally ? ALLY.atk : physical ? actor.stats.atk : actor.stats.mag; // o aliado bate com a própria força
+  let dmg = (base * (skill.power ?? 1) + attrBonus) * weak * (0.9 + rand(s) * 0.2);
   dmg *= armor(physical ? foe.stats.def : foe.stats.def / 2);
   const crit = (skill.critIfPoisoned && hasStatus(foe, 'poison')) || rand(s) < actor.stats.crit + (skill.critBonus ?? 0);
   if (crit) dmg *= actor.stats.critMult;
-  if (hasStatus(foe, 'broken')) dmg *= 1 + POSTURE.brokenBonus; // Desequilibrado
+  if (hasStatus(foe, 'broken')) dmg *= 1 + POSTURE.brokenBonus + actor.perks.brokenHunter; // Desequilibrado (+ Gládio Pretoriano)
+  if (actor.perks.dotHunter && (hasStatus(foe, 'poison') || hasStatus(foe, 'burn'))) dmg *= 1 + actor.perks.dotHunter; // Dente de Crocodilo
   if (actor === s.player && s.crowd >= CROWD.ovationAt) dmg *= 1 + CROWD.ovationBonus; // ovação
   const amount = Math.max(1, Math.round(mitigate(foe, dmg)));
   damage(s, foe, amount);
+  // Escudo Pretoriano: defender o golpe pesado devolve parte do golpe (antes do bloqueio) a quem atacou
+  const reflect = skill.windup && foe.defending && foe.perks.blockReflect ? Math.max(1, Math.round(dmg * foe.perks.blockReflect)) : 0;
   const verb = verbOverride ?? (skill.id === 'attack' ? ATTACK_VERBS[(s.round + s.log.length) % ATTACK_VERBS.length] : `usa ${skill.name} em`);
   log(s, `${actor.name} ${verb} ${foe.name}: ${amount}${crit ? ' CRÍTICO!' : ''}${foe.defending ? ' (bloqueado)' : ''}`, actor.side, { target: foe.side, amount, crit, sfx: crit ? 'crit' : physical ? 'hit' : 'magic' });
-  if (crit) gain(s, actor === s.player ? CROWD.crit : CROWD.critTaken);
+  if (crit) gain(s, actor === s.player ? CROWD.crit + actor.perks.critCrowd : CROWD.critTaken); // Coroa de Louros: favor extra
+  if (reflect && actor.hp > 0) {
+    damage(s, actor, reflect);
+    log(s, `${foe.name} devolve o golpe com o escudo: ${reflect}`, foe.side, { target: actor.side, amount: reflect, sfx: 'block' });
+  }
   if (actor === s.player && foe.hp > 0) {
     if (physical ? foe.weak.includes('physical') : foe.weak.includes('magic')) strain(s, POSTURE.weakHit, physical ? 'physical' : 'magic');
     if (crit) { strain(s, POSTURE.crit); bark(s, 'playerCrit'); }
@@ -446,6 +498,7 @@ function strain(s: CombatState, n: number, id?: WeakTag | StatusId) {
   e.posture = Math.max(0, e.posture - n);
   if (e.posture > 0) return;
   addStatus(e, 'broken', POSTURE.brokenTurns, 0);
+  feat(s, 'broken');
   log(s, `${e.name} perde o equilíbrio!`, 'status', { target: 'enemy', sfx: 'crowd-roar' });
   gain(s, CROWD.broken);
 }
@@ -469,8 +522,14 @@ function bark(s: CombatState, key: 'start' | 'hurt' | 'low' | 'playerCrit') {
 
 /** Depois de cada ação: fase 2 do chefe (uma vez) e falas por vida. A troca de padrão só vale ao fim da rodada (step -1). */
 function reactions(s: CombatState) {
-  const e = s.enemy;
+  const e = s.enemy, p = s.player;
   if (s.outcome || e.hp <= 0) return;
+  if (p.perks.rally && !s.rallied && p.hp > 0 && p.hp <= p.stats.maxHp * RELIC.rallyAt) { // Juba de Leão
+    s.rallied = true;
+    addStatus(p, 'guard', RELIC.rallyGuard, 0);
+    addStatus(p, 'regen', RELIC.rallyTurns, Math.round(p.stats.maxHp * RELIC.rallyRegen));
+    log(s, `Juba de Leão: ${p.name} ruge e se firma (Guarda e Regeneração)!`, 'status', { target: 'player', sfx: 'crowd-roar' });
+  }
   const ph = e.phase2;
   if (ph && !s.phased && e.hp <= ph.at * e.stats.maxHp) {
     s.phased = true;
@@ -567,9 +626,10 @@ function hazardTick(s: CombatState) {
     return;
   }
   log(s, h.strike, 'system', { sfx: 'status' });
+  const safe = (f: Fighter) => f.defending || f.perks.anchor > 0; // Âncora das Marés: imune
   for (const f of [s.player, s.enemy]) {
     if (f.hp <= 0) continue;
-    if (f.defending) { log(s, `${f.name} se protege.`, 'status', { target: f.side, sfx: 'block' }); continue; }
+    if (safe(f)) { log(s, `${f.name} ${f.defending ? 'se protege' : 'segue firme (Âncora)'}.`, 'status', { target: f.side, sfx: 'block' }); continue; }
     for (const fx of h.effects ?? []) {
       addStatus(f, fx.status, fx.turns, fx.power ?? 0);
       log(s, `${f.name}: ${statusName(fx.status)} (${fx.turns} rod.)`, 'status', { target: f.side, sfx: 'status' });
@@ -600,7 +660,42 @@ function checkEnd(s: CombatState) {
   else return;
   const text = { victory: `${s.enemy.name} foi derrotado!`, defeat: `${s.player.name} caiu na arena.`, draw: 'Os dois caem ao mesmo tempo!' }[s.outcome];
   log(s, text, 'system', { sfx: s.outcome === 'victory' ? 'victory' : 'defeat' });
-  if (s.outcome === 'victory') dropNote(s);
+  if (s.outcome === 'victory') settle(s);
+}
+
+/** Objetivo cumprido nesta luta (vale de verdade só com a luta encerrada). Base das Exigências da Plebe e das apostas. */
+export function goalMet(goal: GoalId, s: CombatState): boolean {
+  if (s.outcome !== 'victory') return false;
+  const feats = s.feats ?? [];
+  switch (goal) {
+    case 'win': return true;
+    case 'noItems': return !feats.includes('item');
+    case 'broke': return feats.includes('broken');
+    case 'quick': return s.round <= GOAL.quickRounds;
+    case 'execute': return s.verdict === 'executed';
+    case 'perfectBlock': return feats.includes('perfectBlock');
+    case 'healthy': return s.player.hp >= s.player.stats.maxHp * GOAL.healthyAt;
+  }
+}
+
+/** Andamento da Exigência para a UI: cumprida, perdida (sem volta) ou em aberto. */
+export function demandView(s: CombatState): { goal: GoalId; state: 'done' | 'failed' | 'open' } | null {
+  const goal = s.demand;
+  if (!goal) return null;
+  if (s.outcome) return { goal, state: s.demandMet ? 'done' : 'failed' };
+  const feats = s.feats ?? [];
+  if ((goal === 'broke' && feats.includes('broken')) || (goal === 'perfectBlock' && feats.includes('perfectBlock'))) return { goal, state: 'done' };
+  if ((goal === 'noItems' && feats.includes('item')) || (goal === 'quick' && s.round > GOAL.quickRounds)) return { goal, state: 'failed' };
+  return { goal, state: 'open' };
+}
+
+/** Vitória: confere a Exigência e anuncia o que o inimigo deixou cair. */
+function settle(s: CombatState) {
+  if (s.demand) {
+    s.demandMet = goalMet(s.demand, s);
+    log(s, s.demandMet ? 'Exigência cumprida! A multidão está satisfeita.' : 'A multidão não teve o que exigiu.', 'system', s.demandMet ? { sfx: 'crowd-roar' } : {});
+  }
+  dropNote(s);
 }
 
 /** Vitória: o registro anuncia o que o inimigo não usou. O que o jogador leva é escolhido depois (state/campaign.ts). */

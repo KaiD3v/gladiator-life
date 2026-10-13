@@ -33,7 +33,7 @@ describe('Ato II: O Juramento', () => {
     expect(g.screen.name === 'camp' && g.screen.news).toContain('Ato II: O Juramento');
     expect(campOf(g.run!).npcs).toEqual(['sabina', 'tauros', 'lyra', 'oren', 'marta']);
     expect(campOf(start().run!).npcs).toEqual(['cassio', 'brutus', 'lyra', 'oren', 'marta']);
-    expect(npcOf('sabina')).toMatchObject({ name: 'Sabina', art: 'npc-sabina', role: 'Mercadora da Subura' });
+    expect(npcOf('sabina')).toMatchObject({ name: 'Sabina', art: 'npc-sabina', services: [{ kind: 'shop' }, { kind: 'bookie' }] });
     expect(npcOf('tauros')).toMatchObject({ name: 'Tauros', art: 'npc-tauros', services: [{ kind: 'trainer', attr: 'str' }] });
     const talk = reduce(g, { type: 'talk', npc: 'sabina' }).screen;
     if (talk.name !== 'camp') throw new Error('saiu do acampamento');
