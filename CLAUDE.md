@@ -66,7 +66,8 @@ Tudo em `engine/combat.ts`, com os números em `data/balance.ts` (`CROWD`, `POST
 - **Atos e checkpoints**: `ACTS` (`data/arenas.ts`) agrupa as arenas; `ARENAS` é derivado (ids únicos entre atos).
   `SaveData.story[i]` é o herói (`RunState`) ao entrar no ato i: gravado em `startRun` (ato 0, apaga a história anterior) e
   ao vencer o último chefe de um ato (`afterCombat`, que segue direto para o próximo). Morrer encerra a run; `startAct`
-  (título/resumo) restaura o checkpoint com vida cheia, nível atual e semente nova. Rejogar um ato substitui só o checkpoint seguinte.
+  (título/resumo) restaura o checkpoint com vida cheia, nível atual e semente nova, e toca de novo a abertura do ato (`run-start` no Ato I,
+  `arena-enter` da primeira arena nos outros). Rejogar um ato substitui só o checkpoint seguinte.
   Na engrenagem (`ui/settings.ts`), com confirmação: "Recomeçar o Ato N" (`restartAct`) e "Escolher ato" (`abandon`, vai ao
   título); as duas encerram a run como derrota (o XP fica). Gladiador novo só pelo título.
   Cada ato tem o seu acampamento (`ActDef.camp`: nome, fundo e a lista de ids de `NPCS`, na ordem dos botões; `campOf`).

@@ -44,6 +44,13 @@ describe('Ato II: O Juramento', () => {
     expect(reduce(g, { type: 'service', npc: 'sabina', value: g.run!.shop[0] }).screen).toMatchObject({ npc: 'sabina' });
   });
 
+  it('recomeçar o Ato II volta à abertura do ato (cenas) antes do acampamento', () => {
+    const g = fightAs(toAct2()).g; // uma luta no Ato II
+    const r = reduce(g, { type: 'restartAct', seed: 3 });
+    expect(r.screen).toMatchObject({ name: 'scene', queue: ['act2-opening'], beat: 0, next: { name: 'camp' } });
+    expect(skip(r).run).toMatchObject({ arenaId: 'naumachia', encounter: 0, day: 1 });
+  });
+
   it('poupar Nerissa fica na run e no checkpoint seguinte, e toca a cena da clemência', () => {
     let g = toAct2();
     expect(g.save.story).toHaveLength(2);

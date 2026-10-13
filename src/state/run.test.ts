@@ -102,7 +102,7 @@ describe('transições', () => {
     const checkpoint = playing.save.story[0];
     playing = withRun(fightAs(playing, 'victory'), { gold: 999, items: ['chippedSword'] });
     const r = reduce(playing, { type: 'restartAct', seed: 1 });
-    expect(r.screen.name).toBe('camp');
+    expect(r.screen).toMatchObject({ name: 'scene', queue: ['prologue-ludus'], next: { name: 'camp' } }); // abertura do ato de novo
     expect(r.run).toMatchObject({ arenaId: 'pit', encounter: 0, day: 1, gold: checkpoint.gold, items: [] });
     expect(r.save).toMatchObject({ runs: 1, wins: 0 });
     expect(r.save.xp).toBe(playing.run!.xp);
@@ -177,7 +177,8 @@ describe('run completa, dias e fuga', () => {
     expect(g.save.story).toEqual([checkpoint]); // a história continua no ato 1
 
     const retry = reduce(g, { type: 'startAct', act: 0, seed: 7 });
-    expect(retry.screen.name).toBe('camp');
+    expect(retry.screen.name).toBe('scene');
+    expect(skip(retry).screen.name).toBe('camp');
     expect(retry.run).toMatchObject({ name: 'Spartacus', classId: 'warrior', arenaId: 'pit', titles: [], items: [], gold: START_GOLD, encounter: 0, day: 1, seed: expect.any(Number) });
     expect(retry.run!.level).toBe(levelOf(g.save.xp)); // o XP da tentativa conta
     expect(retry.run!.hp).toBe(maxHp(retry.run!));

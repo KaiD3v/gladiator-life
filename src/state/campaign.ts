@@ -64,7 +64,8 @@ export function startRun(g: GameState, a: ActionOf<'startRun'>): GameState {
 
 /**
  * Começa (ou recomeça, depois de cair) um ato já liberado a partir do checkpoint do herói: mesma build e ouro,
- * vida cheia, nível atual do legado e uma temporada nova sorteada pela semente da tentativa. Sem cenas: já foram vistas.
+ * vida cheia, nível atual do legado e uma temporada nova sorteada pela semente da tentativa. Toca de novo a abertura do
+ * ato (Ato I: chegada ao ludus; depois: chegada à primeira arena), que pode ser pulada.
  */
 export function startAct(g: GameState, a: ActionOf<'startAct'>): GameState {
   const checkpoint = g.save.story[a.act];
@@ -76,7 +77,9 @@ export function startAct(g: GameState, a: ActionOf<'startAct'>): GameState {
   run.hp = maxHp(run);
   const arena = arenaById(run.arenaId);
   const news = `${actName(a.act)}: ${ACTS[a.act].name}. De volta a ${arena.name}: ${ENEMIES[arena.boss].name} precisa cair até o dia ${arena.days}.`;
-  return { ...g, run, screen: { name: 'camp', npc: null, line: '', news }, notice: undefined };
+  const camp: Screen = { name: 'camp', npc: null, line: '', news };
+  const opening = a.act === 0 ? scenesFor({ on: 'run-start' }) : scenesFor({ on: 'arena-enter', arena: arena.id }, run.seen, run.verdicts);
+  return { ...g, run, screen: opening.length ? scene(opening, camp) : camp, notice: undefined };
 }
 
 export function act(g: GameState, a: ActionOf<'act'>): GameState {

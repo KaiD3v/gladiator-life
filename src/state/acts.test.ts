@@ -43,6 +43,7 @@ describe('atos', () => {
     g = fightAs({ ...g, run: { ...g.run!, gold: 999 } }, 'defeat');
     expect(g.screen.name).toBe('summary');
     const retry = reduce(g, { type: 'startAct', act: 1, seed: 7 });
+    expect(retry.screen).toMatchObject({ name: 'scene', queue: ['transfer-colosseum'] }); // abertura do ato (chegada à 1ª arena)
     expect(retry.run).toMatchObject({
       arenaId: 'colosseum', titles: ['pit'], items: ['chippedSword'], skills: ['shieldBash', 'ironStance', 'warCry'], gold: checkpoint.gold, encounter: 0, day: 1,
     });
@@ -55,7 +56,7 @@ describe('atos', () => {
     for (let i = 0; i < 4; i++) g = fightAs(g, 'victory');
     const first = g.save.story;
     g = fightAs(g, 'defeat');
-    g = reduce(g, { type: 'startAct', act: 0, seed: 9 }); // volta ao ato 1 com o mesmo herói
+    g = skip(reduce(g, { type: 'startAct', act: 0, seed: 9 })); // volta ao ato 1 com o mesmo herói
     expect(g.run!.arenaId).toBe('pit');
     for (let i = 0; i < 4; i++) g = fightAs(g, 'victory');
     expect(g.save.story[0]).toBe(first[0]);
