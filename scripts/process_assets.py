@@ -25,6 +25,8 @@ SIZES = {
     **{k: 128 for k in ['victory', 'defeat', 'chest']},
     **{f'st-{k}': 32 for k in ['poison', 'burn', 'stun', 'guard', 'weaken', 'regen', 'defend', 'flee']},
     **{f'npc-{k}': 160 for k in ['merchant', 'str', 'dex', 'wis', 'inn', 'general', 'mother', 'father', 'tauros', 'sabina', 'herald', 'varro']},
+    **{f'fx-{k}': 160 for k in ['crowdthrow', 'braziers', 'cages', 'praetorians']},
+    **{f'fx-{k}': 240 for k in ['sandstorm', 'tide']},
     **{k: 32 for k in ['attr-str', 'attr-dex', 'attr-wis', 'gold', 'day']},
 }
 # Sprites gerados olhando para o lado errado (jogador deve olhar à direita, inimigos à esquerda).

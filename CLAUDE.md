@@ -43,6 +43,8 @@ Tudo em `engine/combat.ts`, com os números em `data/balance.ts` (`CROWD`, `POST
 - **Chefes**: `phase2` (troca de padrão e fala ao cruzar a vida indicada) e `barks` (falas, `LogEntry.bark`).
 - **Perigo da arena** (`ArenaDef.hazard`, `hazardView`): avisado uma rodada antes, age no fim da rodada; Defender protege
   dos efeitos de status. `gift` cura e `harm` fere o favorito da multidão (o jogador com favor ≥ `ovationAt`, senão o inimigo).
+  O golpe marca `LogEntry.hazard` (id) e `target` (o favorito, se `gift`/`harm`): a UI toca `sfx/hazard-<id>.mp3` e mostra
+  `fx-<id>` no palco (keyframe por id em `style.css`; sem keyframe, `hzPop` no centro). Perigo novo precisa dos dois arquivos (`story.test.ts`).
 - **Camadas por ato** (`ActDef.features`; cada ato liga as suas, números em `balance.ts`):
   - **Relíquias** (Ato II): itens `relic` com perks de gatilho (`openingStun`, `dotHunter`, `brokenHunter`, `critCrowd`, `rally`,
     `insight`, `blockReflect`, `anchor`) aplicados em `combat.ts` (`opening`, `hit`, `reactions`, `hazardTick`). Perk novo:

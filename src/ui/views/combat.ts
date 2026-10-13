@@ -173,7 +173,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
     banner = `<div class="turn-banner mine" aria-live="polite">Rodada ${c.round} · <b>Sua vez</b>${stunned}</div>`;
   }
 
-  const shake = !!fresh && (fresh.crit || (fresh.sfx === 'crowd-roar' && fresh.target === 'enemy'));
+  const shake = !!fresh && (fresh.crit || !!fresh.hazard || (fresh.sfx === 'crowd-roar' && fresh.target === 'enemy'));
   const stageClass = `stage${shake ? ' shake' : ''}${pHp > 0 && pHp <= c.player.stats.maxHp * 0.25 ? ' lowhp' : ''}`;
   const iv = animating || c.outcome ? null : intentView(c);
   const enemyStunned = hasStatus(c.enemy, 'stun');
@@ -241,6 +241,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
       ${actor(c.player, pHp, fresh, run.classId, run.classId)}
       ${actor(c.enemy, eHp, fresh, run.enemies[run.encounter], isBoss ? 'boss' : 'enemy', isBoss, c.phased)}
       ${fresh?.ally && c.player.ally ? `<div class="ally-charge" aria-hidden="true">${art(SKILLS[c.player.ally].art ?? '', 'sprite')}</div>` : ''}
+      ${fresh?.hazard ? `<div class="hazard-fx ${fresh.hazard}${fresh.target ? ` to-${fresh.target}` : ''}" aria-hidden="true">${art(`fx-${fresh.hazard}`, 'sprite')}</div>` : ''}
       ${bubble(c, fresh, animating)}
       ${animating ? '' : hazardBadge(c)}
       ${iv ? intentBadge(iv, enemyStunned) : ''}

@@ -21,6 +21,7 @@ const REDUCED = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const STEP_MS = REDUCED ? 120 : 520;
 const CRIT_EXTRA_MS = REDUCED ? 0 : 250; // pausa no golpe crítico (hit-stop)
 const ALLY_EXTRA_MS = REDUCED ? 0 : 500; // tempo para o aliado atravessar o palco
+const HAZARD_EXTRA_MS = REDUCED ? 0 : 400; // tempo para o efeito do perigo da arena cruzar o palco
 
 let g: GameState = boot();
 /** Quantas entradas do log já foram reveladas na animação da rodada; null = nada animando (entrada liberada). */
@@ -84,7 +85,7 @@ function animateFrom(start: number) {
     if (e.sfx) playSfx(e.sfx);
     if (e.crit && e.kind === 'player') playSfx('crowd-gasp');
     render();
-    setTimeout(step, STEP_MS + (e.crit ? CRIT_EXTRA_MS : 0) + (e.ally ? ALLY_EXTRA_MS : 0));
+    setTimeout(step, STEP_MS + (e.crit ? CRIT_EXTRA_MS : 0) + (e.ally ? ALLY_EXTRA_MS : 0) + (e.hazard ? HAZARD_EXTRA_MS : 0));
   };
   step();
 }

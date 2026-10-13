@@ -11,3 +11,12 @@ dot.mp3      Short acidic sizzle and hiss, poison burning, quick bubbling crackl
 flee.mp3     Quick running footsteps on sand fading away, fast cloth whoosh
 victory.mp3  Roman arena crowd erupting in cheers with a short triumphant brass horn fanfare
 defeat.mp3   Armored body collapsing onto sand with a heavy thud, sword dropping, crowd groaning in disappointment
+ally-charge.mp3          Massive bull-man gladiator charging across a dusty arena: short deep bull snort and roar, heavy pounding hooves rushing in fast, then a brutal bone-crunching body slam impact with metal armor clank at the end. Punchy, cinematic, retro game sound effect, no music.
+
+Perigos da arena (LogEntry.hazard; arquivo hazard-<id>.mp3, id de ArenaDef.hazard). Tratamento: silêncio interno cortado (silenceremove) e pico normalizado em -1 dB.
+hazard-sandstorm.mp3     Sudden violent desert wind gust sweeping across an arena, loud whoosh with sand grains hissing and pattering on armor, short and punchy, retro game sound effect, no music.
+hazard-crowdthrow.mp3    Roman arena crowd cheering as they throw bread and fruit into the arena, a few soft thuds and squelches of fruit landing on sand, short and lively, retro game sound effect, no music.
+hazard-braziers.mp3      Iron fire braziers flaring up with a loud roaring fire whoosh, then crackling embers and sparks scattering and sizzling on sand, short, retro game sound effect, no music.
+hazard-tide.mp3          A large lake wave surging and crashing over a flooded stone arena, heavy water splash and rushing water, short and powerful, retro game sound effect, no music.
+hazard-cages.mp3         Heavy iron cage gate grinding open, immediately followed by a fierce big cat roar and a snarling lunging bite, short, retro game sound effect, no music.
+hazard-praetorians.mp3   A volley of arrows released at once from many bows, sharp twangs, arrows whistling through the air and thudding into sand and a shield, short, retro game sound effect, no music.

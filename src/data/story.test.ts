@@ -5,6 +5,7 @@ import { SCENES, SPEAKERS } from './story';
 
 const ASSETS = new Set(Object.keys(import.meta.glob('../../public/assets/*.webp')).map((p) => p.slice('../../public/assets/'.length, -'.webp'.length)));
 const asset = (name: string) => ASSETS.has(name);
+const SFX = new Set(Object.keys(import.meta.glob('../../public/audio/sfx/*.mp3')).map((p) => p.slice('../../public/audio/sfx/'.length, -'.mp3'.length)));
 
 /** Avança fala a fala até sair da fila de cenas; devolve as cenas vistas na ordem. */
 function watch(g: GameState): { g: GameState; seen: string[] } {
@@ -35,6 +36,13 @@ describe('dados da história', () => {
     const amb = new Set(Object.keys(import.meta.glob('../../public/audio/amb/*.mp3')).map((p) => p.slice('../../public/audio/amb/'.length, -'.mp3'.length)));
     for (const sc of Object.values(SCENES)) {
       for (const a of [sc.ambience, ...sc.beats.map((b) => b.ambience)]) if (a) expect(amb.has(a), `${sc.id}: ${a}`).toBe(true);
+    }
+  });
+
+  it('todo perigo de arena tem efeito visual (fx-<id>) e som (sfx/hazard-<id>.mp3)', () => {
+    for (const a of ARENAS) {
+      expect(asset(`fx-${a.hazard.id}`), `fx-${a.hazard.id}`).toBe(true);
+      expect(SFX.has(`hazard-${a.hazard.id}`), `hazard-${a.hazard.id}`).toBe(true);
     }
   });
 

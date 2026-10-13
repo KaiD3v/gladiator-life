@@ -267,6 +267,25 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; user-select: 
 }
 @media (prefers-reduced-motion: reduce) { .ally-charge { animation: none; translate: 40cqw 0; } }
 
+/* Perigo da arena (LogEntry.hazard): fx-<id> no palco durante o golpe. Perigo sem keyframe próprio usa hzPop no centro. */
+.hazard-fx { position: absolute; left: 0; top: 0; z-index: 1; pointer-events: none; --x: 40cqw; translate: var(--x) 20cqh; animation: hzPop 0.9s steps(9) forwards; }
+.hazard-fx .sprite { display: block; height: clamp(40px, 42cqh, 170px); width: auto; filter: drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.5)); }
+.hazard-fx.to-player { --x: 12cqw; }
+.hazard-fx.to-enemy { --x: 62cqw; }
+.hazard-fx.sandstorm, .hazard-fx.tide { animation-name: hzSweep; --y: 15cqh; }
+.hazard-fx.tide { --y: 35cqh; }
+.hazard-fx.sandstorm .sprite, .hazard-fx.tide .sprite { height: clamp(56px, 62cqh, 240px); }
+.hazard-fx.crowdthrow, .hazard-fx.praetorians, .hazard-fx.braziers { animation-name: hzFall; }
+.hazard-fx.cages { animation-name: hzLeap; }
+.hazard-fx.crowdthrow .sprite, .hazard-fx.praetorians .sprite, .hazard-fx.braziers .sprite { height: clamp(48px, 55cqh, 210px); }
+.hazard-fx.praetorians .sprite { filter: drop-shadow(0 0 2px #fff4d6) drop-shadow(2px 3px 0 rgba(0, 0, 0, 0.5)); }
+.hazard-fx.braziers .sprite { filter: drop-shadow(0 0 4px #ffb347); }
+@keyframes hzPop { from { opacity: 0; scale: 0.4; } 30% { opacity: 1; scale: 1.1; } 75% { opacity: 1; scale: 1; } to { opacity: 0; } }
+@keyframes hzSweep { from { translate: -100% var(--y); opacity: 0; } 20%, 80% { opacity: 1; } to { translate: 100cqw var(--y); opacity: 0; } }
+@keyframes hzFall { from { translate: calc(var(--x) + 22cqw) -100%; opacity: 0; } 20% { opacity: 1; } 70% { translate: var(--x) 26cqh; opacity: 1; } to { translate: var(--x) 30cqh; opacity: 0; } }
+@keyframes hzLeap { from { translate: -100% 40cqh; opacity: 0; } 15% { opacity: 1; } 50% { translate: 35cqw 5cqh; } 85% { opacity: 1; } to { translate: 100cqw 40cqh; opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .hazard-fx { animation: none; translate: var(--x) 20cqh; } }
+
 .summary-art { width: auto; height: clamp(48px, 12dvh, 128px); margin: 0 auto -6px; display: block; filter: drop-shadow(3px 4px 0 rgba(0, 0, 0, 0.6)); }
 
 @keyframes bob { 50% { transform: translateY(-3px); } }

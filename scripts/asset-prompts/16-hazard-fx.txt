@@ -1,0 +1,11 @@
+STYLE (apply to every image): medieval/ancient-Roman gladiator fantasy, 16-bit SNES-era pixel art, crisp hard-edged pixels, no anti-aliasing, no blur, limited warm palette (bronze, rust red, bone, dark brown) with dark outlines, dramatic lighting.
+Each subject is a single combat EFFECT sprite (no characters, no people), centered, fully visible with margin, on a plain solid pure magenta #FF00FF background (no shadow on the background, no ground, no text, no frame). Never use magenta or pink inside the subject.
+These are arena-hazard effects drawn over the battle stage, so keep the shapes bold and readable at small size.
+Files:
+- fx-sandstorm.png: a wide horizontal gust of swirling sand and dust blowing from left to right, ochre and pale tan streaks with curling wind lines and flying grit, wider than tall.
+- fx-crowdthrow.png: a loose bunch of provisions flying through the air as if thrown by a crowd: a round bread loaf, two red apples, a bunch of purple grapes, a small leather wineskin and a laurel sprig, slightly scattered, with small motion streaks.
+- fx-braziers.png: a burst spray of glowing embers and small flaming coals flying outward, bright orange and yellow cores with dark red edges and a few thin smoke wisps.
+- fx-tide.png: a big curling lake wave crest breaking from left to right, deep teal and blue water with white foam and spray droplets, wider than tall.
+- fx-cages.png: a snarling leopard leaping to the RIGHT in mid-air, claws out and jaws open, spotted golden fur, a broken iron chain trailing from its collar.
+- fx-praetorians.png: a volley of five arrows falling diagonally downward to the LEFT, parallel and slightly staggered, iron arrowheads, wooden shafts with red-dyed fletching, faint motion streaks behind them.
+Use your image generation tool once per file. After each generation copy the generated PNG into the current directory with the EXACT filename given. Do not post-process, resize or edit the images. Do not create any other files. At the end list the files you saved.

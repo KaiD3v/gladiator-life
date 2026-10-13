@@ -45,6 +45,7 @@ describe('perigo da arena', () => {
     const hit = fav(80, 'attack');
     expect(hit.log.some((l) => l.text === 'Flechas: Herói -50')).toBe(true);
     expect(fav(80, 'defend').log.some((l) => l.text.startsWith('Flechas: Herói'))).toBe(false);
+    expect(hit.log.find((l) => l.hazard)).toMatchObject({ text: 'golpe', hazard: 'x', sfx: 'hazard-x', target: 'player' }); // a UI mira o efeito no favorito
     expect(fav(10, 'attack', 'attack').log.some((l) => l.text === 'Flechas: Alvo -1000')).toBe(true);
     expect(fav(10, 'attack', 'defend').log.some((l) => l.text.startsWith('Flechas: Alvo'))).toBe(false);
   });

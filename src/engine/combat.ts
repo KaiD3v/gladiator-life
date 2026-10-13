@@ -7,7 +7,7 @@ import { rand } from '../core/rng';
 
 export type Side = 'player' | 'enemy';
 export type Outcome = 'victory' | 'defeat' | 'draw' | 'fled';
-export type Sfx = 'hit' | 'crit' | 'magic' | 'block' | 'heal' | 'status' | 'dot' | 'flee' | 'victory' | 'defeat' | 'windup' | 'crowd-roar' | 'crowd-gasp' | 'crowd-boo' | 'ally-charge';
+export type Sfx = 'hit' | 'crit' | 'magic' | 'block' | 'heal' | 'status' | 'dot' | 'flee' | 'victory' | 'defeat' | 'windup' | 'crowd-roar' | 'crowd-gasp' | 'crowd-boo' | 'ally-charge' | `hazard-${string}`; // hazard-<id>: golpe do perigo da arena
 
 export interface Status { id: StatusId; turns: number; power: number }
 
@@ -43,6 +43,7 @@ export interface LogEntry {
   heal?: boolean;
   crit?: boolean;
   ally?: true; // golpe do aliado (Chamado): a UI mostra o aliado entrando no palco
+  hazard?: string; // golpe do perigo da arena (HazardDef.id): a UI mostra fx-<id> no palco, mirando `target` (o favorito) se houver
   bark?: true; // fala do inimigo (kind 'enemy'): a UI pode mostrar como balão; o texto é só a fala
   sfx?: Sfx; // efeito sonoro do evento (public/audio/sfx/<sfx>.mp3)
   hp: [number, number]; // vida [jogador, inimigo] após o evento, para animar a UI
@@ -626,7 +627,8 @@ function hazardTick(s: CombatState) {
     if (--s.hazardIn === 1) log(s, h.warn, 'system');
     return;
   }
-  log(s, h.strike, 'system', { sfx: 'status' });
+  const fav = s.crowd >= CROWD.ovationAt ? s.player : s.enemy;
+  log(s, h.strike, 'system', { hazard: h.id, sfx: `hazard-${h.id}`, ...(h.gift || h.harm ? { target: fav.side } : {}) });
   const safe = (f: Fighter) => f.defending || f.perks.anchor > 0; // Âncora das Marés: imune
   for (const f of [s.player, s.enemy]) {
     if (f.hp <= 0) continue;
@@ -636,7 +638,6 @@ function hazardTick(s: CombatState) {
       log(s, `${f.name}: ${statusName(fx.status)} (${fx.turns} rod.)`, 'status', { target: f.side, sfx: 'status' });
     }
   }
-  const fav = s.crowd >= CROWD.ovationAt ? s.player : s.enemy;
   if (h.gift) heal(s, fav, Math.round(fav.stats.maxHp * h.gift), h.name);
   if (h.harm && fav.hp > 0 && !fav.defending) {
     const amount = Math.round(fav.stats.maxHp * h.harm);
