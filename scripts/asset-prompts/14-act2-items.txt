@@ -7,4 +7,7 @@ Files:
 - lionMane.png: a lion pelt cloak with the lion head as a hood, thick golden mane.
 - augurEye.png: a bronze amulet with a glowing sea-green eye-shaped gem, small coral and shell charms.
 - laurelCrown.png: a golden laurel wreath crown with a small red ribbon.
+- retiariusNet.png: a coiled gladiator fishing net with small lead weights, a little bronze trident charm tied to it.
+- crocTooth.png: a huge curved crocodile tooth on a leather cord necklace, with a small bronze cap.
+- tideAnchor.png: a small ornate bronze ship anchor amulet with sea-green patina and a rope wrapped around it.
 Use your image generation tool once per file. After each generation copy the generated PNG into the current directory with the EXACT filename given. Do not post-process, resize or edit the images. Do not create any other files. At the end list the files you saved.
