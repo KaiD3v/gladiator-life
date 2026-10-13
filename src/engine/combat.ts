@@ -42,6 +42,7 @@ export interface LogEntry {
   amount?: number; // dano (ou cura, se heal)
   heal?: boolean;
   crit?: boolean;
+  ally?: true; // golpe do aliado (Chamado): a UI mostra o aliado entrando no palco
   bark?: true; // fala do inimigo (kind 'enemy'): a UI pode mostrar como balão; o texto é só a fala
   sfx?: Sfx; // efeito sonoro do evento (public/audio/sfx/<sfx>.mp3)
   hp: [number, number]; // vida [jogador, inimigo] após o evento, para animar a UI
@@ -453,7 +454,7 @@ function hit(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef, verb
   // Escudo Pretoriano: defender o golpe pesado devolve parte do golpe (antes do bloqueio) a quem atacou
   const reflect = skill.windup && foe.defending && foe.perks.blockReflect ? Math.max(1, Math.round(dmg * foe.perks.blockReflect)) : 0;
   const verb = verbOverride ?? (skill.id === 'attack' ? ATTACK_VERBS[(s.round + s.log.length) % ATTACK_VERBS.length] : `usa ${skill.name} em`);
-  log(s, `${actor.name} ${verb} ${foe.name}: ${amount}${crit ? ' CRÍTICO!' : ''}${foe.defending ? ' (bloqueado)' : ''}`, actor.side, { target: foe.side, amount, crit, sfx: crit ? 'crit' : physical ? 'hit' : 'magic' });
+  log(s, `${actor.name} ${verb} ${foe.name}: ${amount}${crit ? ' CRÍTICO!' : ''}${foe.defending ? ' (bloqueado)' : ''}`, actor.side, { target: foe.side, amount, crit, ...(skill.ally ? { ally: true as const } : {}), sfx: crit ? 'crit' : physical ? 'hit' : 'magic' });
   if (crit) gain(s, actor === s.player ? CROWD.crit + actor.perks.critCrowd : CROWD.critTaken); // Coroa de Louros: favor extra
   if (reflect && actor.hp > 0) {
     damage(s, actor, reflect);

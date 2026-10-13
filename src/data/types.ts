@@ -61,6 +61,7 @@ export interface SkillDef {
   windup?: boolean; // golpe pesado: quando o inimigo o usa, gasta uma rodada preparando e só acerta na seguinte
   glory?: boolean; // Golpe de Glória: só usável com a torcida em 100
   ally?: boolean; // Chamado de um aliado: uma vez por luta, com favor >= ALLY.crowdAt
+  art?: string; // sprite do aliado que atravessa o palco no golpe (olha para a direita, como o jogador)
   verb?: string; // texto do golpe no registro ("chama Tauros, que investe contra"); padrão "usa <nome> em"
   effects?: Effect[];
   // Habilidades de jogador: atributo que escala o efeito, requisito para aprender e preço no treinador

@@ -81,7 +81,7 @@ describe('Chamado de Tauros (aliado)', () => {
     expect(canUse(hot, 'taurosCharge')).toBe(true);
     const r = resolveRound(hot, 'taurosCharge');
     expect(r.allyUsed).toBe(true);
-    expect(r.log.some((l) => l.text.startsWith('Herói chama Tauros, que investe contra Alvo'))).toBe(true);
+    expect(r.log.filter((l) => l.ally).map((l) => l.text.startsWith('Herói chama Tauros, que investe contra Alvo'))).toEqual([true]);
     expect(r.enemy.posture).toBeLessThan(s.enemy.posture);
     expect(canUse({ ...r, crowd: 100 }, 'taurosCharge')).toBe(false);
     expect(actionsFor(hero(), s)).not.toContain('taurosCharge'); // sem aliado no ato, sem botão

@@ -17,7 +17,7 @@ SIZES = {
                         'banditLeader', 'direWolf', 'bruteWarrior', 'elderSorcerer', 'hellhound', 'executioner', 'necromancer',
                         'retiarius', 'corsair', 'crocodile', 'tideAugur', 'lion', 'bear', 'beastmaster',
                         'praetorian', 'murmillo', 'sagittarius', 'haruspex']},
-    **{k: 200 for k in ['tauros', 'serpent', 'emperor', 'nerissa', 'hannibal', 'draco']},
+    **{k: 200 for k in ['tauros', 'serpent', 'emperor', 'nerissa', 'hannibal', 'draco', 'ally-tauros']},
     **{k: 64 for k in ['chippedSword', 'bronzeShield', 'emberAmulet', 'swiftBoots', 'serratedDagger', 'titanHeart',
                        'manaCrystal', 'vampireChalice', 'thornCloak', 'venomFlask', 'ritualBandage', 'warHorn', 'rest',
                        'praetorianGladius', 'praetorianScutum', 'lionMane', 'augurEye', 'laurelCrown',

@@ -38,6 +38,10 @@ describe('dados da história', () => {
     }
   });
 
+  it('todo aliado de ato tem sprite em public/assets', () => {
+    for (const act of ACTS) if (act.features?.ally) expect(asset(SKILLS[act.features.ally].art ?? ''), act.features.ally).toBe(true);
+  });
+
   it('toda fala tem personagem conhecido e todo fundo/retrato existe em public/assets', () => {
     for (const sc of Object.values(SCENES)) {
       expect(sc.beats.length, sc.id).toBeGreaterThan(0);

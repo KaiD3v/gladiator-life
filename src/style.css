@@ -255,6 +255,17 @@ img.px { image-rendering: crisp-edges; image-rendering: pixelated; user-select: 
 .actor.healed .sprite { filter: drop-shadow(0 0 6px var(--green)) drop-shadow(0 0 2px var(--green)); }
 .actor.down .sprite { animation: none; transform: rotate(var(--fall, -80deg)) translateY(30%); filter: grayscale(1) brightness(0.45); transition: transform 0.4s steps(3); }
 .actor.enemy.down { --fall: 80deg; }
+/* Chamado do aliado: entra pela esquerda, investe até o inimigo e some na poeira */
+.ally-charge { position: absolute; left: 0; bottom: 3%; z-index: 1; pointer-events: none; animation: allyCharge 0.95s steps(10) forwards; }
+.ally-charge .sprite { display: block; height: clamp(52px, 68cqh, 250px); width: auto; filter: drop-shadow(0 0 6px var(--gold)); }
+@keyframes allyCharge {
+  from { translate: -100% 0; opacity: 0; }
+  15% { opacity: 1; }
+  55% { translate: 45cqw 0; }
+  70% { translate: 42cqw 0; opacity: 1; }
+  to { translate: 40cqw 0; opacity: 0; }
+}
+@media (prefers-reduced-motion: reduce) { .ally-charge { animation: none; translate: 40cqw 0; } }
 
 .summary-art { width: auto; height: clamp(48px, 12dvh, 128px); margin: 0 auto -6px; display: block; filter: drop-shadow(3px 4px 0 rgba(0, 0, 0, 0.6)); }
 

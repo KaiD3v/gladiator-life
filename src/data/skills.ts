@@ -20,7 +20,7 @@ export const SKILLS: Record<string, SkillDef> = {
   // Chamado do aliado do ato (ActFeatures.ally): uma vez por luta, com a multidão a favor
   taurosCharge: {
     id: 'taurosCharge', name: 'Chamado de Tauros', desc: 'Tauros salta para a arena: golpe de 60 de força (antes da armadura), abala a postura e 50% de chance de atordoar. 1x por luta, exige multidão 60.',
-    cost: 0, type: 'physical', power: 2, ally: true, verb: 'chama Tauros, que investe contra',
+    cost: 0, type: 'physical', power: 2, ally: true, art: 'ally-tauros', verb: 'chama Tauros, que investe contra',
     effects: [{ status: 'stun', target: 'foe', turns: 1, chance: 0.5 }],
   },
   // Veredito (luta comum, inimigo com 15% de vida ou menos)

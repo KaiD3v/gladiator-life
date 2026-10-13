@@ -84,7 +84,7 @@ function fighterHud(f: Fighter, hp: number, en: number, animating: boolean, firs
 function actor(f: Fighter, hp: number, fresh: LogEntry | null, sprite: string, fb: string, boss = false, enraged = false): string {
   const dizzy = f.statuses.some((x) => x.id === 'stun' || x.id === 'broken');
   const hit = fresh?.target === f.side && fresh.amount ? fresh : null;
-  const state = hp <= 0 ? 'down' : hit ? (hit.heal ? 'healed' : 'hurt') : fresh?.kind === f.side && fresh.target && fresh.target !== f.side ? 'lunge' : '';
+  const state = hp <= 0 ? 'down' : hit ? (hit.heal ? 'healed' : 'hurt') : fresh?.kind === f.side && fresh.target && fresh.target !== f.side && !fresh.ally ? 'lunge' : '';
   return `<div class="actor ${f.side} ${state}${boss ? ' boss' : ''}${enraged ? ' enraged' : ''}">
     ${hit ? `<span class="float ${hit.heal ? 'heal' : hit.crit ? 'crit' : 'dmg'}">${hit.heal ? '+' : '-'}${hit.amount}</span>` : ''}
     ${dizzy && hp > 0 ? '<span class="dizzy" aria-hidden="true">✦✦</span>' : ''}
@@ -240,6 +240,7 @@ export function combatView(g: GameState, c: CombatState, shown: number | null, t
     <div class="${stageClass}" style="background-image:url(${assetUrl(`bg-${arena.id}`)})">
       ${actor(c.player, pHp, fresh, run.classId, run.classId)}
       ${actor(c.enemy, eHp, fresh, run.enemies[run.encounter], isBoss ? 'boss' : 'enemy', isBoss, c.phased)}
+      ${fresh?.ally && c.player.ally ? `<div class="ally-charge" aria-hidden="true">${art(SKILLS[c.player.ally].art ?? '', 'sprite')}</div>` : ''}
       ${bubble(c, fresh, animating)}
       ${animating ? '' : hazardBadge(c)}
       ${iv ? intentBadge(iv, enemyStunned) : ''}
