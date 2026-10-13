@@ -1,0 +1,9 @@
+STYLE (apply to every image): medieval/ancient-Roman gladiator fantasy, 16-bit SNES-era pixel art, crisp hard-edged pixels, no anti-aliasing, no blur, limited warm palette (bronze, rust red, bone, dark brown) with dark outlines, dramatic lighting.
+These are wide landscape scene backgrounds (16:9), empty of characters, with a calm darker lower-center area so UI can sit on top. No text.
+Files:
+- bg-corvara.png: the ruins of a small pastoral shepherd village in a valley, months after a fire: blackened stone walls and fallen thatch overgrown with green grass and wildflowers, a calm river, quiet overcast morning light, melancholic.
+- bg-subura.png: a run-down gladiator school courtyard in the poorest slum district of an imperial capital at dusk: cramped tall tenement buildings around, laundry lines, patched training dummies, a small cooking fire and an inn door with a lantern, a market stall, a huge golden amphitheater visible in the distance.
+- bg-naumachia.png: a naumachia arena: a vast stone amphitheater flooded with water to stage naval battles, a burning small war galley, wooden platforms floating, crowds in the tiers, bright midday light.
+- bg-venatio.png: a beast-hunt arena (venatio): sand floor with artificial rocks and trees, open iron trapdoors and cage gates in the arena walls, claw marks, crowds above, harsh afternoon light.
+- bg-coronation.png: a colossal imperial amphitheater decorated for a coronation: gold and purple banners with a black dragon emblem, rose petals on the sand, a raised imperial tribune box with a throne, packed crowds, sunset light.
+Use your image generation tool once per file. After each generation copy the generated PNG into the current directory with the EXACT filename given. Do not post-process, resize or edit the images. Do not create any other files. At the end list the files you saved.

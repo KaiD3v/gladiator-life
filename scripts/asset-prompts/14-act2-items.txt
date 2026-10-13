@@ -1,0 +1,10 @@
+STYLE (apply to every image): medieval/ancient-Roman gladiator fantasy, 16-bit SNES-era pixel art, crisp hard-edged pixels, no anti-aliasing, no blur, limited warm palette (bronze, rust red, bone, dark brown) with dark outlines, dramatic lighting.
+Each subject is a single sprite, centered, full subject visible with margin, on a plain solid pure magenta #FF00FF background (no shadow on the background, no ground, no text, no frame).
+These are inventory item icons: each a single object, large and centered, slightly tilted, readable at small size.
+Files:
+- praetorianGladius.png: an ornate imperial gladius short sword with a gold eagle pommel and a black-and-gold hilt.
+- praetorianScutum.png: a tall curved rectangular red legionary scutum shield with a gold dragon emblem and bronze rim.
+- lionMane.png: a lion pelt cloak with the lion head as a hood, thick golden mane.
+- augurEye.png: a bronze amulet with a glowing sea-green eye-shaped gem, small coral and shell charms.
+- laurelCrown.png: a golden laurel wreath crown with a small red ribbon.
+Use your image generation tool once per file. After each generation copy the generated PNG into the current directory with the EXACT filename given. Do not post-process, resize or edit the images. Do not create any other files. At the end list the files you saved.

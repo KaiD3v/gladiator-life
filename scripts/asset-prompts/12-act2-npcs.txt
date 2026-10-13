@@ -1,0 +1,9 @@
+STYLE (apply to every image): medieval/ancient-Roman gladiator fantasy, 16-bit SNES-era pixel art, crisp hard-edged pixels, no anti-aliasing, no blur, limited warm palette (bronze, rust red, bone, dark brown) with dark outlines, dramatic lighting.
+Each subject is a single sprite, centered, full subject visible with margin, on a plain solid pure magenta #FF00FF background (no shadow on the background, no ground, no text, no frame).
+These are NPC and story portraits for dialogue boxes: half-body (waist up), facing slightly left toward the viewer, expressive face.
+Files:
+- npc-tauros.png: Tauros, a freed former arena champion, a huge horned-helmet-less bull of a man with a shaved head, a broken bull horn amulet, many scars, a simple brown tunic and a leather strap across the chest, calm and protective expression.
+- npc-sabina.png: Sabina, a sharp-eyed street merchant of the capital slums, middle-aged woman with curly auburn hair tied in a cloth, colorful patched dress with many pouches, a knowing grin, holding a small vial and a dagger for sale.
+- npc-herald.png: the imperial herald, a pompous young man in a white toga with a purple stripe, a laurel wreath, holding an unrolled parchment scroll and a long brass trumpet, mouth open mid-announcement.
+- npc-varro.png: Emperor Caius Varro, the main villain now crowned: short grey hair with a golden laurel crown, black-and-gold armor under a purple imperial cloak with a dragon emblem clasp, cold satisfied smile, holding a golden scepter.
+Use your image generation tool once per file. After each generation copy the generated PNG into the current directory with the EXACT filename given. Do not post-process, resize or edit the images. Do not create any other files. At the end list the files you saved.

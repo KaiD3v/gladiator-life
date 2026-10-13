@@ -14,17 +14,20 @@ OUT = Path(__file__).resolve().parent.parent / 'public' / 'assets'
 # nome -> maior dimensão final (px). Fundos tratados à parte.
 SIZES = {
     **{k: 160 for k in ['warrior', 'mage', 'assassin', 'bandit', 'wolf', 'brute', 'sorcerer',
-                        'banditLeader', 'direWolf', 'bruteWarrior', 'elderSorcerer', 'hellhound', 'executioner', 'necromancer']},
-    **{k: 200 for k in ['tauros', 'serpent', 'emperor']},
+                        'banditLeader', 'direWolf', 'bruteWarrior', 'elderSorcerer', 'hellhound', 'executioner', 'necromancer',
+                        'retiarius', 'corsair', 'crocodile', 'tideAugur', 'lion', 'bear', 'beastmaster',
+                        'praetorian', 'murmillo', 'sagittarius', 'haruspex']},
+    **{k: 200 for k in ['tauros', 'serpent', 'emperor', 'nerissa', 'hannibal', 'draco']},
     **{k: 64 for k in ['chippedSword', 'bronzeShield', 'emberAmulet', 'swiftBoots', 'serratedDagger', 'titanHeart',
-                       'manaCrystal', 'vampireChalice', 'thornCloak', 'venomFlask', 'ritualBandage', 'warHorn', 'rest']},
+                       'manaCrystal', 'vampireChalice', 'thornCloak', 'venomFlask', 'ritualBandage', 'warHorn', 'rest',
+                       'praetorianGladius', 'praetorianScutum', 'lionMane', 'augurEye', 'laurelCrown']},
     **{k: 128 for k in ['victory', 'defeat', 'chest']},
     **{f'st-{k}': 32 for k in ['poison', 'burn', 'stun', 'guard', 'weaken', 'regen', 'defend', 'flee']},
-    **{f'npc-{k}': 160 for k in ['merchant', 'str', 'dex', 'wis', 'inn', 'general', 'mother', 'father']},
+    **{f'npc-{k}': 160 for k in ['merchant', 'str', 'dex', 'wis', 'inn', 'general', 'mother', 'father', 'tauros', 'sabina', 'herald', 'varro']},
     **{k: 32 for k in ['attr-str', 'attr-dex', 'attr-wis', 'gold', 'day']},
 }
 # Sprites gerados olhando para o lado errado (jogador deve olhar à direita, inimigos à esquerda).
-FLIP = {'warrior', 'mage'}
+FLIP = {'warrior', 'mage', 'nerissa'}
 
 
 def key_magenta(img: Image.Image) -> Image.Image:
@@ -42,6 +45,8 @@ def key_magenta(img: Image.Image) -> Image.Image:
 
 def sprite(src: Path, size: int) -> Image.Image:
     img = key_magenta(Image.open(src))
+    # O gerador às vezes devolve fundo transparente com alpha residual (1..): zera antes de recortar a margem.
+    img.putalpha(img.getchannel('A').point(lambda v: v if v > 110 else 0))
     img = img.crop(img.getbbox())
     scale = size / max(img.size)
     img = img.resize((max(1, round(img.width * scale)), max(1, round(img.height * scale))), Image.BOX)
@@ -68,7 +73,8 @@ def background(src: Path) -> Image.Image:
 def main(src_dir: Path):
     OUT.mkdir(parents=True, exist_ok=True)
     missing = []
-    for name in [*SIZES, 'bg-pit', 'bg-colosseum', 'bg-crimson', 'bg-title', 'bg-town', 'bg-village', 'bg-road']:
+    for name in [*SIZES, 'bg-pit', 'bg-colosseum', 'bg-crimson', 'bg-title', 'bg-town', 'bg-village', 'bg-road',
+                 'bg-corvara', 'bg-subura', 'bg-naumachia', 'bg-venatio', 'bg-coronation']:
         src = src_dir / f'{name}.png'
         if not src.exists():
             missing.append(name)

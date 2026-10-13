@@ -1,0 +1,20 @@
+STYLE (apply to every image): medieval/ancient-Roman gladiator fantasy, 16-bit SNES-era pixel art, crisp hard-edged pixels, no anti-aliasing, no blur, limited warm palette (bronze, rust red, bone, dark brown) with dark outlines, dramatic lighting.
+Each subject is a single sprite, centered, full subject visible with margin, on a plain solid pure magenta #FF00FF background (no shadow on the background, no ground, no text, no frame).
+Enemies face left (three-quarter view), full body. Act II: the Coronation Games in the imperial capital (water arena, beast hunts, imperial amphitheater).
+Files:
+- retiarius.png: retiarius gladiator, lean and agile, bare-chested with a single bronze shoulder guard (galerus) on the left arm, a weighted fishing net held ready in one hand and a long bronze trident in the other, loincloth and leather belt.
+- corsair.png: galley corsair pirate, tanned and scarred, salt-stained red headscarf, open sea-blue tunic with a leather baldric, a curved cutlass in one hand and a lit clay fire bomb in the other.
+- crocodile.png: huge Nile crocodile on all fours, dark green armored scales with bronze-tinted ridges, open toothy jaws, a broken iron collar with a chain on its neck.
+- tideAugur.png: augur priest of the tides, gaunt robed figure in sea-green and white robes with a shell-and-coral headdress, holding a staff topped with a swirling orb of water, wet glowing runes.
+- lion.png: war lion of the beast hunts, massive maned male lion mid-stride and snarling, scars across the muzzle, bronze studded harness on its chest.
+- bear.png: enormous mountain brown bear standing upright on its hind legs, claws raised, broken chain shackles on its wrists, battle scars.
+- beastmaster.png: bestiarius beast-hunter, muscular man in a lion-pelt cloak with the lion head as a hood, leather arm wraps, a long hunting spear in one hand and a coiled whip in the other.
+- praetorian.png: imperial praetorian guard, heavy segmented plate armor (lorica segmentata) in black and gold, tall rectangular red scutum shield with a gold dragon emblem, plumed helmet, short gladius.
+- murmillo.png: murmillo gladiator, broad-brimmed bronze helmet with a stylized fish crest and grille visor, one armored sword arm (manica), tall rectangular shield, gladius, greave on the left leg.
+- sagittarius.png: imperial archer, lean figure in a hooded dark red cloak over scale armor, drawing a recurve composite bow with a flaming arrow nocked, quiver on the back.
+- haruspex.png: haruspex soothsayer priest, hooded purple and black robes, a bloody ritual bronze knife in one hand and a glowing sacrificial bowl in the other, eerie violet magic smoke.
+Bosses (bigger presence, more ornate, still a single full-body sprite):
+- nerissa.png: Nerissa, the Tide Queen, a fierce serpent-like gladiator queen, emerald scale armor dripping with water, a crooked golden crown, long wet black hair, a serpent-headed trident and a weighted net, sea foam at her feet.
+- hannibal.png: Hannibal the Beast Tamer, a scarred bearded man with claw marks on his arms, wearing a lion pelt over bronze armor, cracking a long whip with one hand and holding a boar spear, a heavy iron collar key on his belt.
+- draco.png: Draco, the Dragon of Varro, the emperor's champion, a tall young gladiator in black-and-gold full plate armor with a dragon-shaped helmet crest, crimson cloak, a long flame-wreathed sword and a round black shield with a gold dragon emblem.
+Use your image generation tool once per file. After each generation copy the generated PNG into the current directory with the EXACT filename given. Do not post-process, resize or edit the images. Do not create any other files. At the end list the files you saved.
