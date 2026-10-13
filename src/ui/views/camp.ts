@@ -150,9 +150,9 @@ export function campView(g: GameState, npc: string | null, line: string, news: s
         <h3>Habilidades ${run.skills.length}/${MAX_SKILLS}</h3>
         ${skillList(run.skills)}
         <h3>Equipamento</h3>
-        <p>${run.items.length ? run.items.map(itemChip).join(' ') : '<span class="dim">Nenhum item ainda.</span>'}</p>
+        <div class="chips">${run.items.length ? run.items.map(itemChip).join(' ') : '<span class="dim">Nenhum item ainda.</span>'}</div>
         <h3>Bolsa ${run.bag.length}/${BAG_SIZE}</h3>
-        <p>${run.bag.length ? run.bag.map(itemChip).join(' ') : '<span class="dim">Vazia. Compre consumíveis no mercador ou vença quem os carrega.</span>'}</p>
+        <div class="chips">${run.bag.length ? run.bag.map(itemChip).join(' ') : '<span class="dim">Vazia. Compre consumíveis no mercador ou vença quem os carrega.</span>'}</div>
       </div>
     </div>
     <div class="sketch next-card">
