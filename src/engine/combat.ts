@@ -7,7 +7,7 @@ import { rand } from '../core/rng';
 
 export type Side = 'player' | 'enemy';
 export type Outcome = 'victory' | 'defeat' | 'draw' | 'fled';
-export type Sfx = 'hit' | 'crit' | 'magic' | 'block' | 'heal' | 'status' | 'dot' | 'flee' | 'victory' | 'defeat' | 'windup' | 'crowd-roar' | 'crowd-gasp' | 'crowd-boo';
+export type Sfx = 'hit' | 'crit' | 'magic' | 'block' | 'heal' | 'status' | 'dot' | 'flee' | 'victory' | 'defeat' | 'windup' | 'crowd-roar' | 'crowd-gasp' | 'crowd-boo' | 'ally-charge';
 
 export interface Status { id: StatusId; turns: number; power: number }
 
@@ -454,7 +454,7 @@ function hit(s: CombatState, actor: Fighter, foe: Fighter, skill: SkillDef, verb
   // Escudo Pretoriano: defender o golpe pesado devolve parte do golpe (antes do bloqueio) a quem atacou
   const reflect = skill.windup && foe.defending && foe.perks.blockReflect ? Math.max(1, Math.round(dmg * foe.perks.blockReflect)) : 0;
   const verb = verbOverride ?? (skill.id === 'attack' ? ATTACK_VERBS[(s.round + s.log.length) % ATTACK_VERBS.length] : `usa ${skill.name} em`);
-  log(s, `${actor.name} ${verb} ${foe.name}: ${amount}${crit ? ' CRÍTICO!' : ''}${foe.defending ? ' (bloqueado)' : ''}`, actor.side, { target: foe.side, amount, crit, ...(skill.ally ? { ally: true as const } : {}), sfx: crit ? 'crit' : physical ? 'hit' : 'magic' });
+  log(s, `${actor.name} ${verb} ${foe.name}: ${amount}${crit ? ' CRÍTICO!' : ''}${foe.defending ? ' (bloqueado)' : ''}`, actor.side, { target: foe.side, amount, crit, ...(skill.ally ? { ally: true as const } : {}), sfx: skill.ally ? 'ally-charge' : crit ? 'crit' : physical ? 'hit' : 'magic' });
   if (crit) gain(s, actor === s.player ? CROWD.crit + actor.perks.critCrowd : CROWD.critTaken); // Coroa de Louros: favor extra
   if (reflect && actor.hp > 0) {
     damage(s, actor, reflect);
